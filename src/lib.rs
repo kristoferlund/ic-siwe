@@ -33,8 +33,9 @@
 //! For more details, refer to the specific module documentation.
 
 use rand_chacha::{rand_core::RngCore, ChaCha20Rng};
+use siwe_message::SiweMessage;
 use siwe_settings::SiweSettings;
-use std::{cell::RefCell, sync::OnceLock};
+use std::{cell::RefCell, collections::HashMap, sync::OnceLock};
 
 pub mod create_message;
 pub mod init;
@@ -48,6 +49,7 @@ static SETTINGS: OnceLock<SiweSettings> = OnceLock::new();
 
 thread_local! {
   static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
+  static SIWE_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
 }
 
 fn generate_nonce() -> Result<[u8; 10], String> {

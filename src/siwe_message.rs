@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 /// Represents a SIWE (Sign-In With Ethereum) message.
 ///
 /// This struct contains all the fields required for a SIWE message as per the EIP-4361 specification.
-#[derive(CandidType, Deserialize, Serialize)]
+#[derive(CandidType, Deserialize, Serialize, Clone)]
 pub struct SiweMessage {
     pub scheme: String,
     pub domain: String,

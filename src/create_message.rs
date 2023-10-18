@@ -1,4 +1,4 @@
-use crate::{generate_nonce, siwe_message::SiweMessage, SETTINGS};
+use crate::{generate_nonce, siwe_message::SiweMessage, SETTINGS, SIWE_MESSAGES};
 
 use ic_cdk::api::time;
 
@@ -23,10 +23,10 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
 
     let nonce = generate_nonce()?;
 
-    Ok(SiweMessage {
+    let message = SiweMessage {
         scheme: settings.scheme.clone(),
         domain: settings.domain.clone(),
-        address,
+        address: address.clone(),
         statement: settings.statement.clone(),
         uri: settings.uri.clone(),
         version: 1,
@@ -34,7 +34,14 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
         nonce,
         issued_at: time(),
         expiration_time: time() + settings.expires_in as u64 * 1000000000, // convert to nanoseconds
-    })
+    };
+
+    SIWE_MESSAGES.with(|map| {
+        let mut map_borrowed = map.borrow_mut();
+        map_borrowed.insert(address.as_bytes().to_vec(), message.clone());
+    });
+
+    Ok(message)
 }
 
 /// Validates an Ethereum address based on specific criteria.
