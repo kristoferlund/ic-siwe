@@ -5,6 +5,15 @@ use url::Url;
 
 use crate::{siwe_settings::SiweSettings, RNG, SETTINGS};
 
+// Validates the provided URI scheme.
+///
+/// # Parameters
+///
+/// * `scheme: &str` - The URI scheme to validate.
+///
+/// # Returns
+///
+/// Returns a `Result<String, String>` containing the valid scheme or an error message.
 fn validate_scheme(scheme: &str) -> Result<String, String> {
     if scheme == "http" || scheme == "https" {
         return Ok(scheme.to_string());
@@ -12,6 +21,16 @@ fn validate_scheme(scheme: &str) -> Result<String, String> {
     Err(String::from("Invalid scheme"))
 }
 
+/// Validates the provided domain based on the given scheme.
+///
+/// # Parameters
+///
+/// * `scheme: &str` - The URI scheme associated with the domain.
+/// * `domain: &str` - The domain to validate.
+///
+/// # Returns
+///
+/// Returns a `Result<String, String>` containing the valid domain or an error message.
 fn validate_domain(scheme: &str, domain: &str) -> Result<String, String> {
     let url_str = format!("{}://{}", scheme, domain);
     let parsed_url = Url::parse(&url_str).map_err(|_| String::from("Invalid domain"))?;
@@ -22,6 +41,15 @@ fn validate_domain(scheme: &str, domain: &str) -> Result<String, String> {
     }
 }
 
+/// Validates the provided statement.
+///
+/// # Parameters
+///
+/// * `statement: &str` - The statement to validate.
+///
+/// # Returns
+///
+/// Returns a `Result<String, String>` containing the valid statement or an error message.
 fn validate_statement(statement: &str) -> Result<String, String> {
     if statement.contains("\n") {
         return Err(String::from("Invalid statement"));
@@ -29,6 +57,15 @@ fn validate_statement(statement: &str) -> Result<String, String> {
     Ok(statement.to_string())
 }
 
+/// Validates the provided URI.
+///
+/// # Parameters
+///
+/// * `uri: &str` - The URI to validate.
+///
+/// # Returns
+///
+/// Returns a `Result<String, String>` containing the valid URI or an error message.
 fn validate_uri(uri: &str) -> Result<String, String> {
     let parsed_uri = Url::parse(uri).map_err(|_| String::from("Invalid URI"))?;
     if !parsed_uri.has_host() {
@@ -40,31 +77,17 @@ fn validate_uri(uri: &str) -> Result<String, String> {
 
 /// Initializes the SIWE settings.
 ///
-/// This function validates and sets the SIWE settings based on the given `SiweSettings` struct.
+/// This function validates and sets the SIWE settings based on the provided `SiweSettings` struct.
 /// The settings include scheme, domain, statement, URI, and chain ID.
 ///
 /// # Parameters
 ///
-/// * `settings: SiweSettings<'_>` - A struct containing the SIWE settings.
-///
-///     - `scheme: Option<&str>`: The URI scheme of the origin of the request.
-///       Allowed values are "http" and "https". Default is "https" if not provided.
-///
-///     - `domain: &str`: The domain that is requesting the signing.
-///       Must be a valid RFC 3986 authority.
-///
-///     - `statement: Option<&str>`: A human-readable ASCII assertion that the user will sign.
-///       Must not include '\n' (the byte 0x0a).
-///
-///     - `uri: &str`: An RFC 3986 URI referring to the resource that is the subject of the signing.
-///
-///     - `chain_id: u32`: The EIP-155 Chain ID tzo which the session is bound.
-///       Must be greater than 0.
+/// * `settings: SiweSettings` - A struct containing the SIWE settings.
 ///
 /// # Returns
 ///
 /// Returns a `Result<(), String>` indicating the success or failure of the initialization.
-/// Each setting is validated according to the rules specified in EIP-4361.
+/// Each setting is validated according to their respective rules.
 ///
 /// # Errors
 ///
