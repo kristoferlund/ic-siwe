@@ -19,7 +19,7 @@ pub struct SiweMessage {
     pub uri: String,
     pub version: u8,
     pub chain_id: u32,
-    pub nonce: [u8; 10],
+    pub nonce: String,
     pub issued_at: u64,
     pub expiration_time: u64,
 }
@@ -57,7 +57,7 @@ impl SiweMessage {
             uri = self.uri,
             version = self.version,
             chain_id = self.chain_id,
-            nonce = hex::encode(&self.nonce),
+            nonce = self.nonce,
         )
     }
 }

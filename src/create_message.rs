@@ -31,7 +31,7 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
         uri: settings.uri.clone(),
         version: 1,
         chain_id: settings.chain_id,
-        nonce,
+        nonce: hex::encode(nonce),
         issued_at: time(),
         expiration_time: time() + settings.expires_in as u64 * 1000000000, // convert to nanoseconds
     };

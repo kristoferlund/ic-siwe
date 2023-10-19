@@ -39,11 +39,13 @@ use std::{cell::RefCell, collections::HashMap, sync::OnceLock};
 
 pub mod create_message;
 pub mod init;
+pub mod login;
 pub mod siwe_message;
 pub mod siwe_settings;
 
 pub use create_message::create_message;
 pub use init::init;
+pub use login::login;
 
 static SETTINGS: OnceLock<SiweSettings> = OnceLock::new();
 

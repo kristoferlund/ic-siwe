@@ -65,7 +65,7 @@ impl SiweMessage {
 /// Represents the settings for initializing SIWE.
 ///
 /// This struct is used to pass settings to the `init` function for SIWE configuration.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct SiweSettings {
     pub domain: String,
     pub scheme: String,
