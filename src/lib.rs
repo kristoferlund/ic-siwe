@@ -43,7 +43,7 @@ pub mod login;
 pub mod siwe_message;
 pub mod siwe_settings;
 
-pub use create_message::create_message;
+pub use create_message::{create_message, create_message_as_erc_4361};
 pub use init::init;
 pub use login::login;
 
@@ -56,6 +56,6 @@ thread_local! {
 
 fn generate_nonce() -> Result<[u8; 10], String> {
     let mut buf = [0u8; 10];
-    RNG.with(|rng| rng.borrow_mut().as_mut().unwrap().fill_bytes(&mut buf));
+    RNG.with_borrow_mut(|rng| rng.as_mut().unwrap().fill_bytes(&mut buf));
     Ok(buf)
 }

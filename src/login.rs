@@ -17,7 +17,7 @@ const SIWE_MESSAGE_TTL: u64 = 5 * 60 * 1_000_000_000;
 ///
 /// - `Ok`: If the login process was successful.
 /// - `Err`: Descriptive error message if any step fails.
-pub async fn login(signature: String, address: String) -> Result<SiweMessage, String> {
+pub async fn login(signature: String, address: String) -> Result<String, String> {
     prune_expired_messages();
 
     let settings = get_siwe_settings()?;
@@ -26,7 +26,7 @@ pub async fn login(signature: String, address: String) -> Result<SiweMessage, St
 
     verify_message(&message, &signature_bytes, &settings).await?;
 
-    Ok(message)
+    Ok(address)
 }
 
 /// Removes SIWE messages that have exceeded their time to live.
@@ -34,9 +34,8 @@ pub fn prune_expired_messages() {
     let current_time = ic_cdk::api::time();
     let cutoff_time = current_time - SIWE_MESSAGE_TTL;
 
-    SIWE_MESSAGES.with(|map| {
-        let mut map_borrowed = map.borrow_mut();
-        map_borrowed.retain(|_, message| message.issued_at >= cutoff_time);
+    SIWE_MESSAGES.with_borrow_mut(|map| {
+        map.retain(|_, message| message.issued_at >= cutoff_time);
     });
 }
 
@@ -81,7 +80,7 @@ async fn verify_message(
         .map_err(|_| String::from("Failed to parse the message"))?;
 
     let timestamp = Some(
-        OffsetDateTime::from_unix_timestamp_nanos(message.issued_at as i128)
+        OffsetDateTime::from_unix_timestamp_nanos(siwe_message.issued_at as i128)
             .map_err(|_| String::from("Invalid timestamp in the message"))?,
     );
 

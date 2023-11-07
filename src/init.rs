@@ -108,7 +108,7 @@ pub fn init(settings: SiweSettings) -> Result<(), String> {
                 ic_cdk::call(Principal::management_canister(), "raw_rand", ())
                     .await
                     .unwrap();
-            RNG.with(|rng| *rng.borrow_mut() = Some(ChaCha20Rng::from_seed(seed)));
+            RNG.with_borrow_mut(|rng| *rng = Some(ChaCha20Rng::from_seed(seed)));
         })
     });
 

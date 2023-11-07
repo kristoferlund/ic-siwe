@@ -36,12 +36,17 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
         expiration_time: time() + settings.expires_in as u64 * 1000000000, // convert to nanoseconds
     };
 
-    SIWE_MESSAGES.with(|map| {
-        let mut map_borrowed = map.borrow_mut();
-        map_borrowed.insert(address.as_bytes().to_vec(), message.clone());
+    SIWE_MESSAGES.with_borrow_mut(|map| {
+        map.insert(address.as_bytes().to_vec(), message.clone());
     });
 
     Ok(message)
+}
+
+pub fn create_message_as_erc_4361(address: String) -> Result<String, String> {
+    let message = create_message(address)?;
+
+    Ok(message.to_erc_4361())
 }
 
 /// Validates an Ethereum address based on specific criteria.
