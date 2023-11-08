@@ -98,9 +98,7 @@ pub fn init(settings: SiweSettings) -> Result<(), String> {
     validate_statement(&settings.statement)?;
     validate_uri(&settings.uri)?;
 
-    SETTINGS
-        .set(settings)
-        .map_err(|_| String::from("Settings are already set"))?;
+    SETTINGS.set(Some(settings));
 
     ic_cdk_timers::set_timer(Duration::ZERO, || {
         ic_cdk::spawn(async {
