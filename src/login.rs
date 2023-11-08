@@ -1,4 +1,7 @@
-use crate::{siwe_message::SiweMessage, SETTINGS, SIWE_MESSAGES};
+use crate::{
+    types::{settings::get_settings, siwe_message::SiweMessage},
+    SIWE_MESSAGES,
+};
 use siwe::{Message, VerificationOpts};
 use time::OffsetDateTime;
 
@@ -38,14 +41,6 @@ pub fn prune_expired_messages() {
     });
 }
 
-/// Retrieves the SIWE settings. Returns an error if settings are not initialized.
-// fn get_siwe_settings() -> Result<SiweSettings, String> {
-//     SETTINGS
-//         .get()
-//         .cloned()
-//         .ok_or_else(|| String::from("Settings have not been initialized"))
-// }
-
 /// Decodes the signature string. Skips the "0x" prefix.
 fn decode_signature(signature: &str) -> Result<[u8; 65], String> {
     // Skip "0x" prefix
@@ -79,9 +74,7 @@ async fn verify_message(siwe_message: &SiweMessage, signature: &[u8; 65]) -> Res
             .map_err(|_| String::from("Invalid timestamp in the message"))?,
     );
 
-    let settings = SETTINGS
-        .with(|settings| settings.borrow().as_ref().cloned())
-        .ok_or_else(|| String::from("Settings are not initialized"))?;
+    let settings = get_settings()?;
 
     let verification_opts = VerificationOpts {
         domain: Some(

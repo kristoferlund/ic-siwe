@@ -32,38 +32,23 @@
 //!
 //! For more details, refer to the specific module documentation.
 
-#[cfg(not(test))]
-use rand_chacha::rand_core::RngCore;
-
 use rand_chacha::ChaCha20Rng;
-use siwe_message::SiweMessage;
-use siwe_settings::SiweSettings;
 use std::{cell::RefCell, collections::HashMap};
 
 pub mod create_message;
 pub mod init;
 pub mod login;
-pub mod siwe_message;
-pub mod siwe_settings;
+pub mod types;
+pub mod utils;
 
 pub use create_message::{create_message, create_message_as_erc_4361};
 pub use init::init;
 pub use login::login;
 
+use crate::types::{settings::Settings, siwe_message::SiweMessage};
+
 thread_local! {
-  static SETTINGS: RefCell<Option<SiweSettings>> = RefCell::new(None);
+  static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
   static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
   static SIWE_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
-}
-
-#[cfg(not(test))]
-fn generate_nonce() -> Result<[u8; 10], String> {
-    let mut buf = [0u8; 10];
-    RNG.with_borrow_mut(|rng| rng.as_mut().unwrap().fill_bytes(&mut buf));
-    Ok(buf)
-}
-
-#[cfg(test)]
-fn generate_nonce() -> Result<[u8; 10], String> {
-    Ok([0u8; 10])
 }

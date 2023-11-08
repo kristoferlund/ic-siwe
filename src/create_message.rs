@@ -1,17 +1,8 @@
-use crate::{generate_nonce, siwe_message::SiweMessage, SETTINGS, SIWE_MESSAGES};
-
-#[cfg(not(test))]
-fn get_current_time() -> u64 {
-    // This code is used in production, where ic_cdk::api::time() is available
-    ic_cdk::api::time()
-}
-
-#[cfg(test)]
-fn get_current_time() -> u64 {
-    // In tests, return a fixed time or a mock time as needed
-    // For example, you might have a static variable in your tests that determines the mock time
-    123456789 // replace with a suitable way to get mock time for your tests
-}
+use crate::{
+    types::{settings::get_settings, siwe_message::SiweMessage},
+    utils::{rand::generate_nonce, time::get_current_time},
+    SIWE_MESSAGES,
+};
 
 /// Creates a SiweMessage based on the given address.
 ///
@@ -28,9 +19,7 @@ fn get_current_time() -> u64 {
 pub fn create_message(address: String) -> Result<SiweMessage, String> {
     validate_address(&address)?;
 
-    let settings = SETTINGS
-        .with(|settings| settings.borrow().as_ref().cloned())
-        .ok_or_else(|| String::from("Settings are not initialized"))?;
+    let settings = get_settings()?;
 
     let nonce = generate_nonce()?;
 
@@ -87,16 +76,21 @@ pub fn validate_address(address: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::siwe_settings::SiweSettingsBuilder;
+    use siwe::Message;
+
+    use crate::{types::settings::SettingsBuilder, SETTINGS};
 
     use super::*;
 
+    const VALID_ADDRESS: &str = "0x1111111111111111111111111111111111111111";
+
     fn init() {
         let settings =
-            SiweSettingsBuilder::new("localhost".to_string(), "http://localhost:8080".to_string())
+            SettingsBuilder::new("localhost".to_string(), "http://localhost:8080".to_string())
                 .scheme("http".to_string())
                 .statement("Login to the app".to_string())
-                .build();
+                .build()
+                .unwrap();
 
         SETTINGS.with(|s| {
             *s.borrow_mut() = Some(settings);
@@ -105,8 +99,7 @@ mod tests {
 
     #[test]
     fn test_create_message_no_settings() {
-        let valid_address = "0x".to_string() + &"1".repeat(40);
-        let result = create_message(valid_address);
+        let result = create_message(VALID_ADDRESS.to_string());
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Settings are not initialized");
     }
@@ -115,8 +108,7 @@ mod tests {
     fn test_create_message_success() {
         init();
 
-        let valid_address = "0x".to_string() + &"1".repeat(40); // A mock valid Ethereum address
-        let result = create_message(valid_address);
+        let result = create_message(VALID_ADDRESS.to_string());
         assert!(result.is_ok());
     }
 
@@ -138,5 +130,76 @@ mod tests {
         let result = create_message(invalid_address);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid hex encoding");
+    }
+
+    #[test]
+    fn test_create_message_address_too_short() {
+        init();
+
+        let invalid_address = "0x".to_string() + &"1".repeat(39); // Too short
+        let result = create_message(invalid_address);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid address");
+    }
+
+    #[test]
+    fn test_create_message_address_too_long() {
+        init();
+
+        let invalid_address = "0x".to_string() + &"1".repeat(41); // Too long
+        let result = create_message(invalid_address);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Invalid address");
+    }
+
+    #[test]
+    fn test_create_message_nonce() {
+        init();
+
+        let nonce = generate_nonce().expect("Should succeed in generating nonce");
+
+        let result =
+            create_message(VALID_ADDRESS.to_string()).expect("Should succeed with valid address");
+
+        // Check if the nonce is set correctly
+        assert_eq!(result.nonce, hex::encode(nonce));
+    }
+
+    #[test]
+    fn test_create_message_expected_message() {
+        init();
+
+        let result =
+            create_message(VALID_ADDRESS.to_string()).expect("Should succeed with valid address");
+
+        let settings = SETTINGS
+            .with(|settings| settings.borrow().as_ref().cloned())
+            .ok_or_else(|| String::from("Settings are not initialized"))
+            .expect("Should succeed in getting settings");
+
+        assert_eq!(result.address, VALID_ADDRESS);
+        assert_eq!(result.scheme, settings.scheme);
+        assert_eq!(result.domain, settings.domain);
+        assert_eq!(result.statement, settings.statement);
+        assert_eq!(result.uri, settings.uri);
+        assert_eq!(result.version, 1);
+        assert_eq!(result.chain_id, settings.chain_id);
+        assert_eq!(result.issued_at, get_current_time());
+        assert_eq!(
+            result.expiration_time,
+            get_current_time() + settings.expires_in as u64 * 1000000000
+        );
+    }
+
+    #[test]
+    fn test_create_message_as_erc_4361() {
+        init();
+
+        let result = create_message_as_erc_4361(VALID_ADDRESS.to_string());
+        assert!(result.is_ok());
+
+        // Parse the ERC-4361 message and assert it is ok
+        let message_result: Result<Message, _> = result.unwrap().parse();
+        assert!(message_result.is_ok(), "Parsing the message should succeed");
     }
 }
