@@ -1,7 +1,7 @@
 use crate::{
     types::{settings::get_settings, siwe_message::SiweMessage},
     utils::{rand::generate_nonce, time::get_current_time},
-    SIWE_MESSAGES,
+    SIGN_IN_MESSAGES,
 };
 
 /// Creates a SiweMessage based on the given address.
@@ -33,10 +33,10 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
         chain_id: settings.chain_id,
         nonce: hex::encode(nonce),
         issued_at: get_current_time(),
-        expiration_time: get_current_time() + settings.expires_in as u64 * 1000000000, // convert to nanoseconds
+        expiration_time: get_current_time() + settings.session_expires_in as u64 * 1000000000, // convert to nanoseconds
     };
 
-    SIWE_MESSAGES.with_borrow_mut(|map| {
+    SIGN_IN_MESSAGES.with_borrow_mut(|map| {
         map.insert(address.as_bytes().to_vec(), message.clone());
     });
 
@@ -85,12 +85,11 @@ mod tests {
     const VALID_ADDRESS: &str = "0x1111111111111111111111111111111111111111";
 
     fn init() {
-        let settings =
-            SettingsBuilder::new("localhost".to_string(), "http://localhost:8080".to_string())
-                .scheme("http".to_string())
-                .statement("Login to the app".to_string())
-                .build()
-                .unwrap();
+        let settings = SettingsBuilder::new("localhost", "http://localhost:8080")
+            .scheme("http")
+            .statement("Login to the app")
+            .build()
+            .unwrap();
 
         SETTINGS.with(|s| {
             *s.borrow_mut() = Some(settings);
@@ -172,10 +171,7 @@ mod tests {
         let result =
             create_message(VALID_ADDRESS.to_string()).expect("Should succeed with valid address");
 
-        let settings = SETTINGS
-            .with(|settings| settings.borrow().as_ref().cloned())
-            .ok_or_else(|| String::from("Settings are not initialized"))
-            .expect("Should succeed in getting settings");
+        let settings = get_settings().unwrap();
 
         assert_eq!(result.address, VALID_ADDRESS);
         assert_eq!(result.scheme, settings.scheme);
@@ -187,7 +183,7 @@ mod tests {
         assert_eq!(result.issued_at, get_current_time());
         assert_eq!(
             result.expiration_time,
-            get_current_time() + settings.expires_in as u64 * 1000000000
+            get_current_time() + settings.session_expires_in as u64 * 1000000000
         );
     }
 

@@ -15,13 +15,13 @@ pub struct Settings {
     pub statement: String,
     pub uri: String,
     pub chain_id: u32,
-    pub expires_in: u32,
+    pub session_expires_in: u32,
+    pub sign_in_expires_in: u64,
 }
 
 pub fn get_settings() -> Result<Settings, String> {
-    SETTINGS.with(|settings| {
+    SETTINGS.with_borrow(|settings| {
         settings
-            .borrow()
             .as_ref()
             .cloned() // Clone the Settings value
             .ok_or_else(|| String::from("Settings are not initialized"))
@@ -33,15 +33,16 @@ pub struct SettingsBuilder {
 }
 
 impl SettingsBuilder {
-    pub fn new(domain: String, uri: String) -> Self {
+    pub fn new<S: Into<String>, T: Into<String>>(domain: S, uri: T) -> Self {
         SettingsBuilder {
             settings: Settings {
-                domain,
-                uri,
+                domain: domain.into(),
+                uri: uri.into(),
                 chain_id: 1, // defaults to Ethereum mainnet
                 scheme: String::from("https"),
                 statement: String::from("SIWE Fields:"),
-                expires_in: 60 * 60 * 24, // 24 hours
+                session_expires_in: 60 * 60 * 24, // 24 hours
+                sign_in_expires_in: 5 * 60 * 1_000_000_000, // 5 minutes
             },
         }
     }
@@ -51,18 +52,23 @@ impl SettingsBuilder {
         self
     }
 
-    pub fn scheme(mut self, scheme: String) -> Self {
-        self.settings.scheme = scheme;
+    pub fn scheme<S: Into<String>>(mut self, scheme: S) -> Self {
+        self.settings.scheme = scheme.into();
         self
     }
 
-    pub fn statement(mut self, statement: String) -> Self {
-        self.settings.statement = statement;
+    pub fn statement<S: Into<String>>(mut self, statement: S) -> Self {
+        self.settings.statement = statement.into();
         self
     }
 
-    pub fn expires_in(mut self, expires_in: u32) -> Self {
-        self.settings.expires_in = expires_in;
+    pub fn session_expires_in(mut self, expires_in: u32) -> Self {
+        self.settings.session_expires_in = expires_in;
+        self
+    }
+
+    pub fn sign_in_expires_in(mut self, expires_in: u64) -> Self {
+        self.settings.sign_in_expires_in = expires_in;
         self
     }
 
@@ -71,6 +77,8 @@ impl SettingsBuilder {
         validate_scheme(&self.settings.scheme)?;
         validate_statement(&self.settings.statement)?;
         validate_uri(&self.settings.uri)?;
+        validate_session_expires_in(self.settings.session_expires_in)?;
+        validate_sign_in_expires_in(self.settings.sign_in_expires_in)?;
 
         Ok(self.settings)
     }
@@ -144,4 +152,18 @@ fn validate_uri(uri: &str) -> Result<String, String> {
     } else {
         Ok(uri.to_string())
     }
+}
+
+fn validate_session_expires_in(expires_in: u32) -> Result<u32, String> {
+    if expires_in == 0 {
+        return Err(String::from("Session expires in must be greater than 0"));
+    }
+    Ok(expires_in)
+}
+
+fn validate_sign_in_expires_in(expires_in: u64) -> Result<u64, String> {
+    if expires_in == 0 {
+        return Err(String::from("Sign in expires in must be greater than 0"));
+    }
+    Ok(expires_in)
 }

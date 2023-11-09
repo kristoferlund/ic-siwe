@@ -38,6 +38,7 @@ use std::{cell::RefCell, collections::HashMap};
 pub mod create_message;
 pub mod init;
 pub mod login;
+pub mod session;
 pub mod types;
 pub mod utils;
 
@@ -50,5 +51,6 @@ use crate::types::{settings::Settings, siwe_message::SiweMessage};
 thread_local! {
   static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
   static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
-  static SIWE_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
+  static SIGN_IN_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
+  static SESSION_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
 }
