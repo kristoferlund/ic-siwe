@@ -7,6 +7,8 @@ use std::fmt;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
+use crate::utils::time::get_current_time;
+
 /// Represents a SIWE (Sign-In With Ethereum) message.
 ///
 /// This struct contains all the fields required for a SIWE message as per the EIP-4361 specification.
@@ -59,5 +61,10 @@ impl SiweMessage {
             chain_id = self.chain_id,
             nonce = self.nonce,
         )
+    }
+
+    pub fn is_valid(&self) -> bool {
+        let current_time = get_current_time();
+        self.issued_at <= current_time && self.expiration_time >= current_time
     }
 }

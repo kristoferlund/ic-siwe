@@ -15,7 +15,7 @@ pub struct Settings {
     pub statement: String,
     pub uri: String,
     pub chain_id: u32,
-    pub session_expires_in: u32,
+    pub session_expires_in: u64,
     pub sign_in_expires_in: u64,
 }
 
@@ -41,8 +41,8 @@ impl SettingsBuilder {
                 chain_id: 1, // defaults to Ethereum mainnet
                 scheme: String::from("https"),
                 statement: String::from("SIWE Fields:"),
-                session_expires_in: 60 * 60 * 24, // 24 hours
-                sign_in_expires_in: 5 * 60 * 1_000_000_000, // 5 minutes
+                session_expires_in: 60 * 60 * 24 * 1_000_000_000, // 24 hours
+                sign_in_expires_in: 5 * 60 * 1_000_000_000,       // 5 minutes
             },
         }
     }
@@ -62,7 +62,7 @@ impl SettingsBuilder {
         self
     }
 
-    pub fn session_expires_in(mut self, expires_in: u32) -> Self {
+    pub fn session_expires_in(mut self, expires_in: u64) -> Self {
         self.settings.session_expires_in = expires_in;
         self
     }
@@ -154,7 +154,7 @@ fn validate_uri(uri: &str) -> Result<String, String> {
     }
 }
 
-fn validate_session_expires_in(expires_in: u32) -> Result<u32, String> {
+fn validate_session_expires_in(expires_in: u64) -> Result<u64, String> {
     if expires_in == 0 {
         return Err(String::from("Session expires in must be greater than 0"));
     }

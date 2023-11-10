@@ -44,10 +44,10 @@ pub fn prune_expired_messages() {
         .map(|settings| settings.sign_in_expires_in)
         .unwrap_or(0);
 
-    let cutoff_time = current_time - sign_in_expires_in;
+    let cutoff_time = current_time + sign_in_expires_in;
 
     SIGN_IN_MESSAGES.with_borrow_mut(|map| {
-        map.retain(|_, message| message.issued_at >= cutoff_time);
+        map.retain(|_, message| message.issued_at <= cutoff_time);
     });
 }
 

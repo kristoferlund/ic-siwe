@@ -33,7 +33,7 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
         chain_id: settings.chain_id,
         nonce: hex::encode(nonce),
         issued_at: get_current_time(),
-        expiration_time: get_current_time() + settings.session_expires_in as u64 * 1000000000, // convert to nanoseconds
+        expiration_time: get_current_time() + settings.sign_in_expires_in,
     };
 
     SIGN_IN_MESSAGES.with_borrow_mut(|map| {
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(result.issued_at, get_current_time());
         assert_eq!(
             result.expiration_time,
-            get_current_time() + settings.session_expires_in as u64 * 1000000000
+            get_current_time() + settings.sign_in_expires_in
         );
     }
 
