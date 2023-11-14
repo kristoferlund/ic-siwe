@@ -15,3 +15,8 @@ time = { version = "0.3.30", features = ["formatting"] }
 rand_chacha = "0.3.1"
 siwe = "0.6.0"
 getrandom = { version = "0.2.10", features = ["custom"] }
+
+[dev-dependencies]
+ethers = "2.0.10"
+tokio = { version = "1.13.0", features = ["full"] }
+rand = "0.8.4"

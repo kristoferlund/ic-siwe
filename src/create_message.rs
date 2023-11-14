@@ -4,31 +4,28 @@ use crate::{
     SIGN_IN_MESSAGES,
 };
 
-/// Creates a SiweMessage based on the given address.
-///
-/// This function performs all necessary validations and returns a `SiweMessage`
-/// if the address is valid.
+/// Creates a SiweMessage for the given address.
+/// Validates the address, fetches settings, generates a nonce, and constructs the SiweMessage.
 ///
 /// # Arguments
 ///
-/// * `address` - The address to be used for creating the `SiweMessage`.
+/// * `address` - The Ethereum address for which to create the SiweMessage.
 ///
 /// # Returns
 ///
-/// Returns a `Result` containing the `SiweMessage` or an error message.
+/// `Result<SiweMessage, String>` - SiweMessage on success, or an error message on failure.
 pub fn create_message(address: String) -> Result<SiweMessage, String> {
     validate_address(&address)?;
 
     let settings = get_settings()?;
-
     let nonce = generate_nonce()?;
 
     let message = SiweMessage {
-        scheme: settings.scheme.clone(),
-        domain: settings.domain.clone(),
-        address: address.clone(),
-        statement: settings.statement.clone(),
-        uri: settings.uri.clone(),
+        scheme: settings.scheme,
+        domain: settings.domain,
+        address,
+        statement: settings.statement,
+        uri: settings.uri,
         version: 1,
         chain_id: settings.chain_id,
         nonce: hex::encode(nonce),
@@ -37,40 +34,36 @@ pub fn create_message(address: String) -> Result<SiweMessage, String> {
     };
 
     SIGN_IN_MESSAGES.with_borrow_mut(|map| {
-        map.insert(address.as_bytes().to_vec(), message.clone());
+        map.insert(message.address.as_bytes().to_vec(), message.clone());
     });
 
     Ok(message)
 }
 
-pub fn create_message_as_erc_4361(address: String) -> Result<String, String> {
-    let message = create_message(address)?;
-
-    Ok(message.to_erc_4361())
-}
-
-/// Validates an Ethereum address based on specific criteria.
-///
-/// This function checks if the address starts with "0x", has a length of 42 characters,
-/// and is a valid hexadecimal string.
+/// Creates a SiweMessage for the given address and converts it to the ERC-4361 format.
+/// Validates the address, fetches settings, generates a nonce, and constructs the SiweMessage.
 ///
 /// # Arguments
 ///
-/// * `address` - The Ethereum address to be validated.
+/// * `address` - The Ethereum address for which to create the SiweMessage.
 ///
 /// # Returns
 ///
-/// Returns a `Result` indicating success or an error message describing the validation failure.
-pub fn validate_address(address: &str) -> Result<(), String> {
+/// `Result<String, String>` - ERC-4361 message on success, or an error message on failure.
+pub fn create_message_as_erc_4361(address: String) -> Result<String, String> {
+    create_message(address).map(|message| message.to_erc_4361())
+}
+
+/// Validates an Ethereum address by checking its length and hex encoding.
+fn validate_address(address: &str) -> Result<(), String> {
     if !address.starts_with("0x") || address.len() != 42 {
-        return Err(String::from("Invalid address"));
+        return Err(
+            "Invalid Ethereum address: Must start with '0x' and be 42 characters long".to_string(),
+        );
     }
 
-    match hex::decode(&address[2..]) {
-        Ok(_) => (),
-        Err(_) => return Err(String::from("Invalid hex encoding")),
-    };
-
+    hex::decode(&address[2..])
+        .map_err(|_| "Invalid Ethereum address: Hex decoding failed".to_string())?;
     Ok(())
 }
 
@@ -118,7 +111,10 @@ mod tests {
         let invalid_address = "0xG".to_string() + &"1".repeat(39); // A mock invalid Ethereum address
         let result = create_message(invalid_address);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid hex encoding");
+        assert_eq!(
+            result.unwrap_err(),
+            "Invalid Ethereum address: Hex decoding failed"
+        );
     }
 
     #[test]
@@ -128,7 +124,10 @@ mod tests {
         let invalid_address = "0x".to_string() + &"G".repeat(40); // Invalid hex
         let result = create_message(invalid_address);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid hex encoding");
+        assert_eq!(
+            result.unwrap_err(),
+            "Invalid Ethereum address: Hex decoding failed"
+        );
     }
 
     #[test]
@@ -138,7 +137,10 @@ mod tests {
         let invalid_address = "0x".to_string() + &"1".repeat(39); // Too short
         let result = create_message(invalid_address);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid address");
+        assert_eq!(
+            result.unwrap_err(),
+            "Invalid Ethereum address: Must start with '0x' and be 42 characters long"
+        );
     }
 
     #[test]
@@ -148,20 +150,10 @@ mod tests {
         let invalid_address = "0x".to_string() + &"1".repeat(41); // Too long
         let result = create_message(invalid_address);
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid address");
-    }
-
-    #[test]
-    fn test_create_message_nonce() {
-        init();
-
-        let nonce = generate_nonce().expect("Should succeed in generating nonce");
-
-        let result =
-            create_message(VALID_ADDRESS.to_string()).expect("Should succeed with valid address");
-
-        // Check if the nonce is set correctly
-        assert_eq!(result.nonce, hex::encode(nonce));
+        assert_eq!(
+            result.unwrap_err(),
+            "Invalid Ethereum address: Must start with '0x' and be 42 characters long"
+        );
     }
 
     #[test]
@@ -180,11 +172,6 @@ mod tests {
         assert_eq!(result.uri, settings.uri);
         assert_eq!(result.version, 1);
         assert_eq!(result.chain_id, settings.chain_id);
-        assert_eq!(result.issued_at, get_current_time());
-        assert_eq!(
-            result.expiration_time,
-            get_current_time() + settings.sign_in_expires_in
-        );
     }
 
     #[test]

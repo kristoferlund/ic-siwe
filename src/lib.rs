@@ -1,44 +1,105 @@
-//! # IC_SIWE Crate
+//! IC_SIWE Crate
 //!
-//! `ic_siwe` is a Rust crate designed to facilitate Sign-In With Ethereum (SIWE) on the Internet Computer.
-//! It provides utilities for creating and validating SIWE messages, as well as initializing SIWE settings.
-//!
-//! This crate is intended to be used in both backend and frontend canisters, providing a seamless way to integrate
-//! Ethereum-based authentication into your Internet Computer applications.
+//! This crate facilitates the integration of Sign-In With Ethereum (SIWE) in Internet Computer (IC) applications.
+//! It provides utilities for creating and validating SIWE messages, initializing SIWE settings,
+//! and is suitable for both backend and frontend canisters in the IC ecosystem.
 //!
 //! ## Features
 //!
 //! - Initialization of SIWE settings
-//! - Creation of SIWE messages
-//! - Validation of SIWE fields
-//! - Custom response types for inter-canister communication
+//! - Creation and validation of SIWE messages
+//! - Support for custom response types in inter-canister communication
 //!
 //! ## Usage
 //!
-//! Add `ic_siwe` as a dependency in your `Cargo.toml`:
+//! To use `ic_siwe` in your project, add it as a dependency in your `Cargo.toml`:
 //!
 //! ```toml
 //! [dependencies]
 //! ic_siwe = "0.1.0"
 //! ```
 //!
-//! Import the crate and use its functionalities:
+//! Then, import the crate and utilize its functions in your canister:
 //!
 //! ```rust
 //! extern crate ic_siwe;
-//!
 //! use ic_siwe::{init, create_message};
 //! ```
 //!
-//! For more details, refer to the specific module documentation.
-
-use rand_chacha::ChaCha20Rng;
-use std::{cell::RefCell, collections::HashMap};
+//! ## Example: Integrating IC_SIWE into an IC Canister
+//!
+//! Below is a simplified example showing how to integrate `ic_siwe` into an Internet Computer canister:
+//!
+//! ```rust
+//! use ic_siwe::{login, create_message_as_erc_4361, init, SettingsBuilder};
+//! use std::time::Duration;
+//!
+//! // Sample function to initialize SIWE settings
+//! fn siwe_init() {
+//!     let settings = SettingsBuilder::new("your-domain.com", "https://your-domain.com")
+//!         .scheme("https")
+//!         .statement("Sign in with your Ethereum account")
+//!         .sign_in_expires_in(Duration::from_secs(300).as_nanos() as u64) // 5 minutes
+//!         .build()
+//!         .expect("Failed to build settings");
+//!     init(settings).expect("Failed to initialize SIWE");
+//! }
+//!
+//! // Function to handle SIWE login in your canister
+//! #[update]
+//! async fn siwe_login(signature: String, address: String) -> Result<String, String> {
+//!     let user_address = login(signature, address).await?;
+//!     // Additional logic to handle user session
+//!     Ok(user_address)
+//! }
+//!
+//! // Function to create a SIWE message
+//! #[update]
+//! fn siwe_create_message(address: String) -> Result<String, String> {
+//!     create_message_as_erc_4361(address)
+//! }
+//!
+//! // Canister initialization
+//! #[init]
+//! fn init() {
+//!     siwe_init();
+//! }
+//!
+//! // Canister upgrade handling
+//! #[post_upgrade]
+//! fn upgrade() {
+//!     siwe_init();
+//! }
+//! ```
+//!
+//! This example illustrates how to set up SIWE in an IC canister. It includes initializing SIWE settings, creating a SIWE message, and handling the login process using Ethereum signatures and addresses.
+//!
+//! Remember to replace `"your-domain.com"` and `"https://your-domain.com"` with your actual domain and URI. The `siwe_login` function demonstrates how to process a login request, and `siwe_create_message` shows how to create a SIWE message for the frontend to present to the user.
+//!
+//! ## Testing
+//!
+//! Here is a sample test scenario for a successful login using the `ic_siwe` crate:
+//!
+//! ```rust
+//! #[tokio::test]
+//! async fn test_successful_login() {
+//!     // Sample setup for testing
+//!     // ...
+//!     let wallet = LocalWallet::new(&mut rand::thread_rng());
+//!     let h160 = wallet.address();
+//!     let address = to_checksum(&h160, None);
+//!     let message = create_message(address.clone()).unwrap().to_erc_4361();
+//!     let signature = wallet.sign_message(message).await.unwrap().to_string();
+//!     let result = login(signature, address).await;
+//!     assert!(result.is_ok());
+//! }
+//! ```
+//!
+//! This test demonstrates a successful login process using the `ic_siwe` crate's `login` function, simulating an Ethereum wallet signature verification.
 
 pub mod create_message;
 pub mod init;
 pub mod login;
-pub mod session;
 pub mod types;
 pub mod utils;
 
@@ -47,10 +108,11 @@ pub use init::init;
 pub use login::login;
 
 use crate::types::{settings::Settings, siwe_message::SiweMessage};
+use rand_chacha::ChaCha20Rng;
+use std::{cell::RefCell, collections::HashMap};
 
 thread_local! {
-  static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
-  static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
-  static SIGN_IN_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
-  static SESSION_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
+    pub static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
+    pub static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
+    pub static SIGN_IN_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
 }

@@ -6,7 +6,8 @@ pub fn get_current_time() -> u64 {
 
 #[cfg(test)]
 pub fn get_current_time() -> u64 {
-    // In tests, return a fixed time or a mock time as needed
-    // For example, you might have a static variable in your tests that determines the mock time
-    123456789 // replace with a suitable way to get mock time for your tests
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let start = SystemTime::now();
+    start.duration_since(UNIX_EPOCH).unwrap().as_nanos() as u64
 }

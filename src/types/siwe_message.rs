@@ -1,6 +1,3 @@
-extern crate serde;
-extern crate serde_json;
-
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
 use std::fmt;
@@ -12,6 +9,7 @@ use crate::utils::time::get_current_time;
 /// Represents a SIWE (Sign-In With Ethereum) message.
 ///
 /// This struct contains all the fields required for a SIWE message as per the EIP-4361 specification.
+/// It includes the Ethereum address, domain, statement, and various timestamps.
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct SiweMessage {
     pub scheme: String,
@@ -34,6 +32,11 @@ impl fmt::Display for SiweMessage {
 }
 
 impl SiweMessage {
+    /// Converts the SIWE message to the ERC-4361 string format.
+    ///
+    /// # Returns
+    ///
+    /// A string representation of the SIWE message in the ERC-4361 format.
     pub fn to_erc_4361(&self) -> String {
         let issued_at_datetime =
             OffsetDateTime::from_unix_timestamp_nanos(self.issued_at as i128).unwrap();
@@ -63,6 +66,11 @@ impl SiweMessage {
         )
     }
 
+    /// Checks if the SIWE message is currently valid based on its issue and expiration times.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the message is currently within its valid time period, `false` otherwise.
     pub fn is_valid(&self) -> bool {
         let current_time = get_current_time();
         self.issued_at <= current_time && self.expiration_time >= current_time

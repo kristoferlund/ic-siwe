@@ -10,5 +10,10 @@ pub fn generate_nonce() -> Result<[u8; 10], String> {
 
 #[cfg(test)]
 pub fn generate_nonce() -> Result<[u8; 10], String> {
-    Ok([0u8; 10])
+    use rand::{thread_rng, Rng};
+
+    let mut rng = thread_rng();
+    let mut nonce = [0u8; 10];
+    rng.fill(&mut nonce);
+    Ok(nonce)
 }
