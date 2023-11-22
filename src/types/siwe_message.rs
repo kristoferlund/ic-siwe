@@ -32,12 +32,24 @@ impl fmt::Display for SiweMessage {
 }
 
 impl SiweMessage {
-    /// Converts the SIWE message to the ERC-4361 string format.
+    /// Checks if the SIWE message is currently valid based on its issue and expiration times.
     ///
     /// # Returns
     ///
-    /// A string representation of the SIWE message in the ERC-4361 format.
-    pub fn to_erc_4361(&self) -> String {
+    /// `true` if the message is currently within its valid time period, `false` otherwise.
+    pub fn is_expired(&self) -> bool {
+        let current_time = get_current_time();
+        self.issued_at < current_time || current_time > self.expiration_time
+    }
+}
+
+/// Converts the SIWE message to the ERC-4361 string format.
+///
+/// # Returns
+///
+/// A string representation of the SIWE message in the ERC-4361 format.
+impl Into<String> for SiweMessage {
+    fn into(self) -> String {
         let issued_at_datetime =
             OffsetDateTime::from_unix_timestamp_nanos(self.issued_at as i128).unwrap();
         let issued_at_iso_8601 = issued_at_datetime.format(&Rfc3339).unwrap();
@@ -48,14 +60,14 @@ impl SiweMessage {
 
         format!(
             "{domain} wants you to sign in with your Ethereum account:\n\
-            {address}\n\n\
-            {statement}\n\n\
-            URI: {uri}\n\
-            Version: {version}\n\
-            Chain ID: {chain_id}\n\
-            Nonce: {nonce}\n\
-            Issued At: {issued_at_iso_8601}\n\
-            Expiration Time: {expiration_iso_8601}",
+                {address}\n\n\
+                {statement}\n\n\
+                URI: {uri}\n\
+                Version: {version}\n\
+                Chain ID: {chain_id}\n\
+                Nonce: {nonce}\n\
+                Issued At: {issued_at_iso_8601}\n\
+                Expiration Time: {expiration_iso_8601}",
             domain = self.domain,
             address = self.address,
             statement = self.statement,
@@ -64,15 +76,5 @@ impl SiweMessage {
             chain_id = self.chain_id,
             nonce = self.nonce,
         )
-    }
-
-    /// Checks if the SIWE message is currently valid based on its issue and expiration times.
-    ///
-    /// # Returns
-    ///
-    /// `true` if the message is currently within its valid time period, `false` otherwise.
-    pub fn is_valid(&self) -> bool {
-        let current_time = get_current_time();
-        self.issued_at <= current_time && self.expiration_time >= current_time
     }
 }

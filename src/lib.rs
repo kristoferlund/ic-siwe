@@ -98,18 +98,18 @@
 //! This test demonstrates a successful login process using the `ic_siwe` crate's `login` function, simulating an Ethereum wallet signature verification.
 
 pub mod create_identity_message;
-pub mod create_message;
+pub mod create_siwe_message;
 pub mod init;
-pub mod login;
 pub mod types;
 pub(crate) mod utils;
 pub mod verify_identity_signature;
+pub mod verify_siwe_signature;
 
 pub use create_identity_message::create_identity_message;
-pub use create_message::{create_message, create_message_as_erc_4361};
+pub use create_siwe_message::create_siwe_message;
 pub use init::init;
-pub use login::login;
 pub use verify_identity_signature::verify_identity_signature;
+pub use verify_siwe_signature::verify_siwe_signature;
 
 use crate::types::{settings::Settings, siwe_message::SiweMessage};
 use rand_chacha::ChaCha20Rng;
