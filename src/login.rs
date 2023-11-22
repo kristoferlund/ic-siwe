@@ -1,10 +1,8 @@
 use crate::{
-    types::{settings::get_settings, siwe_message::SiweMessage},
-    utils::time::get_current_time,
+    types::siwe_message::SiweMessage,
+    utils::{eth::recover_address, time::get_current_time},
     SIGN_IN_MESSAGES,
 };
-use siwe::{Message, VerificationOpts};
-use time::OffsetDateTime;
 
 /// Attempts to log in using the provided signature and address.
 ///
@@ -20,10 +18,12 @@ use time::OffsetDateTime;
 pub async fn login(signature: String, address: String) -> Result<String, String> {
     prune_expired_messages();
 
-    let signature_bytes = decode_signature(&signature)?;
-    let message = get_siwe_message(&address)?;
+    let siwe_message = get_siwe_message(&address)?.to_erc_4361();
+    let recovered_address = recover_address(siwe_message.as_str(), signature.as_str())?;
 
-    verify_message(&message, &signature_bytes).await?;
+    if recovered_address != address {
+        return Err("Address mismatch".to_string());
+    }
 
     Ok(address)
 }
@@ -37,22 +37,6 @@ fn prune_expired_messages() {
     });
 }
 
-/// Decodes the signature string. Skips the "0x" prefix.
-fn decode_signature(mut signature: &str) -> Result<[u8; 65], String> {
-    signature = signature.strip_prefix("0x").unwrap_or(signature);
-    if signature.len() != 65 * 2 {
-        return Err(String::from("Invalid signature length"));
-    }
-
-    hex::decode(&signature)
-        .map_err(|_| String::from("Failed to decode signature due to invalid format"))
-        .and_then(|bytes| {
-            bytes
-                .try_into()
-                .map_err(|_| String::from("Invalid signature length"))
-        })
-}
-
 /// Fetches the SIWE message associated with the provided address.
 fn get_siwe_message(address: &str) -> Result<SiweMessage, String> {
     SIGN_IN_MESSAGES
@@ -61,34 +45,62 @@ fn get_siwe_message(address: &str) -> Result<SiweMessage, String> {
 }
 
 /// Verifies the SIWE message using the given signature and settings.
-async fn verify_message(siwe_message: &SiweMessage, signature: &[u8; 65]) -> Result<(), String> {
-    let message: Message = siwe_message
-        .to_erc_4361()
-        .parse()
-        .map_err(|err| format!("Failed to parse SIWE message: {}", err))?;
+// async fn verify_message(siwe_message: &SiweMessage, mut signature: Vec<u8>) -> Result<(), String> {
+//     let recovery_byte = signature.pop().expect("No recovery byte");
+//     let recovery_id = libsecp256k1::RecoveryId::parse_rpc(recovery_byte).unwrap();
+//     let signature_slice = signature.as_slice();
+//     let signature_bytes: [u8; 64] = signature_slice.try_into().unwrap();
+//     let signature = libsecp256k1::Signature::parse_standard(&signature_bytes).unwrap();
 
-    let timestamp = OffsetDateTime::from_unix_timestamp_nanos(siwe_message.issued_at as i128)
-        .map_err(|_| "Invalid timestamp in the SIWE message".to_string())?;
+//     let message_bytes = eip191_hash(&siwe_message.to_erc_4361().to_string())?;
+//     let message = libsecp256k1::Message::parse(&message_bytes);
+//     let key = recover(&message, &signature, &recovery_id).unwrap();
+//     let key_bytes = key.serialize();
 
-    let settings = get_settings()?;
+//     let keccak256: [u8; 32] = Keccak256::new()
+//         .chain_update(&key_bytes[1..])
+//         .finalize()
+//         .into();
 
-    let verification_opts = VerificationOpts {
-        domain: Some(
-            settings
-                .domain
-                .parse()
-                .map_err(|_| "Failed to parse the domain from settings".to_string())?,
-        ),
-        nonce: Some(message.nonce.clone()), // If nonce is not used elsewhere, no need to clone
-        timestamp: Some(timestamp),
-        ..Default::default() // Ensure this is the intended behavior
-    };
+//     let keccak256_hex = hex::encode(keccak256);
+//     let address = eip55(&keccak256_hex[24..]);
 
-    message
-        .verify(signature, &verification_opts)
-        .await
-        .map_err(|e| format!("SIWE message verification error: {}", e))
-}
+//     println!("Address: {}", address);
+//     println!("Siwe address: {}", siwe_message.address);
+
+//     if address != siwe_message.address {
+//         return Err("Address mismatch".to_string());
+//     }
+
+//     Ok(())
+// }
+
+// let message: Message = siwe_message
+//     .to_erc_4361()
+//     .parse()
+//     .map_err(|err| format!("Failed to parse SIWE message: {}", err))?;
+
+// let timestamp = OffsetDateTime::from_unix_timestamp_nanos(siwe_message.issued_at as i128)
+//     .map_err(|_| "Invalid timestamp in the SIWE message".to_string())?;
+
+// let settings = get_settings()?;
+
+// let verification_opts = VerificationOpts {
+//     domain: Some(
+//         settings
+//             .domain
+//             .parse()
+//             .map_err(|_| "Failed to parse the domain from settings".to_string())?,
+//     ),
+//     nonce: Some(message.nonce.clone()), // If nonce is not used elsewhere, no need to clone
+//     timestamp: Some(timestamp),
+//     ..Default::default() // Ensure this is the intended behavior
+// };
+
+// message
+//     .verify(signature, &verification_opts)
+//     .await
+//     .map_err(|e| format!("SIWE message verification error: {}", e))
 
 #[cfg(test)]
 mod tests {

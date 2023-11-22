@@ -1,11 +1,11 @@
 #[cfg(not(test))]
-pub fn get_current_time() -> u64 {
+pub(crate) fn get_current_time() -> u64 {
     // This code is used in production, where ic_cdk::api::time() is available
     ic_cdk::api::time()
 }
 
 #[cfg(test)]
-pub fn get_current_time() -> u64 {
+pub(crate) fn get_current_time() -> u64 {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     let start = SystemTime::now();
