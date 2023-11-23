@@ -1,5 +1,5 @@
-use libsecp256k1::{recover, Message, PublicKey, RecoveryId, Signature};
-use sha3::{Digest, Keccak256};
+use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
+use tiny_keccak::{Hasher, Keccak};
 
 /// Recovers an Ethereum address from a given message and signature.
 ///
@@ -19,16 +19,32 @@ use sha3::{Digest, Keccak256};
 /// println!("Recovered address: {}", address);
 /// ```
 pub(crate) fn recover_address(message: &str, signature: &str) -> Result<String, String> {
-    let signature_bytes = decode_signature(signature)?;
-    let (recovery_id, signature) = parse_signature(signature_bytes)?;
-
     let message_hash = eip191_hash(message)?;
-    let message = Message::parse(&message_hash);
 
-    let public_key = recover_public_key(&message, &signature, &recovery_id)?;
-    let recovered_address = derive_address_from_public_key(&public_key)?;
+    let signature_bytes = decode_signature(signature)?;
+    let signature: Signature = Signature::from_slice(&signature_bytes[..64])
+        .map_err(|_| "Invalid signature".to_string())?;
 
-    Ok(recovered_address)
+    let recovery_id = RecoveryId::try_from(&signature_bytes[64] % 27).map_err(|_| {
+        "Invalid recovery ID. Must be 0 or 1 for legacy signatures, or 27 or 28 for EIP-155 signatures"
+            .to_string()
+    })?;
+
+    let pk: VerifyingKey =
+        VerifyingKey::recover_from_prehash(&message_hash, &signature, recovery_id).map_err(
+            |_| {
+                "Failed to recover public key from message hash, signature, and recovery ID"
+                    .to_string()
+            },
+        )?;
+
+    let mut keccak256 = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(&pk.to_encoded_point(false).as_bytes()[1..]);
+    hasher.finalize(&mut keccak256);
+
+    let keccak256_hex = hex::encode(keccak256);
+    Ok(convert_to_eip55(&keccak256_hex[24..])) // Get last 20 bytes as address
 }
 
 /// Decodes a hex-encoded signature string.
@@ -55,34 +71,6 @@ pub(crate) fn decode_signature(mut signature: &str) -> Result<Vec<u8>, String> {
         })
 }
 
-/// Parses a signature byte array and extracts the recovery ID and signature.
-///
-/// # Arguments
-///
-/// * `signature` - A `Vec<u8>` representing the signature bytes.
-///
-/// # Returns
-///
-/// A `Result` containing either a tuple of `(RecoveryId, Signature)` or a `String` error message.
-pub(crate) fn parse_signature(signature: Vec<u8>) -> Result<(RecoveryId, Signature), String> {
-    let mut signature = signature;
-    let recovery_byte = signature
-        .pop()
-        .ok_or_else(|| "No recovery byte in signature".to_string())?;
-    let recovery_id =
-        RecoveryId::parse_rpc(recovery_byte).map_err(|_| "Invalid recovery byte".to_string())?;
-
-    let signature_bytes: [u8; 64] = signature
-        .as_slice()
-        .try_into()
-        .map_err(|_| "Invalid signature length".to_string())?;
-
-    let signature = Signature::parse_standard(&signature_bytes)
-        .map_err(|_| "Failed to parse signature".to_string())?;
-
-    Ok((recovery_id, signature))
-}
-
 /// Hashes a message using the EIP-191 standard.
 ///
 /// # Arguments
@@ -93,10 +81,12 @@ pub(crate) fn parse_signature(signature: Vec<u8>) -> Result<(RecoveryId, Signatu
 ///
 /// A `Result` containing either a `[u8; 32]` array representing the hashed message or a `String` error message.
 pub(crate) fn eip191_hash(message: &str) -> Result<[u8; 32], String> {
-    Ok(Keccak256::new()
-        .chain_update(eip191_bytes(message)?)
-        .finalize()
-        .into())
+    let mut keccak256 = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(eip191_bytes(message)?.as_slice());
+    hasher.finalize(&mut keccak256);
+
+    Ok(keccak256)
 }
 
 /// Formats a message according to the EIP-191 standard.
@@ -124,13 +114,13 @@ pub(crate) fn eip191_bytes(message: &str) -> Result<Vec<u8>, String> {
 /// # Returns
 ///
 /// A `Result` containing either a `PublicKey` or a `String` error message.
-pub(crate) fn recover_public_key(
-    message: &Message,
-    signature: &Signature,
-    recovery_id: &RecoveryId,
-) -> Result<PublicKey, String> {
-    recover(message, signature, recovery_id).map_err(|_| "Failed to recover public key".to_string())
-}
+// pub(crate) fn recover_public_key(
+//     message: &Message,
+//     signature: &Signature,
+//     recovery_id: &RecoveryId,
+// ) -> Result<PublicKey, String> {
+//     recover(message, signature, recovery_id).map_err(|_| "Failed to recover public key".to_string())
+// }
 
 /// Derives the Ethereum address from a public key.
 ///
@@ -141,16 +131,16 @@ pub(crate) fn recover_public_key(
 /// # Returns
 ///
 /// A `Result` containing either a `String` of the Ethereum address or a `String` error message.
-pub(crate) fn derive_address_from_public_key(key: &PublicKey) -> Result<String, String> {
-    let key_bytes = key.serialize();
-    let keccak256: [u8; 32] = Keccak256::new()
-        .chain_update(&key_bytes[1..]) // Skip the first byte
-        .finalize()
-        .into();
+// pub(crate) fn derive_address_from_public_key(key: &PublicKey) -> Result<String, String> {
+//     let key_bytes = key.serialize();
+//     let keccak256: [u8; 32] = Keccak256::new()
+//         .chain_update(&key_bytes[1..]) // Skip the first byte
+//         .finalize()
+//         .into();
 
-    let keccak256_hex = hex::encode(keccak256);
-    Ok(convert_to_eip55(&keccak256_hex[24..])) // Get last 20 bytes as address
-}
+//     let keccak256_hex = hex::encode(keccak256);
+//     Ok(convert_to_eip55(&keccak256_hex[24..])) // Get last 20 bytes as address
+// }
 
 /// Converts an Ethereum address into EIP-55 format.
 ///
@@ -162,10 +152,14 @@ pub(crate) fn derive_address_from_public_key(key: &PublicKey) -> Result<String, 
 ///
 /// A `String` containing the Ethereum address in EIP-55 format.
 pub(crate) fn convert_to_eip55(addr: &str) -> String {
-    let hash = Keccak256::digest(addr.as_bytes());
+    let mut keccak256 = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(addr.as_bytes());
+    hasher.finalize(&mut keccak256);
+
     "0x".chars()
         .chain(addr.chars().enumerate().map(|(i, c)| {
-            match (c, hash[i >> 1] & if i % 2 == 0 { 128 } else { 8 } != 0) {
+            match (c, keccak256[i >> 1] & if i % 2 == 0 { 128 } else { 8 } != 0) {
                 ('a'..='f' | 'A'..='F', true) => c.to_ascii_uppercase(),
                 _ => c.to_ascii_lowercase(),
             }

@@ -1,8 +1,8 @@
 use crate::{create_identity_message, utils::eth::recover_address};
 use candid::Principal;
 use ed25519_consensus::SigningKey;
-// use ring::signature::{Ed25519KeyPair, KeyPair};
-use sha3::{Digest, Keccak256};
+use k256::sha2::{self, Digest};
+use tiny_keccak::{Hasher, Keccak};
 
 pub fn ed25519_public_key_to_der(mut key: Vec<u8>) -> Vec<u8> {
     // The constant is the prefix of the DER encoding of the ASN.1
@@ -45,10 +45,10 @@ pub fn verify_identity_signature(
     }
 
     // Compute the Keccak-256 hash of the signature
-    let keccak256_hash: [u8; 32] = Keccak256::new()
-        .chain_update(signature.as_bytes())
-        .finalize()
-        .into();
+    let mut keccak256_hash = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(signature.as_bytes());
+    hasher.finalize(&mut keccak256_hash);
 
     // Generate a signing key from the Keccak-256 hash
     let signing_key = SigningKey::from(keccak256_hash);

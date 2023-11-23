@@ -170,7 +170,7 @@ mod tests {
         let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
         let result = verify_siwe_signature(manipulated_signature.as_str(), address.as_str());
         assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Invalid recovery byte");
+        assert_eq!(result.unwrap_err(), "Signature verification failed");
     }
 
     #[tokio::test]
