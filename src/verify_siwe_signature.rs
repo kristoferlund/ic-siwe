@@ -17,21 +17,21 @@ use crate::{
 ///
 /// - `Ok(String)`: Returns the user's address if the login process was successful.
 /// - `Err`: Descriptive error message if any step fails.
-pub fn verify_siwe_signature(signature: String, address: String) -> Result<String, String> {
+pub fn verify_siwe_signature(signature: &str, address: &str) -> Result<String, String> {
     prune_expired_messages();
 
     let message: String = get_siwe_message(&address)?.into();
-    let recovered_address = recover_address(message.as_str(), signature.as_str())?;
+    let recovered_address = recover_address(message.as_str(), signature)?;
 
     if recovered_address != address {
-        return Err("Signature verification failed".to_string());
+        return Err(String::from("Signature verification failed"));
     }
 
     SIGN_IN_MESSAGES.with_borrow_mut(|map| {
         map.remove(address.as_bytes());
     });
 
-    Ok(address)
+    Ok(address.to_string())
 }
 
 /// Removes SIWE messages that have exceeded their time to live.
@@ -78,10 +78,9 @@ mod tests {
     #[tokio::test]
     async fn test_signature_too_short() {
         init_settings();
-        create_siwe_message(VALID_ADDRESS.to_string()).unwrap();
+        create_siwe_message(VALID_ADDRESS).unwrap();
         let invalid_signature = "0";
-        let result =
-            verify_siwe_signature(invalid_signature.to_string(), VALID_ADDRESS.to_string());
+        let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid signature length");
     }
@@ -89,10 +88,9 @@ mod tests {
     #[tokio::test]
     async fn test_incorrect_signature_format() {
         init_settings();
-        create_siwe_message(VALID_ADDRESS.to_string()).unwrap();
+        create_siwe_message(VALID_ADDRESS).unwrap();
         let invalid_signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800"; // A signature with the correct length but incorrect format
-        let result =
-            verify_siwe_signature(invalid_signature.to_string(), VALID_ADDRESS.to_string());
+        let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
         assert!(result.is_err());
         // Assert the specific error message or type you expect for an incorrect format
     }
@@ -101,10 +99,9 @@ mod tests {
     #[tokio::test]
     async fn test_signature_too_long() {
         init_settings();
-        create_siwe_message(VALID_ADDRESS.to_string()).unwrap();
+        create_siwe_message(VALID_ADDRESS).unwrap();
         let invalid_signature = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-        let result =
-            verify_siwe_signature(invalid_signature.to_string(), VALID_ADDRESS.to_string());
+        let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid signature length");
     }
@@ -113,10 +110,9 @@ mod tests {
     #[tokio::test]
     async fn test_hex_decoding_failure() {
         init_settings();
-        create_siwe_message(VALID_ADDRESS.to_string()).unwrap();
+        create_siwe_message(VALID_ADDRESS).unwrap();
         let invalid_hex_signature = "GMGM000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; // Non-hex characters
-        let result =
-            verify_siwe_signature(invalid_hex_signature.to_string(), VALID_ADDRESS.to_string());
+        let result = verify_siwe_signature(invalid_hex_signature, VALID_ADDRESS);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -131,16 +127,16 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         println!("{:?}", message);
         let signature = wallet.sign_message(message).await.unwrap().to_string();
-        let result = verify_siwe_signature(signature.clone(), address.clone());
+        let result = verify_siwe_signature(signature.as_str(), address.as_str());
         assert!(result.is_ok());
 
         // Wait for 3 seconds
         tokio::time::sleep(Duration::from_secs(3)).await;
 
-        let result = verify_siwe_signature(signature, address); // Attempt to login again
+        let result = verify_siwe_signature(signature.as_str(), address.as_str()); // Attempt to login again
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -152,13 +148,13 @@ mod tests {
     #[tokio::test]
     async fn test_recovery_address_mismatch() {
         init_settings();
-        create_siwe_message(VALID_ADDRESS.to_string()).unwrap();
+        create_siwe_message(VALID_ADDRESS).unwrap();
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
-        let result = verify_siwe_signature(signature.to_string(), VALID_ADDRESS.to_string());
+        let result = verify_siwe_signature(signature.as_str(), VALID_ADDRESS);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Signature verification failed");
     }
@@ -169,10 +165,10 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
         let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
-        let result = verify_siwe_signature(manipulated_signature, address);
+        let result = verify_siwe_signature(manipulated_signature.as_str(), address.as_str());
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Invalid recovery byte");
     }
@@ -183,10 +179,10 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
         let manipulated_signature = format!("9999{}", &signature[4..]);
-        let result = verify_siwe_signature(manipulated_signature, address);
+        let result = verify_siwe_signature(manipulated_signature.as_str(), address.as_str());
         assert!(result.is_err());
     }
 
@@ -196,9 +192,9 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
-        let result = verify_siwe_signature(signature, String::from("0x123")); // Wrong address
+        let result = verify_siwe_signature(signature.as_str(), "0x123"); // Wrong address
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -212,9 +208,9 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
-        let result = verify_siwe_signature(signature, address);
+        let result = verify_siwe_signature(signature.as_str(), address.as_str());
         assert!(result.is_ok());
     }
 
@@ -225,13 +221,13 @@ mod tests {
         let wallet = LocalWallet::new(&mut rand::thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
-        let message: String = create_siwe_message(address.clone()).unwrap().into();
+        let message: String = create_siwe_message(address.as_str()).unwrap().into();
         let signature = wallet.sign_message(message).await.unwrap().to_string();
 
-        let first_attempt = verify_siwe_signature(signature.to_string(), address.clone());
+        let first_attempt = verify_siwe_signature(signature.as_str(), address.as_str());
         assert!(first_attempt.is_ok());
 
-        let second_attempt = verify_siwe_signature(signature.to_string(), address);
+        let second_attempt = verify_siwe_signature(signature.as_str(), address.as_str());
         assert!(second_attempt.is_err());
         assert_eq!(
             second_attempt.unwrap_err(),

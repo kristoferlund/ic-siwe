@@ -14,7 +14,7 @@ use crate::{
 /// # Returns
 ///
 /// `Result<SiweMessage, String>` - SiweMessage on success, or an error message on failure.
-pub fn create_siwe_message(address: String) -> Result<SiweMessage, String> {
+pub fn create_siwe_message(address: &str) -> Result<SiweMessage, String> {
     validate_address(&address)?;
 
     let settings = get_settings()?;
@@ -23,7 +23,7 @@ pub fn create_siwe_message(address: String) -> Result<SiweMessage, String> {
     let message = SiweMessage {
         scheme: settings.scheme,
         domain: settings.domain,
-        address,
+        address: address.to_string(),
         statement: settings.statement,
         uri: settings.uri,
         version: 1,
@@ -43,13 +43,12 @@ pub fn create_siwe_message(address: String) -> Result<SiweMessage, String> {
 /// Validates an Ethereum address by checking its length and hex encoding.
 fn validate_address(address: &str) -> Result<(), String> {
     if !address.starts_with("0x") || address.len() != 42 {
-        return Err(
-            "Invalid Ethereum address: Must start with '0x' and be 42 characters long".to_string(),
-        );
+        return Err(String::from(
+            "Invalid Ethereum address: Must start with '0x' and be 42 characters long",
+        ));
     }
 
-    hex::decode(&address[2..])
-        .map_err(|_| "Invalid Ethereum address: Hex decoding failed".to_string())?;
+    hex::decode(&address[2..]).map_err(|_| "Invalid Ethereum address: Hex decoding failed")?;
     Ok(())
 }
 
@@ -75,7 +74,7 @@ mod tests {
 
     #[test]
     fn test_create_message_no_settings() {
-        let result = create_siwe_message(VALID_ADDRESS.to_string());
+        let result = create_siwe_message(VALID_ADDRESS);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), "Settings are not initialized");
     }
@@ -84,7 +83,7 @@ mod tests {
     fn test_create_message_success() {
         init();
 
-        let result = create_siwe_message(VALID_ADDRESS.to_string());
+        let result = create_siwe_message(VALID_ADDRESS);
         assert!(result.is_ok());
     }
 
@@ -92,8 +91,8 @@ mod tests {
     fn test_create_message_invalid_address() {
         init();
 
-        let invalid_address = "0xG".to_string() + &"1".repeat(39); // A mock invalid Ethereum address
-        let result = create_siwe_message(invalid_address);
+        let invalid_address = "0xG".to_owned() + &"1".repeat(39); // A mock invalid Ethereum address
+        let result = create_siwe_message(invalid_address.as_str());
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -105,8 +104,8 @@ mod tests {
     fn test_create_message_invalid_hex_encoding() {
         init();
 
-        let invalid_address = "0x".to_string() + &"G".repeat(40); // Invalid hex
-        let result = create_siwe_message(invalid_address);
+        let invalid_address = "0x".to_owned() + &"G".repeat(40); // Invalid hex
+        let result = create_siwe_message(invalid_address.as_str());
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -118,8 +117,8 @@ mod tests {
     fn test_create_message_address_too_short() {
         init();
 
-        let invalid_address = "0x".to_string() + &"1".repeat(39); // Too short
-        let result = create_siwe_message(invalid_address);
+        let invalid_address = "0x".to_owned() + &"1".repeat(39); // Too short
+        let result = create_siwe_message(invalid_address.as_str());
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -131,8 +130,8 @@ mod tests {
     fn test_create_message_address_too_long() {
         init();
 
-        let invalid_address = "0x".to_string() + &"1".repeat(41); // Too long
-        let result = create_siwe_message(invalid_address);
+        let invalid_address = "0x".to_owned() + &"1".repeat(41); // Too long
+        let result = create_siwe_message(invalid_address.as_str());
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
@@ -144,8 +143,7 @@ mod tests {
     fn test_create_message_expected_message() {
         init();
 
-        let result = create_siwe_message(VALID_ADDRESS.to_string())
-            .expect("Should succeed with valid address");
+        let result = create_siwe_message(VALID_ADDRESS).expect("Should succeed with valid address");
 
         let settings = get_settings().unwrap();
 
@@ -162,7 +160,7 @@ mod tests {
     // fn test_create_message_as_erc_4361() {
     //     init();
 
-    //     let result = create_message_as_erc_4361(VALID_ADDRESS.to_string());
+    //     let result = create_message_as_erc_4361(VALID_ADDRESS);
     //     assert!(result.is_ok());
 
     //     // Parse the ERC-4361 message and assert it is ok

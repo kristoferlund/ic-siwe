@@ -93,7 +93,7 @@ pub(crate) fn parse_signature(signature: Vec<u8>) -> Result<(RecoveryId, Signatu
 ///
 /// A `Result` containing either a `[u8; 32]` array representing the hashed message or a `String` error message.
 pub(crate) fn eip191_hash(message: &str) -> Result<[u8; 32], String> {
-    Ok(Keccak256::default()
+    Ok(Keccak256::new()
         .chain_update(eip191_bytes(message)?)
         .finalize()
         .into())

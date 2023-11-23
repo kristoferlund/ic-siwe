@@ -1,6 +1,6 @@
 use crate::types::settings::get_settings;
 
-pub fn create_identity_message(address: String) -> Result<String, String> {
+pub fn create_identity_message(address: &str) -> Result<String, String> {
     let settings = get_settings()?;
 
     Ok(format!(

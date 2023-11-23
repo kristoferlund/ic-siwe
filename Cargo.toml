@@ -8,15 +8,17 @@ serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.66"
 candid = "0.9.9"
 hex = "0.4.3"
-ic-cdk = "0.11.0"
+ic-cdk = "0.11.4"
 ic-cdk-timers = "0.5.1"
 url = "2.4.1"
 time = { version = "0.3.30", features = ["formatting"] }
 rand_chacha = "0.3.1"
-# siwe = "0.6.0"
-# getrandom = { version = "0.2.10", features = ["custom"] }
+getrandom = { version = "0.2.10", features = ["custom"] }
 libsecp256k1 = "0.7.1"
 sha3 = "0.10.8"
+ed25519-consensus = "2.1.0"
+sha2 = "0.10.8"
+k256 = "0.13.2"
 
 [dev-dependencies]
 ethers = "2.0.10"
