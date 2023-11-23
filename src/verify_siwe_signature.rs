@@ -1,6 +1,6 @@
 use crate::{
     types::siwe_message::SiweMessage,
-    utils::{eth::recover_address, time::get_current_time},
+    utils::{ecdsa::recover_address, time::get_current_time},
     SIGN_IN_MESSAGES,
 };
 
@@ -116,7 +116,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            "Failed to decode signature due to invalid format"
+            "Decoding error: Invalid character 'G' at position 0"
         );
     }
 

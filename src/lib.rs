@@ -103,12 +103,14 @@ pub mod init;
 pub mod types;
 pub(crate) mod utils;
 pub mod verify_identity_signature;
+pub mod verify_principal;
 pub mod verify_siwe_signature;
 
 pub use create_identity_message::create_identity_message;
 pub use create_siwe_message::create_siwe_message;
 pub use init::init;
 pub use verify_identity_signature::verify_identity_signature;
+pub use verify_principal::verify_principal;
 pub use verify_siwe_signature::verify_siwe_signature;
 
 use crate::types::{settings::Settings, siwe_message::SiweMessage};
