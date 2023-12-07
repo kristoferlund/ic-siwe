@@ -2,6 +2,12 @@ use url::Url;
 
 use crate::SETTINGS;
 
+const DEFAULT_SCHEME: &str = "https";
+const DEFAULT_STATEMENT: &str = "SIWE Fields:";
+const DEFAULT_CHAIN_ID: u32 = 1; // Ethereum mainnet
+const DEFAULT_SIGN_IN_EXPIRES_IN: u64 = 60 * 5 * 1_000_000_000; // 5 minutes
+const DEFAULT_SESSION_EXPIRES_IN: u64 = 30 * 60 * 1_000_000_000; // 30 minutes
+
 /// Represents the settings for initializing SIWE.
 ///
 /// This struct is used to configure SIWE (Sign-In With Ethereum) functionality.
@@ -9,11 +15,17 @@ use crate::SETTINGS;
 #[derive(Default, Debug, Clone)]
 pub struct Settings {
     pub domain: String,
+    pub uri: String,
+    pub salt: String,
+    pub chain_id: u32,
     pub scheme: String,
     pub statement: String,
-    pub uri: String,
-    pub chain_id: u32,
+
+    // The TTL for a sign-in message in nanoseconds. After this time, the sign-in message will be pruned.
     pub sign_in_expires_in: u64,
+
+    // The TTL for a session in nanoseconds.
+    pub session_expires_in: u64,
 }
 
 /// Retrieves the current SIWE settings.
@@ -48,15 +60,21 @@ impl SettingsBuilder {
     /// # Returns
     ///
     /// A new instance of `SettingsBuilder`.
-    pub fn new<S: Into<String>, T: Into<String>>(domain: S, uri: T) -> Self {
+    pub fn new<S: Into<String>, T: Into<String>, U: Into<String>>(
+        domain: S,
+        uri: T,
+        salt: U,
+    ) -> Self {
         SettingsBuilder {
             settings: Settings {
                 domain: domain.into(),
                 uri: uri.into(),
-                chain_id: 1, // defaults to Ethereum mainnet
-                scheme: String::from("https"),
-                statement: String::from("SIWE Fields:"),
-                sign_in_expires_in: 60 * 5 * 1_000_000_000, // 5 minutes
+                salt: salt.into(),
+                chain_id: DEFAULT_CHAIN_ID,
+                scheme: DEFAULT_SCHEME.to_string(),
+                statement: DEFAULT_STATEMENT.to_string(),
+                sign_in_expires_in: DEFAULT_SIGN_IN_EXPIRES_IN,
+                session_expires_in: DEFAULT_SESSION_EXPIRES_IN,
             },
         }
     }
@@ -81,27 +99,25 @@ impl SettingsBuilder {
         self
     }
 
+    pub fn session_expires_in(mut self, expires_in: u64) -> Self {
+        self.settings.session_expires_in = expires_in;
+        self
+    }
+
     pub fn build(self) -> Result<Settings, String> {
         validate_domain(&self.settings.scheme, &self.settings.domain)?;
+        validate_uri(&self.settings.uri)?;
+        validate_salt(&self.settings.salt)?;
+        validate_chain_id(self.settings.chain_id)?;
         validate_scheme(&self.settings.scheme)?;
         validate_statement(&self.settings.statement)?;
-        validate_uri(&self.settings.uri)?;
         validate_sign_in_expires_in(self.settings.sign_in_expires_in)?;
+        validate_session_expires_in(self.settings.session_expires_in)?;
 
         Ok(self.settings)
     }
 }
 
-/// Validates the provided domain based on the given scheme.
-///
-/// # Parameters
-///
-/// * `scheme` - The URI scheme associated with the domain.
-/// * `domain` - The domain to validate.
-///
-/// # Returns
-///
-/// A `Result` containing the valid domain or an error message.
 fn validate_domain(scheme: &str, domain: &str) -> Result<String, String> {
     let url_str = format!("{}://{}", scheme, domain);
     let parsed_url = Url::parse(&url_str).map_err(|_| String::from("Invalid domain"))?;
@@ -112,47 +128,6 @@ fn validate_domain(scheme: &str, domain: &str) -> Result<String, String> {
     }
 }
 
-// Validates the provided URI scheme.
-///
-/// # Parameters
-///
-/// * `scheme: &str` - The URI scheme to validate.
-///
-/// # Returns
-///
-/// Returns a `Result<String, String>` containing the valid scheme or an error message.
-fn validate_scheme(scheme: &str) -> Result<String, String> {
-    if scheme == "http" || scheme == "https" {
-        return Ok(scheme.to_string());
-    }
-    Err(String::from("Invalid scheme"))
-}
-
-/// Validates the provided statement.
-///
-/// # Parameters
-///
-/// * `statement: &str` - The statement to validate.
-///
-/// # Returns
-///
-/// Returns a `Result<String, String>` containing the valid statement or an error message.
-fn validate_statement(statement: &str) -> Result<String, String> {
-    if statement.contains("\n") {
-        return Err(String::from("Invalid statement"));
-    }
-    Ok(statement.to_string())
-}
-
-/// Validates the provided URI.
-///
-/// # Parameters
-///
-/// * `uri: &str` - The URI to validate.
-///
-/// # Returns
-///
-/// Returns a `Result<String, String>` containing the valid URI or an error message.
 fn validate_uri(uri: &str) -> Result<String, String> {
     let parsed_uri = Url::parse(uri).map_err(|_| String::from("Invalid URI"))?;
     if !parsed_uri.has_host() {
@@ -162,20 +137,44 @@ fn validate_uri(uri: &str) -> Result<String, String> {
     }
 }
 
-/// Validates the expiration time for sign-in.
-///
-/// This function checks if the provided expiration time for sign-in is non-zero.
-///
-/// # Parameters
-///
-/// * `expires_in` - The expiration time in nanoseconds.
-///
-/// # Returns
-///
-/// Returns a `Result` containing the expiration time if it is valid, or an error message if it is not.
+fn validate_salt(salt: &str) -> Result<String, String> {
+    if salt.is_empty() {
+        return Err(String::from("Salt cannot be empty"));
+    }
+    Ok(salt.to_string())
+}
+
+fn validate_chain_id(chain_id: u32) -> Result<u32, String> {
+    if chain_id == 0 {
+        return Err(String::from("Chain ID must be greater than 0"));
+    }
+    Ok(chain_id)
+}
+
+fn validate_scheme(scheme: &str) -> Result<String, String> {
+    if scheme == "http" || scheme == "https" {
+        return Ok(scheme.to_string());
+    }
+    Err(String::from("Invalid scheme"))
+}
+
+fn validate_statement(statement: &str) -> Result<String, String> {
+    if statement.contains("\n") {
+        return Err(String::from("Invalid statement"));
+    }
+    Ok(statement.to_string())
+}
+
 fn validate_sign_in_expires_in(expires_in: u64) -> Result<u64, String> {
     if expires_in == 0 {
         return Err(String::from("Sign in expires in must be greater than 0"));
+    }
+    Ok(expires_in)
+}
+
+fn validate_session_expires_in(expires_in: u64) -> Result<u64, String> {
+    if expires_in == 0 {
+        return Err(String::from("Session expires in must be greater than 0"));
     }
     Ok(expires_in)
 }

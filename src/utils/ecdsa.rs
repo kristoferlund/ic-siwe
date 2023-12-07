@@ -1,7 +1,8 @@
-use std::fmt;
-
 use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
+use std::fmt;
 use tiny_keccak::{Hasher, Keccak};
+
+use super::eth::validate_signature;
 
 /// An error type for signature recovery.
 #[derive(Debug)]
@@ -76,15 +77,13 @@ pub(crate) fn recover_address(
 
 /// Decodes a hex-encoded signature.
 fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
+    validate_signature(signature).or_else(|_| Err(SignatureRecoveryError::InvalidSignature))?;
+
     let signature = if signature.starts_with("0x") {
         &signature[2..]
     } else {
         signature
     };
-
-    if signature.len() != 65 * 2 {
-        return Err(SignatureRecoveryError::InvalidSignatureLength);
-    }
 
     hex::decode(signature)
         .map_err(|err| SignatureRecoveryError::DecodingError(err))

@@ -27,7 +27,7 @@ mod tests {
     const VALID_ADDRESS: &str = "0xc2cc7160837714a78ff9f9191ec5a1bb15096179";
 
     fn init_settings() {
-        let settings = SettingsBuilder::new("example.com", "http://example.com")
+        let settings = SettingsBuilder::new("example.com", "http://example.com", "salt")
             .scheme("https")
             .statement("Login to the app")
             .sign_in_expires_in(Duration::from_secs(2).as_nanos() as u64) // Sign in expires in 2 seconds

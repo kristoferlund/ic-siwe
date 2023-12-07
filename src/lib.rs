@@ -97,28 +97,26 @@
 //!
 //! This test demonstrates a successful login process using the `ic_siwe` crate's `login` function, simulating an Ethereum wallet signature verification.
 
-pub mod create_identity_message;
-pub mod create_siwe_message;
-pub mod init;
-pub mod types;
-pub(crate) mod utils;
-pub mod verify_identity_signature;
-pub mod verify_principal;
-pub mod verify_siwe_signature;
+mod get_delegation;
+mod init;
+mod login;
+mod prepare_login;
+mod types;
+mod utils;
 
-pub use create_identity_message::create_identity_message;
-pub use create_siwe_message::create_siwe_message;
+pub use get_delegation::get_delegation;
 pub use init::init;
-pub use verify_identity_signature::verify_identity_signature;
-pub use verify_principal::verify_principal;
-pub use verify_siwe_signature::verify_siwe_signature;
+pub use login::login;
+pub use prepare_login::prepare_login;
+pub use types::delegation::SignedDelegation;
+pub use types::settings::SettingsBuilder;
 
-use crate::types::{settings::Settings, siwe_message::SiweMessage};
+use crate::types::{settings::Settings, state::State};
 use rand_chacha::ChaCha20Rng;
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 thread_local! {
-    pub static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
-    pub static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
-    pub static SIGN_IN_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
+    static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
+    static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
+    static STATE: State = State::default();
 }

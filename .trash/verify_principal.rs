@@ -80,7 +80,7 @@ mod tests {
     use std::time::Duration;
 
     fn init_settings() {
-        let settings = SettingsBuilder::new("example.com", "http://example.com")
+        let settings = SettingsBuilder::new("example.com", "http://example.com", "salt")
             .scheme("https")
             .statement("Login to the app")
             .sign_in_expires_in(Duration::from_secs(2).as_nanos() as u64) // Sign in expires in 2 seconds
