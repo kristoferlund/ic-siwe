@@ -57,7 +57,7 @@ pub fn verify_principal(signature: &str, principal: Principal) -> Result<(), Ver
     let sha224_hash = sha2::Sha224::new().chain_update(public_key_der).finalize();
 
     // Compare the SHA-224 hash to the first 28 bytes of the principal
-    let principal_bytes = principal.as_slice();
+    let principal_bytes = &principal();
     if principal_bytes.len() < 28 {
         return Err(VerifyPrincipalError::PrincipalTooShort);
     }

@@ -1,26 +1,18 @@
 use serde_bytes::ByteBuf;
 
 use crate::{
-    types::{
-        delegation::Delegation, settings::get_settings, signature_map::SignatureMap,
-        siwe_message::SiweMessage,
-    },
+    types::{settings::get_settings, siwe_message::SiweMessage},
     utils::{
         delegation::{
-            calculate_seed, delegation_signature_msg_hash, der_encode_canister_sig_key,
-            prune_expired_signatures, update_root_hash,
+            add_signature, calculate_seed, der_encode_canister_sig_key, prune_expired_signatures,
+            update_root_hash,
         },
         ecdsa::recover_address,
         eth::{validate_address, validate_signature},
-        hash,
         siwe::get_siwe_message,
-        time::get_current_time,
     },
     STATE,
 };
-use ic_certified_map::Hash;
-
-const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
 
 /// Verifies the user's signature and address against a previously created SiweMessage. This function
 /// can only be called once per SiweMessage. If the user's signature is valid, the SiweMessage is
@@ -35,12 +27,9 @@ const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
 ///
 /// - `Ok(String)`: Returns the user's address if the login process was successful.
 /// - `Err`: Descriptive error message if any step fails.
-pub fn login(signature: &str, address: &str, session_key: &str) -> Result<ByteBuf, String> {
+pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<ByteBuf, String> {
     validate_signature(signature)?;
     validate_address(address)?;
-    if session_key.len() != 64 {
-        return Err(String::from("Invalid session key length"));
-    }
 
     let message = get_siwe_message(&address)?;
     let message_string: String = message.clone().into();
@@ -55,36 +44,22 @@ pub fn login(signature: &str, address: &str, session_key: &str) -> Result<ByteBu
 
 fn prepare_delegation(
     address: &str,
-    session_key: &str,
+    session_key: ByteBuf,
     message: &SiweMessage,
 ) -> Result<ByteBuf, String> {
     let settings = get_settings()?;
     let expiration = message.issued_at + settings.session_expires_in;
-    let session_key: ByteBuf = ByteBuf::from(session_key);
     let seed = calculate_seed(address);
 
     STATE.with(|state| {
-        let mut sigs = state.sigs.borrow_mut();
+        let mut signature_map = state.sigs.borrow_mut();
 
-        add_signature(&mut sigs, session_key, seed, expiration);
+        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
+        add_signature(&mut signature_map, session_key, seed, expiration);
+        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
 
-        update_root_hash(&state.asset_hashes.borrow(), &sigs);
-
-        prune_expired_signatures(&state.asset_hashes.borrow(), &mut sigs);
-
-        // Return the DER-encoded public key of the canister
         Ok(ByteBuf::from(der_encode_canister_sig_key(seed.to_vec())))
     })
-}
-
-fn add_signature(sigs: &mut SignatureMap, pk: ByteBuf, seed: Hash, expiration: u64) {
-    let msg_hash = delegation_signature_msg_hash(&Delegation {
-        pubkey: pk,
-        expiration,
-        targets: None,
-    });
-    let expires_at = (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
-    sigs.put(hash::hash_bytes(seed), msg_hash, expires_at);
 }
 
 // #[cfg(test)]

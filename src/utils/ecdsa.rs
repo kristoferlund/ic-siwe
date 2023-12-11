@@ -98,7 +98,7 @@ fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> 
 fn eip191_hash(message: &str) -> Result<[u8; 32], SignatureRecoveryError> {
     let mut keccak256 = [0; 32];
     let mut hasher = Keccak::v256();
-    hasher.update(eip191_bytes(message)?.as_slice());
+    hasher.update(&eip191_bytes(message)?);
     hasher.finalize(&mut keccak256);
 
     Ok(keccak256)

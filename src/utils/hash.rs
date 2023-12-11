@@ -3,7 +3,6 @@
 use ic_certified_map::Hash;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-// use k256::sha2::{self, Digest};
 
 use std::collections::HashMap;
 use std::convert::AsRef;

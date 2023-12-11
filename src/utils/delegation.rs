@@ -1,17 +1,19 @@
 use std::collections::HashMap;
 
+use super::hash::{self, Value};
+use crate::types::delegation::Delegation;
 use crate::{
     types::{settings::get_settings, signature_map::SignatureMap, state::AssetHashes},
     utils::time::get_current_time,
 };
-
-use super::hash;
-use crate::types::delegation::Delegation;
 use ic_cdk::api::set_certified_data;
-use ic_certified_map::{AsHashTree, Hash};
+use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash};
+use serde_bytes::ByteBuf;
 
 pub const LABEL_ASSETS: &[u8] = b"http_assets";
 pub const LABEL_SIG: &[u8] = b"sig";
+
+const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
 
 pub(crate) fn calculate_seed(address: &str) -> Hash {
     let settings = get_settings().unwrap();
@@ -33,39 +35,52 @@ pub(crate) fn calculate_seed(address: &str) -> Hash {
     hash::hash_bytes(blob)
 }
 
-pub(crate) fn delegation_signature_msg_hash(delegation: &Delegation) -> Hash {
-    use hash::Value;
+pub(crate) fn prune_expired_signatures(
+    asset_hashes: &AssetHashes,
+    signature_map: &mut SignatureMap,
+) {
+    const MAX_SIGS_TO_PRUNE: usize = 10;
+    let num_pruned = signature_map.prune_expired(get_current_time() as u64, MAX_SIGS_TO_PRUNE);
 
-    let mut hash_map = HashMap::new();
-    hash_map.insert("pubkey", Value::Bytes(delegation.pubkey.as_slice()));
-    hash_map.insert("expiration", Value::U64(delegation.expiration));
+    if num_pruned > 0 {
+        update_root_hash(asset_hashes, signature_map);
+    }
+}
+
+pub(crate) fn add_signature(
+    signature_map: &mut SignatureMap,
+    session_key: ByteBuf,
+    seed: Hash,
+    expiration: u64,
+) {
+    let delegation_hash = delegation_signature_msg_hash(&Delegation {
+        pubkey: session_key,
+        expiration,
+        targets: None,
+    });
+    let expires_at = (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
+    signature_map.put(hash::hash_bytes(seed), delegation_hash, expires_at);
+}
+
+pub(crate) fn delegation_signature_msg_hash(delegation: &Delegation) -> Hash {
+    let mut delegation_map = HashMap::new();
+    delegation_map.insert("pubkey", Value::Bytes(&delegation.pubkey));
+    delegation_map.insert("expiration", Value::U64(delegation.expiration));
     if let Some(targets) = delegation.targets.as_ref() {
         let mut arr = Vec::with_capacity(targets.len());
         for t in targets.iter() {
             arr.push(Value::Bytes(t.as_ref()));
         }
-        hash_map.insert("targets", Value::Array(arr));
+        delegation_map.insert("targets", Value::Array(arr));
     }
-    let map_hash = hash::hash_of_map(hash_map);
-    hash::hash_with_domain(b"ic-request-auth-delegation", &map_hash)
+    let delegation_map_hash = hash::hash_of_map(delegation_map);
+    hash::hash_with_domain(b"ic-request-auth-delegation", &delegation_map_hash)
 }
 
-pub(crate) fn prune_expired_signatures(asset_hashes: &AssetHashes, sigs: &mut SignatureMap) {
-    const MAX_SIGS_TO_PRUNE: usize = 10;
-    let num_pruned = sigs.prune_expired(get_current_time() as u64, MAX_SIGS_TO_PRUNE);
-
-    if num_pruned > 0 {
-        update_root_hash(asset_hashes, sigs);
-    }
-}
-
-pub(crate) fn update_root_hash(a: &AssetHashes, m: &SignatureMap) {
-    use ic_certified_map::{fork_hash, labeled_hash};
-
+pub(crate) fn update_root_hash(asset_hashes: &AssetHashes, signature_map: &SignatureMap) {
     let prefixed_root_hash = fork_hash(
-        // NB: Labels added in lexicographic order
-        &labeled_hash(LABEL_ASSETS, &a.root_hash()),
-        &labeled_hash(LABEL_SIG, &m.root_hash()),
+        &labeled_hash(LABEL_ASSETS, &asset_hashes.root_hash()),
+        &labeled_hash(LABEL_SIG, &signature_map.root_hash()),
     );
     set_certified_data(&prefixed_root_hash[..]);
 }

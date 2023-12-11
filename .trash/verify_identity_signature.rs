@@ -5,7 +5,7 @@ pub fn verify_identity_signature(signature: &str, address: &str) -> Result<Strin
     let identity_message = create_identity_message(address)?;
 
     // Recover the address from the signature and the identity message
-    let recovered_address = recover_address(identity_message.as_str(), signature)?;
+    let recovered_address = recover_address(&identity_message, signature)?;
     if recovered_address != address {
         // If the recovered address does not match the provided address, return an error
         return Err("Signature verification failed".to_string());

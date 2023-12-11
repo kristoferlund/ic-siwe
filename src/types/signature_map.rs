@@ -1,8 +1,6 @@
-//! Maintains user signatures and expirations.
 use ic_certified_map::{leaf_hash, AsHashTree, Hash, HashTree, RbTree};
 use std::borrow::Cow;
 use std::collections::BinaryHeap;
-
 #[derive(Default)]
 struct Unit;
 
@@ -47,9 +45,11 @@ impl SignatureMap {
         if self.certified_map.get(&seed[..]).is_none() {
             let mut submap = RbTree::new();
             submap.insert(message, Unit);
+            println!("INSERT: {}/{}", hex::encode(seed), hex::encode(message));
             self.certified_map.insert(seed, submap);
         } else {
             self.certified_map.modify(&seed[..], |submap| {
+                println!("MODIFY: {}", hex::encode(message));
                 submap.insert(message, Unit);
             });
         }
