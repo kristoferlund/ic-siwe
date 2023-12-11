@@ -6,7 +6,7 @@ use crate::{
         state::AssetHashes,
     },
     utils::{
-        delegation::{calculate_seed, delegation_signature_msg_hash, LABEL_ASSETS, LABEL_SIG},
+        delegation::{calculate_seed, delegation_hash, LABEL_ASSETS, LABEL_SIG},
         eth::validate_address,
         hash,
         siwe::get_siwe_message,
@@ -29,7 +29,9 @@ pub fn get_delegation(address: &str, session_key: ByteBuf) -> Result<SignedDeleg
 
     let message = get_siwe_message(address)?;
     let settings = get_settings()?;
-    let expiration = message.issued_at + settings.session_expires_in;
+    let expiration = message
+        .issued_at
+        .saturating_add(settings.session_expires_in);
 
     STATE.with(|state| {
         let seed = calculate_seed(address);
@@ -112,7 +114,7 @@ fn get_signature(
     let certificate =
         data_certificate().ok_or("get_signature must be called using a QUERY call")?;
 
-    let delegation_hash = delegation_signature_msg_hash(&Delegation {
+    let delegation_hash = delegation_hash(&Delegation {
         pubkey: session_key.clone(),
         expiration,
         targets: None,

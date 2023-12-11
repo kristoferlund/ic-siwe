@@ -53,16 +53,17 @@ pub(crate) fn add_signature(
     seed: Hash,
     expiration: u64,
 ) {
-    let delegation_hash = delegation_signature_msg_hash(&Delegation {
+    let delegation_hash = delegation_hash(&Delegation {
         pubkey: session_key,
         expiration,
         targets: None,
     });
+
     let expires_at = (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
     signature_map.put(hash::hash_bytes(seed), delegation_hash, expires_at);
 }
 
-pub(crate) fn delegation_signature_msg_hash(delegation: &Delegation) -> Hash {
+pub(crate) fn delegation_hash(delegation: &Delegation) -> Hash {
     let mut delegation_map = HashMap::new();
     delegation_map.insert("pubkey", Value::Bytes(&delegation.pubkey));
     delegation_map.insert("expiration", Value::U64(delegation.expiration));

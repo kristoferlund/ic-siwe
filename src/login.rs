@@ -48,7 +48,9 @@ fn prepare_delegation(
     message: &SiweMessage,
 ) -> Result<ByteBuf, String> {
     let settings = get_settings()?;
-    let expiration = message.issued_at + settings.session_expires_in;
+    let expiration = message
+        .issued_at
+        .saturating_add(settings.session_expires_in);
     let seed = calculate_seed(address);
 
     STATE.with(|state| {
