@@ -20,7 +20,7 @@ pub(crate) fn create_siwe_message(address: &str) -> Result<SiweMessage, String> 
         chain_id: settings.chain_id,
         nonce: hex::encode(nonce),
         issued_at: get_current_time(),
-        expiration_time: get_current_time() + settings.sign_in_expires_in,
+        expiration_time: get_current_time().saturating_add(settings.sign_in_expires_in),
     };
 
     Ok(message)

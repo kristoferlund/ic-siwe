@@ -32,10 +32,9 @@ pub fn get_delegation(address: &str, session_key: ByteBuf) -> Result<SignedDeleg
     let expiration = message
         .issued_at
         .saturating_add(settings.session_expires_in);
+    let seed = calculate_seed(address);
 
     STATE.with(|state| {
-        let seed = calculate_seed(address);
-
         get_signature(
             &state.asset_hashes.borrow(),
             &state.sigs.borrow(),

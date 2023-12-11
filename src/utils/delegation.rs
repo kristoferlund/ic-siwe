@@ -59,8 +59,14 @@ pub(crate) fn add_signature(
         targets: None,
     });
 
-    let expires_at = (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
-    signature_map.put(hash::hash_bytes(seed), delegation_hash, expires_at);
+    let signature_expires_at =
+        (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
+
+    signature_map.put(
+        hash::hash_bytes(seed),
+        delegation_hash,
+        signature_expires_at,
+    );
 }
 
 pub(crate) fn delegation_hash(delegation: &Delegation) -> Hash {

@@ -15,16 +15,16 @@ impl AsHashTree for Unit {
 
 #[derive(PartialEq, Eq)]
 struct SigExpiration {
-    expires_at: u64,
     seed_hash: Hash,
-    msg_hash: Hash,
+    delegation_hash: Hash,
+    signature_expires_at: u64,
 }
 
 impl Ord for SigExpiration {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         // BinaryHeap is a max heap, but we want expired entries
         // first, hence the inversed order.
-        other.expires_at.cmp(&self.expires_at)
+        other.signature_expires_at.cmp(&self.signature_expires_at)
     }
 }
 
@@ -41,33 +41,32 @@ pub struct SignatureMap {
 }
 
 impl SignatureMap {
-    pub fn put(&mut self, seed: Hash, message: Hash, signature_expires_at: u64) {
-        if self.certified_map.get(&seed[..]).is_none() {
+    pub fn put(&mut self, seed_hash: Hash, delegation_hash: Hash, signature_expires_at: u64) {
+        if self.certified_map.get(&seed_hash[..]).is_none() {
             let mut submap = RbTree::new();
-            submap.insert(message, Unit);
-            println!("INSERT: {}/{}", hex::encode(seed), hex::encode(message));
-            self.certified_map.insert(seed, submap);
+            submap.insert(delegation_hash, Unit);
+            self.certified_map.insert(seed_hash, submap);
         } else {
-            self.certified_map.modify(&seed[..], |submap| {
-                println!("MODIFY: {}", hex::encode(message));
-                submap.insert(message, Unit);
+            self.certified_map.modify(&seed_hash[..], |submap| {
+                ic_cdk::println!("certified_map modify: {}", hex::encode(delegation_hash));
+                submap.insert(delegation_hash, Unit);
             });
         }
         self.expiration_queue.push(SigExpiration {
-            seed_hash: seed,
-            msg_hash: message,
-            expires_at: signature_expires_at,
+            seed_hash,
+            delegation_hash,
+            signature_expires_at,
         });
     }
 
-    pub fn delete(&mut self, seed: Hash, message: Hash) {
+    pub fn delete(&mut self, seed_hash: Hash, delegation_hash: Hash) {
         let mut is_empty = false;
-        self.certified_map.modify(&seed[..], |m| {
-            m.delete(&message[..]);
+        self.certified_map.modify(&seed_hash[..], |m| {
+            m.delete(&delegation_hash[..]);
             is_empty = m.is_empty();
         });
         if is_empty {
-            self.certified_map.delete(&seed[..]);
+            self.certified_map.delete(&seed_hash[..]);
         }
     }
 
@@ -76,12 +75,12 @@ impl SignatureMap {
 
         for _step in 0..max_to_prune {
             if let Some(expiration) = self.expiration_queue.peek() {
-                if expiration.expires_at > now {
+                if expiration.signature_expires_at > now {
                     return num_pruned;
                 }
             }
             if let Some(expiration) = self.expiration_queue.pop() {
-                self.delete(expiration.seed_hash, expiration.msg_hash);
+                self.delete(expiration.seed_hash, expiration.delegation_hash);
             }
             num_pruned += 1;
         }
@@ -101,11 +100,13 @@ impl SignatureMap {
         self.certified_map.root_hash()
     }
 
-    pub fn witness(&self, seed: Hash, message: Hash) -> Option<HashTree<'_>> {
-        self.certified_map.get(&seed[..])?.get(&message[..])?;
-        let witness = self
-            .certified_map
-            .nested_witness(&seed[..], |nested| nested.witness(&message[..]));
+    pub fn witness(&self, seed_hash: Hash, delegation_hash: Hash) -> Option<HashTree<'_>> {
+        self.certified_map
+            .get(&seed_hash[..])?
+            .get(&delegation_hash[..])?;
+        let witness = self.certified_map.nested_witness(&seed_hash[..], |nested| {
+            nested.witness(&delegation_hash[..])
+        });
         Some(witness)
     }
 }
