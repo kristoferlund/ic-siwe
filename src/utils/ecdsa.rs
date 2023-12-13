@@ -2,7 +2,7 @@ use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use std::fmt;
 use tiny_keccak::{Hasher, Keccak};
 
-use super::eth::validate_signature;
+use super::eth::validate_eth_signature;
 
 /// An error type for signature recovery.
 #[derive(Debug)]
@@ -55,7 +55,7 @@ impl From<SignatureRecoveryError> for String {
 /// # Returns
 ///
 /// The recovered Ethereum address if successful, or an error.
-pub(crate) fn recover_address(
+pub(crate) fn recover_eth_address(
     message: &str,
     signature: &str,
 ) -> Result<String, SignatureRecoveryError> {
@@ -71,13 +71,13 @@ pub(crate) fn recover_address(
     let verifying_key = VerifyingKey::recover_from_prehash(&message_hash, &signature, recovery_id)
         .map_err(|_| SignatureRecoveryError::PublicKeyRecoveryFailure)?;
 
-    let address = derive_ethereum_address_from_public_key(&verifying_key)?;
+    let address = derive_eth_address_from_public_key(&verifying_key)?;
     Ok(address)
 }
 
 /// Decodes a hex-encoded signature.
 fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
-    validate_signature(signature).or_else(|_| Err(SignatureRecoveryError::InvalidSignature))?;
+    validate_eth_signature(signature).or_else(|_| Err(SignatureRecoveryError::InvalidSignature))?;
 
     let signature = if signature.starts_with("0x") {
         &signature[2..]
@@ -110,7 +110,7 @@ fn eip191_bytes(message: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
 }
 
 /// Derives an Ethereum address from a public key.
-fn derive_ethereum_address_from_public_key(
+fn derive_eth_address_from_public_key(
     key: &VerifyingKey,
 ) -> Result<String, SignatureRecoveryError> {
     let mut keccak256 = [0; 32];

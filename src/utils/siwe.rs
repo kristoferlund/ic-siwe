@@ -27,7 +27,7 @@ pub(crate) fn create_siwe_message(address: &str) -> Result<SiweMessage, String> 
 }
 
 /// Removes SIWE messages that have exceeded their time to live.
-pub(crate) fn prune_expired_messages() {
+pub(crate) fn prune_expired_siwe_messages() {
     let current_time = get_current_time();
 
     STATE.with(|state| {

@@ -1,12 +1,10 @@
-//! Provides helper functions to calculate the representation independent hash
-//! of structured data.
 use ic_certified_map::Hash;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-
 use std::collections::HashMap;
 use std::convert::AsRef;
 
+/// Represents different types of values that can be hashed.
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Value<'a> {
     Bytes(#[serde(with = "serde_bytes")] &'a [u8]),
@@ -15,18 +13,14 @@ pub enum Value<'a> {
     Array(Vec<Value<'a>>),
 }
 
+/// Computes a hash of a map where keys are strings and values are `Value`.
 pub fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
-    let mut hashes: Vec<Vec<u8>> = Vec::new();
-    for (key, val) in map.into_iter() {
-        hashes.push(hash_key_val(key.as_ref(), val));
-    }
+    let mut hashes = map
+        .into_iter()
+        .map(|(key, val)| hash_key_value(key.as_ref(), val))
+        .collect::<Vec<_>>();
 
-    // Computes hash by first sorting by "field name" hash, which is the
-    // same as sorting by concatenation of H(field name) · H(field value)
-    // (although in practice it's actually more stable in the presence of
-    // duplicated field names). Then concatenate all the hashes.
-    hashes.sort();
-
+    hashes.sort_unstable();
     let mut hasher = Sha256::new();
     for hash in hashes {
         hasher.update(&hash);
@@ -35,35 +29,37 @@ pub fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
     hasher.finalize().into()
 }
 
+/// Computes a hash with a domain separator.
 pub fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
     let mut hasher = Sha256::new();
-    let buf = [sep.len() as u8];
-    hasher.update(&buf);
-    hasher.update(&sep);
-    hasher.update(&bytes);
+    hasher.update(&[sep.len() as u8]);
+    hasher.update(sep);
+    hasher.update(bytes);
     hasher.finalize().into()
 }
 
-fn hash_key_val(key: &str, val: Value<'_>) -> Vec<u8> {
+/// Helper function to hash a key and value pair.
+fn hash_key_value(key: &str, val: Value<'_>) -> Vec<u8> {
     let mut key_hash = hash_string(key).to_vec();
-    let val_hash = hash_val(val);
+    let val_hash = hash_value(val);
     key_hash.extend_from_slice(&val_hash[..]);
     key_hash
 }
 
+/// Hashes a string.
 pub fn hash_string(value: &str) -> Hash {
     hash_bytes(value.as_bytes())
 }
 
+/// Hashes a byte slice.
 pub fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
     let mut hasher = Sha256::new();
     hasher.update(value.as_ref());
     hasher.finalize().into()
 }
 
+/// Hashes a 64-bit unsigned integer.
 fn hash_u64(value: u64) -> Hash {
-    // We need at most ⌈ 64 / 7 ⌉ = 10 bytes to encode a 64 bit
-    // integer in LEB128.
     let mut buf = [0u8; 10];
     let mut n = value;
     let mut i = 0;
@@ -71,36 +67,34 @@ fn hash_u64(value: u64) -> Hash {
     loop {
         let byte = (n & 0x7f) as u8;
         n >>= 7;
+        buf[i] = byte | if n != 0 { 0x80 } else { 0 };
 
         if n == 0 {
-            buf[i] = byte;
             break;
-        } else {
-            buf[i] = byte | 0x80;
-            i += 1;
         }
+        i += 1;
     }
 
     hash_bytes(&buf[..=i])
 }
 
-// Arrays encoded as the concatenation of the hashes of the encodings of the
-// array elements.
+/// Hashes an array of `Value`.
 fn hash_array(elements: Vec<Value<'_>>) -> Hash {
     let mut hasher = Sha256::new();
-    elements
-        .into_iter()
-        // Hash the encoding of all the array elements.
-        .for_each(|e| hasher.update(&hash_val(e)[..]));
-    hasher.finalize().into() // hash the concatenation of the hashes.
+    for element in elements {
+        hasher.update(&hash_value(element)[..]);
+    }
+
+    hasher.finalize().into()
 }
 
-fn hash_val(val: Value<'_>) -> Hash {
+/// Hashes a `Value`.
+fn hash_value(val: Value<'_>) -> Hash {
     match val {
-        Value::String(string) => hash_string(string),
-        Value::Bytes(bytes) => hash_bytes(bytes),
-        Value::U64(integer) => hash_u64(integer),
-        Value::Array(elements) => hash_array(elements),
+        Value::String(s) => hash_string(s),
+        Value::Bytes(b) => hash_bytes(b),
+        Value::U64(n) => hash_u64(n),
+        Value::Array(a) => hash_array(a),
     }
 }
 
@@ -112,7 +106,7 @@ mod tests {
     #[test]
     fn message_id_icf_key_val_reference_1() {
         assert_eq!(
-            hash_key_val("request_type", Value::String("call")),
+            hash_key_value("request_type", Value::String("call")),
             hex!(
                 "
                 769e6f87bdda39c859642b74ce9763cdd37cb1cd672733e8c54efaa33ab78af9

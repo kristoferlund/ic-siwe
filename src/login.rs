@@ -1,17 +1,10 @@
 use serde_bytes::ByteBuf;
 
-use crate::{
-    types::{settings::get_settings, siwe_message::SiweMessage},
-    utils::{
-        delegation::{
-            add_signature, calculate_seed, der_encode_canister_sig_key, prune_expired_signatures,
-            update_root_hash,
-        },
-        ecdsa::recover_address,
-        eth::{validate_address, validate_signature},
-        siwe::get_siwe_message,
-    },
-    STATE,
+use crate::utils::{
+    delegation::prepare_delegation,
+    ecdsa::recover_eth_address,
+    eth::{validate_eth_address, validate_eth_signature},
+    siwe::get_siwe_message,
 };
 
 /// Verifies the user's signature and address against a previously created SiweMessage. This function
@@ -28,40 +21,18 @@ use crate::{
 /// - `Ok(String)`: Returns the user's address if the login process was successful.
 /// - `Err`: Descriptive error message if any step fails.
 pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<ByteBuf, String> {
-    validate_signature(signature)?;
-    validate_address(address)?;
+    validate_eth_signature(signature)?;
+    validate_eth_address(address)?;
 
     let message = get_siwe_message(&address)?;
     let message_string: String = message.clone().into();
 
-    let recovered_address = recover_address(&message_string, signature)?;
+    let recovered_address = recover_eth_address(&message_string, signature)?;
     if recovered_address != address {
         return Err(String::from("Signature verification failed"));
     }
 
     prepare_delegation(address, session_key, &message)
-}
-
-fn prepare_delegation(
-    address: &str,
-    session_key: ByteBuf,
-    message: &SiweMessage,
-) -> Result<ByteBuf, String> {
-    let settings = get_settings()?;
-    let expiration = message
-        .issued_at
-        .saturating_add(settings.session_expires_in);
-    let seed = calculate_seed(address);
-
-    STATE.with(|state| {
-        let mut signature_map = state.sigs.borrow_mut();
-
-        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
-        add_signature(&mut signature_map, session_key, seed, expiration);
-        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
-
-        Ok(ByteBuf::from(der_encode_canister_sig_key(seed.to_vec())))
-    })
 }
 
 // #[cfg(test)]

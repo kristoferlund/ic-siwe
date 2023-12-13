@@ -1,8 +1,8 @@
 use crate::{
     types::siwe_message::SiweMessage,
     utils::{
-        eth::validate_address,
-        siwe::{add_siwe_message, create_siwe_message, prune_expired_messages},
+        eth::validate_eth_address,
+        siwe::{add_siwe_message, create_siwe_message, prune_expired_siwe_messages},
     },
 };
 
@@ -17,9 +17,9 @@ use crate::{
 ///
 /// `Result<SiweMessage, String>` - SiweMessage on success, or an error message on failure.
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
-    validate_address(&address)?;
+    validate_eth_address(&address)?;
 
-    prune_expired_messages();
+    prune_expired_siwe_messages();
 
     let message = create_siwe_message(&address)?;
 

@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use super::hash::{self, Value};
 use crate::types::delegation::Delegation;
+use crate::types::siwe_message::SiweMessage;
+use crate::STATE;
 use crate::{
     types::{settings::get_settings, signature_map::SignatureMap, state::AssetHashes},
     utils::time::get_current_time,
@@ -14,6 +16,28 @@ pub const LABEL_ASSETS: &[u8] = b"http_assets";
 pub const LABEL_SIG: &[u8] = b"sig";
 
 const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
+
+pub(crate) fn prepare_delegation(
+    address: &str,
+    session_key: ByteBuf,
+    message: &SiweMessage,
+) -> Result<ByteBuf, String> {
+    let settings = get_settings()?;
+    let expiration = message
+        .issued_at
+        .saturating_add(settings.session_expires_in);
+    let seed = calculate_seed(address);
+
+    STATE.with(|state| {
+        let mut signature_map = state.sigs.borrow_mut();
+
+        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
+        add_signature(&mut signature_map, session_key, seed, expiration);
+        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
+
+        Ok(ByteBuf::from(der_encode_canister_sig_key(seed.to_vec())))
+    })
+}
 
 pub(crate) fn calculate_seed(address: &str) -> Hash {
     let settings = get_settings().unwrap();

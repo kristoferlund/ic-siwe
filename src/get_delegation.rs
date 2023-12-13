@@ -7,7 +7,7 @@ use crate::{
     },
     utils::{
         delegation::{calculate_seed, delegation_hash, LABEL_ASSETS, LABEL_SIG},
-        eth::validate_address,
+        eth::validate_eth_address,
         hash,
         siwe::get_siwe_message,
     },
@@ -25,7 +25,7 @@ struct CertificateSignature<'a> {
 }
 
 pub fn get_delegation(address: &str, session_key: ByteBuf) -> Result<SignedDelegation, String> {
-    validate_address(address)?;
+    validate_eth_address(address)?;
 
     let message = get_siwe_message(address)?;
     let settings = get_settings()?;
