@@ -9,10 +9,6 @@ use crate::{types::settings::Settings, RNG, SETTINGS};
 /// # Parameters
 ///
 /// * `settings` - The SIWE settings to be initialized.
-///
-/// # Returns
-///
-/// `Result<(), String>` - Ok on success, or an error message on failure.
 pub fn init(settings: Settings) -> Result<(), String> {
     SETTINGS.set(Some(settings));
 

@@ -7,19 +7,6 @@ use crate::utils::{
     siwe::get_siwe_message,
 };
 
-/// Verifies the user's signature and address against a previously created SiweMessage. This function
-/// can only be called once per SiweMessage. If the user's signature is valid, the SiweMessage is
-/// removed from memory.
-///
-/// # Parameters
-///
-/// - `signature`: The user's signature.
-/// - `address`: The address associated with the user.
-///
-/// # Returns
-///
-/// - `Ok(String)`: Returns the user's address if the login process was successful.
-/// - `Err`: Descriptive error message if any step fails.
 pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<ByteBuf, String> {
     validate_eth_signature(signature)?;
     validate_eth_address(address)?;
@@ -37,15 +24,21 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 
 // #[cfg(test)]
 // mod tests {
-//     use super::*;
-//     use crate::{create_siwe_message, types::settings::SettingsBuilder, SETTINGS};
+//     use crate::{
+//         login,
+//         types::settings::SettingsBuilder,
+//         utils::siwe::{add_siwe_message, create_siwe_message},
+//         SETTINGS,
+//     };
 //     use ethers::{
 //         signers::{LocalWallet, Signer},
 //         utils::to_checksum,
 //     };
+//     use serde_bytes::ByteBuf;
 //     use std::time::Duration;
 
 //     const VALID_ADDRESS: &str = "0xc2cc7160837714a78ff9f9191ec5a1bb15096179";
+//     const SESSION_KEY: &[u8] = b"987687687687687687687687686";
 
 //     fn init_settings() {
 //         let settings = SettingsBuilder::new("example.com", "http://example.com", "salt")
@@ -65,9 +58,12 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         init_settings();
 //         create_siwe_message(VALID_ADDRESS).unwrap();
 //         let invalid_signature = "0";
-//         let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
+//         let result = login(invalid_signature, VALID_ADDRESS, ByteBuf::from(SESSION_KEY));
 //         assert!(result.is_err());
-//         assert_eq!(result.unwrap_err(), "Invalid signature length");
+//         assert_eq!(
+//             result.unwrap_err(),
+//             "Invalid signature: Must start with '0x' and be 132 characters long"
+//         );
 //     }
 
 //     #[tokio::test]
@@ -75,7 +71,7 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         init_settings();
 //         create_siwe_message(VALID_ADDRESS).unwrap();
 //         let invalid_signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800"; // A signature with the correct length but incorrect format
-//         let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
+//         let result = login(invalid_signature, VALID_ADDRESS, ByteBuf::from(SESSION_KEY));
 //         assert!(result.is_err());
 //         // Assert the specific error message or type you expect for an incorrect format
 //     }
@@ -86,9 +82,12 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         init_settings();
 //         create_siwe_message(VALID_ADDRESS).unwrap();
 //         let invalid_signature = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
-//         let result = verify_siwe_signature(invalid_signature, VALID_ADDRESS);
+//         let result = login(invalid_signature, VALID_ADDRESS, ByteBuf::from(SESSION_KEY));
 //         assert!(result.is_err());
-//         assert_eq!(result.unwrap_err(), "Invalid signature length");
+//         assert_eq!(
+//             result.unwrap_err(),
+//             "Invalid signature: Must start with '0x' and be 132 characters long"
+//         );
 //     }
 
 //     // Test for hex decoding failure
@@ -96,12 +95,16 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //     async fn test_hex_decoding_failure() {
 //         init_settings();
 //         create_siwe_message(VALID_ADDRESS).unwrap();
-//         let invalid_hex_signature = "GMGM000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; // Non-hex characters
-//         let result = verify_siwe_signature(invalid_hex_signature, VALID_ADDRESS);
+//         let invalid_hex_signature = "0xGMGM000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"; // Non-hex characters
+//         let result = login(
+//             invalid_hex_signature,
+//             VALID_ADDRESS,
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(result.is_err());
 //         assert_eq!(
 //             result.unwrap_err(),
-//             "Decoding error: Invalid character 'G' at position 0"
+//             "Invalid signature: Hex decoding failed"
 //         );
 //     }
 
@@ -112,16 +115,27 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let wallet = LocalWallet::new(&mut rand::thread_rng());
 //         let h160 = wallet.address();
 //         let address = to_checksum(&h160, None);
-//         let message: String = create_siwe_message(address.as_str()).unwrap().into();
-//         println!("{:?}", message);
+//         let message = create_siwe_message(address.as_str()).unwrap();
+//         add_siwe_message(message.clone());
+//         let message: String = message.into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
-//         let result = verify_siwe_signature(signature.as_str(), address.as_str());
-//         assert!(result.is_ok());
+//         let result = login(
+//             &format!("0x{}", signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
+//         assert_eq!(result.unwrap_err(), "Signature verification failed");
+
+//         // assert!(result.is_ok());
 
 //         // Wait for 3 seconds
 //         tokio::time::sleep(Duration::from_secs(3)).await;
 
-//         let result = verify_siwe_signature(signature.as_str(), address.as_str()); // Attempt to login again
+//         let result = login(
+//             &format!("0x{}", signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         ); // Attempt to login again
 //         assert!(result.is_err());
 //         assert_eq!(
 //             result.unwrap_err(),
@@ -139,7 +153,11 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let address = to_checksum(&h160, None);
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
-//         let result = verify_siwe_signature(signature.as_str(), VALID_ADDRESS);
+//         let result = login(
+//             &format!("0x{}", signature.as_str()),
+//             VALID_ADDRESS,
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(result.is_err());
 //         assert_eq!(result.unwrap_err(), "Signature verification failed");
 //     }
@@ -153,7 +171,11 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
 //         let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
-//         let result = verify_siwe_signature(manipulated_signature.as_str(), address.as_str());
+//         let result = login(
+//             &format!("0x{}", manipulated_signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(result.is_err());
 //         assert_eq!(result.unwrap_err(), "Signature verification failed");
 //     }
@@ -167,7 +189,11 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
 //         let manipulated_signature = format!("9999{}", &signature[4..]);
-//         let result = verify_siwe_signature(manipulated_signature.as_str(), address.as_str());
+//         let result = login(
+//             &format!("0x{}", manipulated_signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(result.is_err());
 //     }
 
@@ -179,7 +205,7 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let address = to_checksum(&h160, None);
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
-//         let result = verify_siwe_signature(signature.as_str(), "0x123"); // Wrong address
+//         let result = login(signature.as_str(), "0x123", ByteBuf::from(SESSION_KEY)); // Wrong address
 //         assert!(result.is_err());
 //         assert_eq!(
 //             result.unwrap_err(),
@@ -195,7 +221,11 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let address = to_checksum(&h160, None);
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
-//         let result = verify_siwe_signature(signature.as_str(), address.as_str());
+//         let result = login(
+//             &format!("0x{}", signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(result.is_ok());
 //     }
 
@@ -209,10 +239,18 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
 //         let message: String = create_siwe_message(address.as_str()).unwrap().into();
 //         let signature = wallet.sign_message(message).await.unwrap().to_string();
 
-//         let first_attempt = verify_siwe_signature(signature.as_str(), address.as_str());
+//         let first_attempt = login(
+//             &format!("0x{}", signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(first_attempt.is_ok());
 
-//         let second_attempt = verify_siwe_signature(signature.as_str(), address.as_str());
+//         let second_attempt = login(
+//             &format!("0x{}", signature.as_str()),
+//             address.as_str(),
+//             ByteBuf::from(SESSION_KEY),
+//         );
 //         assert!(second_attempt.is_err());
 //         assert_eq!(
 //             second_attempt.unwrap_err(),

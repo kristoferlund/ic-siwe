@@ -6,16 +6,6 @@ use crate::{
     },
 };
 
-/// Creates a SiweMessage for the given address.
-/// Validates the address, fetches settings, generates a nonce, and constructs the SiweMessage.
-///
-/// # Arguments
-///
-/// * `address` - The Ethereum address for which to create the SiweMessage.
-///
-/// # Returns
-///
-/// `Result<SiweMessage, String>` - SiweMessage on success, or an error message on failure.
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
     validate_eth_address(&address)?;
 

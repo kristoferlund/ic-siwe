@@ -10,6 +10,7 @@ pub(crate) fn validate_eth_address(address: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Validates an Ethereum signature by checking its length and hex encoding.
 pub(crate) fn validate_eth_signature(signature: &str) -> Result<(), String> {
     if !signature.starts_with("0x") || signature.len() != 132 {
         return Err(String::from(
