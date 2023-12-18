@@ -2,8 +2,7 @@ use serde_bytes::ByteBuf;
 
 use crate::utils::{
     delegation::prepare_delegation,
-    ecdsa::recover_eth_address,
-    eth::{validate_eth_address, validate_eth_signature},
+    eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
     siwe::get_siwe_message,
 };
 
