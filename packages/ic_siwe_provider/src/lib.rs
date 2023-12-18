@@ -169,7 +169,7 @@ mod tests {
 
     use crate::Settings;
 
-    const VALID_ADDRESS: &str = "0x440e65EAAb7A23be8b1a61108643B2cff2E5A967";
+    const VALID_ADDRESS: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
 
     fn init() -> (PocketIc, Principal) {
         let ic = PocketIc::new();

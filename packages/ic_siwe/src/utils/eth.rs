@@ -117,24 +117,58 @@ fn derive_eth_address_from_public_key(
     hasher.finalize(&mut keccak256);
 
     let keccak256_hex = hex::encode(keccak256);
-    Ok(convert_to_eip55(&keccak256_hex[24..]))
+    Ok(convert_to_eip55(&keccak256_hex[24..]).unwrap())
 }
 
-/// Converts an Ethereum address into EIP-55 format.
-fn convert_to_eip55(addr: &str) -> String {
-    let mut keccak256 = [0; 32];
-    let mut hasher = Keccak::v256();
-    hasher.update(addr.as_bytes());
-    hasher.finalize(&mut keccak256);
+/// Converts an Ethereum address to EIP-55 format.
+fn convert_to_eip55(addr: &str) -> Result<String, String> {
+    let addr_trimmed = if addr.starts_with("0x") {
+        &addr[2..]
+    } else {
+        addr
+    };
 
-    "0x".chars()
-        .chain(addr.chars().enumerate().map(|(i, c)| {
-            match (c, keccak256[i >> 1] & if i % 2 == 0 { 128 } else { 8 } != 0) {
-                ('a'..='f' | 'A'..='F', true) => c.to_ascii_uppercase(),
-                _ => c.to_ascii_lowercase(),
-            }
-        }))
-        .collect()
+    let addr_lowercase = addr_trimmed.to_lowercase();
+
+    // Compute Keccak-256 hash of the lowercase address
+    let mut hash = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(addr_lowercase.as_bytes());
+    hasher.finalize(&mut hash);
+
+    // Iterate over each character in the original address
+    let checksummed_addr = addr_trimmed
+        .char_indices()
+        .map(|(i, c)| {
+            let result = match c {
+                '0'..='9' => c.to_string(), // Keep digits as is
+                'a'..='f' | 'A'..='F' => {
+                    // Extract the corresponding nibble from the hash
+                    let hash_nibble = if i % 2 == 0 {
+                        (hash[i / 2] >> 4) & 0x0f
+                    } else {
+                        hash[i / 2] & 0x0f
+                    };
+
+                    // Uppercase if the nibble is 8 or more
+                    if hash_nibble >= 8 {
+                        c.to_ascii_uppercase().to_string()
+                    } else {
+                        c.to_ascii_lowercase().to_string()
+                    }
+                }
+                _ => {
+                    return Err(format!(
+                        "Unrecognized hex character '{}' at position {}",
+                        c, i
+                    ));
+                }
+            };
+            Ok(result)
+        })
+        .collect::<Result<String, String>>()?;
+
+    Ok(format!("0x{}", checksummed_addr))
 }
 
 /// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding.
@@ -147,10 +181,7 @@ pub(crate) fn validate_eth_address(address: &str) -> Result<(), String> {
 
     hex::decode(&address[2..]).map_err(|_| "Invalid Ethereum address: Hex decoding failed")?;
 
-    println!("address: {}", address);
-    println!("address: {}", convert_to_eip55(address));
-
-    if address != convert_to_eip55(address) {
+    if address != convert_to_eip55(address).unwrap() {
         return Err(String::from("Invalid Ethereum address: Not EIP-55 encoded"));
     }
 
