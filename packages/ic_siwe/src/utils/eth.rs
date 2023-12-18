@@ -147,6 +147,9 @@ pub(crate) fn validate_eth_address(address: &str) -> Result<(), String> {
 
     hex::decode(&address[2..]).map_err(|_| "Invalid Ethereum address: Hex decoding failed")?;
 
+    println!("address: {}", address);
+    println!("address: {}", convert_to_eip55(address));
+
     if address != convert_to_eip55(address) {
         return Err(String::from("Invalid Ethereum address: Not EIP-55 encoded"));
     }
