@@ -134,19 +134,6 @@ fn siwe_init(settings: Settings) {
     ic_siwe::init(builder.build().unwrap()).unwrap();
 }
 
-// fn siwe_init(settings: Settings) {
-//     ic_siwe::init(
-//         ic_siwe::SettingsBuilder::new("127.0.0.1", "http://127.0.0.1:5173", "salt")
-//             .scheme("http")
-//             .statement("Login to the app")
-//             .sign_in_expires_in(Duration::from_secs(60 * 5).as_nanos() as u64) // 5 minutes
-//             .session_expires_in(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64) // 1 week
-//             .build()
-//             .unwrap(),
-//     )
-//     .unwrap();
-// }
-
 // The siwe_init function is called when the canister is created to initialize the SIWE library.
 #[init]
 fn init(settings: Settings) {
@@ -161,6 +148,8 @@ fn upgrade(settings: Settings) {
 
 #[cfg(test)]
 mod tests {
+
+    use std::time::Duration;
 
     use candid::{decode_one, encode_one, CandidType, Principal};
     use pocket_ic::{PocketIc, WasmResult};
@@ -182,13 +171,13 @@ mod tests {
 
         let settings = Settings {
             domain: "127.0.0.1".to_string(),
-            uri: "http://127.0.0.1:9999".to_string(),
+            uri: "http://127.0.0.1:5173".to_string(),
             salt: "dummy salt".to_string(),
-            chain_id: None,
-            scheme: None,
-            statement: None,
-            sign_in_expires_in: None,
-            session_expires_in: None,
+            chain_id: Some(10),
+            scheme: Some("http".to_string()),
+            statement: Some("Login to the app".to_string()),
+            sign_in_expires_in: Some(Duration::from_secs(60 * 5).as_nanos() as u64), // 5 minutes
+            session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64), // 1 week
         };
 
         let arg = encode_one(settings).unwrap();
@@ -219,11 +208,37 @@ mod tests {
     }
 
     #[test]
-    fn test_prepare_login() {
+    fn test_prepare_login_invalid_address() {
+        let (ic, canister) = init();
+        let address = encode_one("invalid address").unwrap();
+        let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        assert_eq!(
+            response.unwrap_err(),
+            "Invalid Ethereum address: Must start with '0x' and be 42 characters long"
+        );
+    }
+
+    #[test]
+    fn test_prepare_login_none_eip55_address() {
+        let (ic, canister) = init();
+        let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
+        let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        assert_eq!(
+            response.unwrap_err(),
+            "Invalid Ethereum address: Not EIP-55 encoded"
+        );
+    }
+
+    #[test]
+    fn test_prepare_login_ok() {
         let (ic, canister) = init();
         let address = encode_one(VALID_ADDRESS).unwrap();
         let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        assert!(response.is_ok());
         let siwe_message: Message = response.unwrap().parse().unwrap();
-        println!("RESPONSE: {:?}", siwe_message);
+        assert_eq!(
+            siwe_message.address,
+            hex::decode(&VALID_ADDRESS[2..]).unwrap().as_slice()
+        );
     }
 }

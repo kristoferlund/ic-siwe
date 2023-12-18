@@ -18,3 +18,5 @@ serde_bytes = "0.11"
 [dev-dependencies]
 pocket-ic = "2.0.1"
 siwe = "0.6"
+hex = "0.4.3"
+
