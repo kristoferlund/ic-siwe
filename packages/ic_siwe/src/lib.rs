@@ -3,7 +3,7 @@ mod init;
 mod login;
 mod prepare_login;
 mod types;
-mod utils;
+pub mod utils;
 
 pub use get_delegation::get_delegation;
 pub use init::init;
