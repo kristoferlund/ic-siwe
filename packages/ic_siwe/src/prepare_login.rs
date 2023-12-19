@@ -2,16 +2,14 @@ use crate::{
     types::siwe_message::SiweMessage,
     utils::{
         eth::validate_eth_address,
-        siwe::{add_siwe_message, create_siwe_message, prune_expired_siwe_messages},
+        siwe::{add_siwe_message, create_siwe_message},
     },
 };
 
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
-    validate_eth_address(&address)?;
+    validate_eth_address(address)?;
 
-    prune_expired_siwe_messages();
-
-    let message = create_siwe_message(&address)?;
+    let message = create_siwe_message(address)?;
 
     add_siwe_message(message.clone());
 

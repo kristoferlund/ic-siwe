@@ -19,4 +19,6 @@ serde_bytes = "0.11"
 pocket-ic = "2.0.1"
 siwe = "0.6"
 hex = "0.4.3"
+ethers = "2.0.10"
+rand = "0.8.4"
 
