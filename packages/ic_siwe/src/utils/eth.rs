@@ -73,6 +73,18 @@ pub(crate) fn recover_eth_address(
     Ok(address)
 }
 
+pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, hex::FromHexError> {
+    // Strip the '0x' prefix if present
+    let addr_trimmed = if addr.starts_with("0x") {
+        addr.strip_prefix("0x").unwrap()
+    } else {
+        addr
+    };
+
+    // Decode the hexadecimal string to bytes
+    hex::decode(addr_trimmed)
+}
+
 /// Decodes a hex-encoded signature.
 fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
     validate_eth_signature(signature).or_else(|_| Err(SignatureRecoveryError::InvalidSignature))?;
