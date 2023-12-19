@@ -46,7 +46,7 @@ pub(crate) fn calculate_seed(address: &str) -> Hash {
 
     let salt = settings.salt.as_bytes();
     blob.push(salt.len() as u8);
-    blob.extend_from_slice(&salt);
+    blob.extend_from_slice(salt);
 
     let address = address.as_bytes();
     blob.push(address.len() as u8);
@@ -64,7 +64,7 @@ pub(crate) fn prune_expired_signatures(
     signature_map: &mut SignatureMap,
 ) {
     const MAX_SIGS_TO_PRUNE: usize = 10;
-    let num_pruned = signature_map.prune_expired(get_current_time() as u64, MAX_SIGS_TO_PRUNE);
+    let num_pruned = signature_map.prune_expired(get_current_time(), MAX_SIGS_TO_PRUNE);
 
     if num_pruned > 0 {
         update_root_hash(asset_hashes, signature_map);
@@ -83,8 +83,7 @@ pub(crate) fn add_signature(
         targets: None,
     });
 
-    let signature_expires_at =
-        (get_current_time() as u64).saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
+    let signature_expires_at = get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
 
     signature_map.put(
         hash::hash_bytes(seed),

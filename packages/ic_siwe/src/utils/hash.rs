@@ -32,7 +32,7 @@ pub fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
 /// Computes a hash with a domain separator.
 pub fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
     let mut hasher = Sha256::new();
-    hasher.update(&[sep.len() as u8]);
+    hasher.update([sep.len() as u8]);
     hasher.update(sep);
     hasher.update(bytes);
     hasher.finalize().into()

@@ -87,21 +87,15 @@ pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, hex::FromHexError> {
 
 /// Decodes a hex-encoded signature.
 fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
-    validate_eth_signature(signature).or_else(|_| Err(SignatureRecoveryError::InvalidSignature))?;
+    validate_eth_signature(signature).map_err(|_| SignatureRecoveryError::InvalidSignature)?;
 
     let signature = if signature.starts_with("0x") {
-        &signature[2..]
+        signature.strip_prefix("0x").unwrap()
     } else {
         signature
     };
 
-    hex::decode(signature)
-        .map_err(|err| SignatureRecoveryError::DecodingError(err))
-        .and_then(|bytes| {
-            bytes
-                .try_into()
-                .map_err(|_| SignatureRecoveryError::InvalidSignatureLength)
-        })
+    hex::decode(signature).map_err(SignatureRecoveryError::DecodingError)
 }
 
 /// Hashes a message using the EIP-191 standard.
@@ -135,7 +129,7 @@ fn derive_eth_address_from_public_key(
 /// Converts an Ethereum address to EIP-55 format.
 fn convert_to_eip55(addr: &str) -> Result<String, String> {
     let addr_trimmed = if addr.starts_with("0x") {
-        &addr[2..]
+        addr.strip_prefix("0x").unwrap()
     } else {
         addr
     };

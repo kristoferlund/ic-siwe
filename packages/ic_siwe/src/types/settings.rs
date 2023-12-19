@@ -159,7 +159,7 @@ fn validate_scheme(scheme: &str) -> Result<String, String> {
 }
 
 fn validate_statement(statement: &str) -> Result<String, String> {
-    if statement.contains("\n") {
+    if statement.contains('\n') {
         return Err(String::from("Invalid statement"));
     }
     Ok(statement.to_string())

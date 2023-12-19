@@ -50,7 +50,6 @@ pub fn get_delegation(address: &str, session_key: ByteBuf) -> Result<SignedDeleg
             },
             signature: ByteBuf::from(signature),
         })
-        .map_err(|err| err)
     })
 }
 
@@ -69,8 +68,8 @@ fn handle_witness<'a>(
     if witness_hash != root_hash {
         trap(&format!(
             "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
-            hex::encode(&witness_hash),
-            hex::encode(&root_hash)
+            hex::encode(witness_hash),
+            hex::encode(root_hash)
         ));
     }
 
@@ -79,7 +78,7 @@ fn handle_witness<'a>(
             LABEL_ASSETS,
             &asset_hashes.root_hash(),
         )),
-        ic_certified_map::labeled(&LABEL_SIG[..], witness),
+        ic_certified_map::labeled(LABEL_SIG, witness),
     )
 }
 

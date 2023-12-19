@@ -48,14 +48,14 @@ impl SiweMessage {
 /// # Returns
 ///
 /// A string representation of the SIWE message in the ERC-4361 format.
-impl Into<String> for SiweMessage {
-    fn into(self) -> String {
+impl From<SiweMessage> for String {
+    fn from(val: SiweMessage) -> Self {
         let issued_at_datetime =
-            OffsetDateTime::from_unix_timestamp_nanos(self.issued_at as i128).unwrap();
+            OffsetDateTime::from_unix_timestamp_nanos(val.issued_at as i128).unwrap();
         let issued_at_iso_8601 = issued_at_datetime.format(&Rfc3339).unwrap();
 
         let expiration_datetime =
-            OffsetDateTime::from_unix_timestamp_nanos(self.expiration_time as i128).unwrap();
+            OffsetDateTime::from_unix_timestamp_nanos(val.expiration_time as i128).unwrap();
         let expiration_iso_8601 = expiration_datetime.format(&Rfc3339).unwrap();
 
         format!(
@@ -68,13 +68,13 @@ impl Into<String> for SiweMessage {
                 Nonce: {nonce}\n\
                 Issued At: {issued_at_iso_8601}\n\
                 Expiration Time: {expiration_iso_8601}",
-            domain = self.domain,
-            address = self.address,
-            statement = self.statement,
-            uri = self.uri,
-            version = self.version,
-            chain_id = self.chain_id,
-            nonce = self.nonce,
+            domain = val.domain,
+            address = val.address,
+            statement = val.statement,
+            uri = val.uri,
+            version = val.version,
+            chain_id = val.chain_id,
+            nonce = val.nonce,
         )
     }
 }
