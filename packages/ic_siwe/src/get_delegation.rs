@@ -1,7 +1,6 @@
 use crate::{
     types::{
         delegation::{Delegation, SignedDelegation},
-        settings::get_settings,
         signature_map::SignatureMap,
         state::AssetHashes,
     },
@@ -9,7 +8,6 @@ use crate::{
         delegation::{calculate_seed, delegation_hash, LABEL_ASSETS, LABEL_SIG},
         eth::validate_eth_address,
         hash,
-        siwe::get_siwe_message,
     },
     STATE,
 };
@@ -24,14 +22,13 @@ struct CertificateSignature<'a> {
     tree: HashTree<'a>,
 }
 
-pub fn get_delegation(address: &str, session_key: ByteBuf) -> Result<SignedDelegation, String> {
+pub fn get_delegation(
+    address: &str,
+    session_key: ByteBuf,
+    expiration: u64,
+) -> Result<SignedDelegation, String> {
     validate_eth_address(address)?;
 
-    let message = get_siwe_message(address)?;
-    let settings = get_settings()?;
-    let expiration = message
-        .issued_at
-        .saturating_add(settings.session_expires_in);
     let seed = calculate_seed(address);
 
     STATE.with(|state| {

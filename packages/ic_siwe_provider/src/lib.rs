@@ -2,6 +2,9 @@
 
 use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade, query, update};
+use ic_siwe::login::LoginOkResponse;
+use ic_siwe::types::delegation::SignedDelegation;
+use ic_siwe::types::settings::SettingsBuilder;
 use ic_siwe::utils::eth::eth_address_to_bytes;
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::storable::Blob;
@@ -62,6 +65,16 @@ fn get_address(principal: ByteBuf) -> Result<ByteBuf, String> {
     })
 }
 
+// Once logged in, the user can fetch the delegation to be used for authentication.
+#[query]
+fn get_delegation(
+    address: String,
+    session_key: ByteBuf,
+    expiration: u64,
+) -> Result<SignedDelegation, String> {
+    ic_siwe::get_delegation(&address, session_key, expiration)
+}
+
 // Login the user by verifying the signature of the SIWE message. If the signature is valid, the
 // public key is returned. In this step, the delegation is also prepared to be fetched in the next
 // step.
@@ -70,12 +83,13 @@ fn login(
     signature: String,
     address: String,
     session_key: PublicKey,
-) -> Result<CanisterPublicKey, String> {
+) -> Result<LoginOkResponse, String> {
     match ic_siwe::login(&signature, &address, session_key) {
-        Ok(pk) => {
-            let principal: Blob<29> = Principal::self_authenticating(&pk).as_slice()[..29]
-                .try_into()
-                .map_err(|_| format!("Invalid principal: {:?}", pk))?;
+        Ok(response) => {
+            let principal: Blob<29> =
+                Principal::self_authenticating(&response.user_canister_pubkey).as_slice()[..29]
+                    .try_into()
+                    .map_err(|_| format!("Invalid principal: {:?}", response))?;
 
             let address: [u8; 20] = eth_address_to_bytes(&address)
                 .map_err(|_| format!("Invalid Ethereum address: {}", address))?
@@ -90,7 +104,7 @@ fn login(
                 ap.insert(address, principal);
             });
 
-            Ok(pk)
+            Ok(response)
         }
         Err(e) => Err(e.to_string()),
     }
@@ -115,8 +129,7 @@ pub struct Settings {
 }
 
 fn siwe_init(settings: Settings) {
-    let mut builder =
-        ic_siwe::SettingsBuilder::new(&settings.domain, &settings.uri, &settings.salt);
+    let mut builder = SettingsBuilder::new(&settings.domain, &settings.uri, &settings.salt);
 
     // Optional fields
     if let Some(chain_id) = settings.chain_id {
@@ -162,7 +175,10 @@ mod tests {
         signers::{LocalWallet, Signer, Wallet},
         utils::{hash_message, to_checksum},
     };
+    use ic_agent::{identity::BasicIdentity, Identity};
+    use ic_siwe::{login::LoginOkResponse, types::delegation::SignedDelegation};
     use pocket_ic::{PocketIc, WasmResult};
+    use rand::Rng;
     use serde::Deserialize;
     use siwe::Message;
 
@@ -213,6 +229,19 @@ mod tests {
         args: Vec<u8>,
     ) -> Result<T, String> {
         match ic.update_call(canister, Principal::anonymous(), method, args) {
+            Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
+            Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
+            Err(user_error) => Err(user_error.to_string()),
+        }
+    }
+
+    fn query<T: CandidType + for<'de> Deserialize<'de>>(
+        ic: &PocketIc,
+        canister: Principal,
+        method: &str,
+        args: Vec<u8>,
+    ) -> Result<T, String> {
+        match ic.query_call(canister, Principal::anonymous(), method, args) {
             Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
             Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
             Err(user_error) => Err(user_error.to_string()),
@@ -279,7 +308,7 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xTOO-SHORT";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -291,7 +320,7 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -303,7 +332,7 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Hex decoding failed"
@@ -319,7 +348,7 @@ mod tests {
         ic.advance_time(Duration::from_secs(10));
 
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Message not found for the given address"
@@ -333,7 +362,7 @@ mod tests {
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap(); // Wrong address
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Message not found for the given address"
@@ -348,7 +377,7 @@ mod tests {
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
         let args = encode_args((manipulated_signature, address, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert_eq!(response.unwrap_err(), "Signature verification failed");
     }
 
@@ -358,8 +387,9 @@ mod tests {
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
         assert!(response.is_ok());
+        assert!(response.unwrap().user_canister_pubkey.len() == 62);
     }
 
     #[test]
@@ -368,7 +398,7 @@ mod tests {
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-        let response: Result<CanisterPublicKey, String> =
+        let response: Result<LoginOkResponse, String> =
             update(&ic, canister, "login", args.clone());
         assert!(response.is_ok());
 
@@ -379,5 +409,32 @@ mod tests {
             second_response.unwrap_err(),
             "Message not found for the given address"
         );
+    }
+
+    #[test]
+    fn test_sign_in_get_delegation_ok() {
+        let (ic, canister) = init();
+        let (wallet, address) = create_wallet();
+        let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+        let mut ed25519_seed = [0u8; 32];
+        rand::thread_rng().fill(&mut ed25519_seed);
+        let ed25519_keypair =
+            ring::signature::Ed25519KeyPair::from_seed_unchecked(&ed25519_seed).unwrap();
+        let session_identity = BasicIdentity::from_key_pair(ed25519_keypair);
+        let session_key = session_identity.public_key().unwrap();
+        let login_args = encode_args((signature, address.clone(), session_key.clone())).unwrap();
+        let login_response: Result<LoginOkResponse, String> =
+            update(&ic, canister, "login", login_args);
+        assert!(login_response.is_ok());
+        let login_response = login_response.unwrap();
+        let get_delegation_args =
+            encode_args((address, session_key, login_response.expiration)).unwrap();
+        let get_delegation_response: Result<SignedDelegation, String> =
+            query(&ic, canister, "get_delegation", get_delegation_args);
+
+        assert!(get_delegation_response.is_ok());
+        println!("{:?}", get_delegation_response.unwrap());
+
+        // TBC
     }
 }

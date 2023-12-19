@@ -11,8 +11,13 @@ type PrepareLoginResponse = variant {
   Err : text;
 };
 
+type LoginOkResponse = record {
+  expiration : Timestamp;
+  user_canister_pubkey : CanisterPublicKey;
+};
+
 type LoginResponse = variant {
-  Ok : CanisterPublicKey;
+  Ok : LoginOkResponse;
   Err : text;
 };
 
@@ -35,5 +40,5 @@ type GetDelegationResponse = variant {
 service : {
   "prepare_login" : (Address) -> (PrepareLoginResponse);
   "login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
-  "get_delegation" : (Address, SessionKey) -> (GetDelegationResponse) query;
+  "get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
 };

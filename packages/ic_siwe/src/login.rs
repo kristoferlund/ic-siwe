@@ -1,12 +1,27 @@
+use candid::CandidType;
+use serde::Deserialize;
 use serde_bytes::ByteBuf;
 
-use crate::utils::{
-    delegation::prepare_delegation,
-    eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
-    siwe::{get_siwe_message, prune_expired_siwe_messages, remove_siwe_message},
+use crate::{
+    types::settings::get_settings,
+    utils::{
+        delegation::prepare_delegation,
+        eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
+        siwe::{get_siwe_message, prune_expired_siwe_messages, remove_siwe_message},
+    },
 };
 
-pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<ByteBuf, String> {
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct LoginOkResponse {
+    pub expiration: u64,
+    pub user_canister_pubkey: ByteBuf,
+}
+
+pub fn login(
+    signature: &str,
+    address: &str,
+    session_key: ByteBuf,
+) -> Result<LoginOkResponse, String> {
     validate_eth_signature(signature)?;
     validate_eth_address(address)?;
 
@@ -20,7 +35,17 @@ pub fn login(signature: &str, address: &str, session_key: ByteBuf) -> Result<Byt
         return Err(String::from("Signature verification failed"));
     }
 
+    let settings = get_settings()?;
+    let expiration = message
+        .issued_at
+        .saturating_add(settings.session_expires_in);
+
+    let user_canister_pubkey = prepare_delegation(address, session_key, &message)?;
+
     remove_siwe_message(address);
 
-    prepare_delegation(address, session_key, &message)
+    Ok(LoginOkResponse {
+        expiration,
+        user_canister_pubkey,
+    })
 }
