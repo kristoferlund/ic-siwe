@@ -199,3 +199,36 @@ pub(crate) fn validate_eth_signature(signature: &str) -> Result<(), String> {
     hex::decode(&signature[2..]).map_err(|_| "Invalid signature: Hex decoding failed")?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::eth::{convert_to_eip55, validate_eth_address};
+
+    #[test]
+    fn test_eip55_invalid_address() {
+        let invalid_address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed";
+        let result = validate_eth_address(invalid_address);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err(),
+            "Invalid Ethereum address: Not EIP-55 encoded"
+        );
+    }
+
+    #[test]
+    fn test_eip55_valid_non_eip55_address() {
+        let valid_address = "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359";
+        let valid_address_eip55 = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
+        let result = convert_to_eip55(valid_address);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), valid_address_eip55);
+    }
+
+    #[test]
+    fn test_eip55_valid_eip55_address() {
+        let valid_address_eip55 = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
+        let result = convert_to_eip55(valid_address_eip55);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), valid_address_eip55);
+    }
+}
