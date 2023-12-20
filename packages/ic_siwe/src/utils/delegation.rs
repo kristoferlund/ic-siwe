@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::hash::{self, Value};
-use crate::types::delegation::Delegation;
+use crate::types::delegation::DelegationCandidType;
 use crate::types::siwe_message::SiweMessage;
 use crate::STATE;
 use crate::{
@@ -77,7 +77,7 @@ pub(crate) fn add_signature(
     seed: Hash,
     expiration: u64,
 ) {
-    let delegation_hash = delegation_hash(&Delegation {
+    let delegation_hash = delegation_hash(&DelegationCandidType {
         pubkey: session_key,
         expiration,
         targets: None,
@@ -92,7 +92,7 @@ pub(crate) fn add_signature(
     );
 }
 
-pub(crate) fn delegation_hash(delegation: &Delegation) -> Hash {
+pub(crate) fn delegation_hash(delegation: &DelegationCandidType) -> Hash {
     let mut delegation_map = HashMap::new();
     delegation_map.insert("pubkey", Value::Bytes(&delegation.pubkey));
     delegation_map.insert("expiration", Value::U64(delegation.expiration));

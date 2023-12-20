@@ -3,9 +3,9 @@
 use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade, query, update};
 use ic_siwe::login::LoginOkResponse;
-use ic_siwe::types::delegation::SignedDelegation;
+use ic_siwe::types::delegation::SignedDelegationCandidType;
 use ic_siwe::types::settings::SettingsBuilder;
-use ic_siwe::utils::eth::eth_address_to_bytes;
+use ic_siwe::utils::eth::{bytes_to_eth_address, convert_to_eip55, eth_address_to_bytes};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::storable::Blob;
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
@@ -40,29 +40,40 @@ thread_local! {
 
 #[query]
 fn get_principal(address: String) -> Result<ByteBuf, String> {
+    let address: [u8; 20] = eth_address_to_bytes(&address)
+        .map_err(|_| format!("Invalid Ethereum address: {}", address))?
+        .try_into()
+        .map_err(|_| format!("Invalid Ethereum address: {}", address))?;
+
     ADDRESS_PRINCIPAL.with(|ap| {
-        ap.borrow()
-            .get(&address.as_bytes().try_into().unwrap())
-            .map_or(
-                Err("No principal found for the given address".to_string()),
-                |p| Ok(ByteBuf::from(p.as_ref().to_vec())),
-            )
+        ap.borrow().get(&address).map_or(
+            Err("No principal found for the given address".to_string()),
+            |p| Ok(ByteBuf::from(p.as_ref().to_vec())),
+        )
     })
 }
 
 #[query]
-fn get_address(principal: ByteBuf) -> Result<ByteBuf, String> {
-    let principal: Blob<29> = Principal::self_authenticating(principal).as_slice()[..29]
+fn get_address(principal: ByteBuf) -> Result<String, String> {
+    let principal: Blob<29> = principal
+        .as_ref()
         .try_into()
-        .unwrap();
+        .map_err(|_| "Failed to convert ByteBuf to Blob<29>")?;
 
-    // Perform the lookup
-    PRINCIPAL_ADDRESS.with(|pa| {
+    let address = PRINCIPAL_ADDRESS.with(|pa| {
         pa.borrow().get(&principal).map_or(
             Err("No address found for the given principal".to_string()),
-            |a| Ok(ByteBuf::from(a.to_vec())),
+            |a| Ok(bytes_to_eth_address(&a)),
         )
-    })
+    })?;
+
+    convert_to_eip55(&address)
+}
+
+#[query]
+fn caller_address() -> Result<String, String> {
+    let principal = ic_cdk::caller();
+    get_address(ByteBuf::from(principal.as_slice().to_vec()))
 }
 
 // Once logged in, the user can fetch the delegation to be used for authentication.
@@ -71,7 +82,7 @@ fn get_delegation(
     address: String,
     session_key: ByteBuf,
     expiration: u64,
-) -> Result<SignedDelegation, String> {
+) -> Result<SignedDelegationCandidType, String> {
     ic_siwe::get_delegation(&address, session_key, expiration)
 }
 
@@ -175,11 +186,15 @@ mod tests {
         signers::{LocalWallet, Signer, Wallet},
         utils::{hash_message, to_checksum},
     };
-    use ic_agent::{identity::BasicIdentity, Identity};
-    use ic_siwe::{login::LoginOkResponse, types::delegation::SignedDelegation};
+    use ic_agent::{
+        identity::{BasicIdentity, DelegatedIdentity, Delegation, SignedDelegation},
+        Identity,
+    };
+    use ic_siwe::{login::LoginOkResponse, types::delegation::SignedDelegationCandidType};
     use pocket_ic::{PocketIc, WasmResult};
     use rand::Rng;
     use serde::Deserialize;
+    use serde_bytes::ByteBuf;
     use siwe::Message;
 
     use crate::{CanisterPublicKey, Settings};
@@ -224,11 +239,12 @@ mod tests {
 
     fn update<T: CandidType + for<'de> Deserialize<'de>>(
         ic: &PocketIc,
+        sender: Principal,
         canister: Principal,
         method: &str,
         args: Vec<u8>,
     ) -> Result<T, String> {
-        match ic.update_call(canister, Principal::anonymous(), method, args) {
+        match ic.update_call(canister, sender, method, args) {
             Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
             Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
             Err(user_error) => Err(user_error.to_string()),
@@ -237,11 +253,12 @@ mod tests {
 
     fn query<T: CandidType + for<'de> Deserialize<'de>>(
         ic: &PocketIc,
+        sender: Principal,
         canister: Principal,
         method: &str,
         args: Vec<u8>,
     ) -> Result<T, String> {
-        match ic.query_call(canister, Principal::anonymous(), method, args) {
+        match ic.query_call(canister, sender, method, args) {
             Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
             Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
             Err(user_error) => Err(user_error.to_string()),
@@ -262,7 +279,8 @@ mod tests {
         address: &str,
     ) -> (String, String) {
         let args = encode_one(address).unwrap();
-        let siwe_message: String = update(ic, canister, "prepare_login", args).unwrap();
+        let siwe_message: String =
+            update(ic, Principal::anonymous(), canister, "prepare_login", args).unwrap();
         let hash = hash_message(siwe_message.as_bytes());
         let signature = wallet.sign_hash(hash).unwrap().to_string();
         (format!("0x{}", signature.as_str()), siwe_message)
@@ -272,7 +290,13 @@ mod tests {
     fn test_prepare_login_invalid_address() {
         let (ic, canister) = init();
         let address = encode_one("invalid address").unwrap();
-        let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        let response: Result<String, String> = update(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "prepare_login",
+            address,
+        );
         assert_eq!(
             response.unwrap_err(),
             "Invalid Ethereum address: Must start with '0x' and be 42 characters long"
@@ -283,7 +307,13 @@ mod tests {
     fn test_prepare_login_none_eip55_address() {
         let (ic, canister) = init();
         let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
-        let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        let response: Result<String, String> = update(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "prepare_login",
+            address,
+        );
         assert_eq!(
             response.unwrap_err(),
             "Invalid Ethereum address: Not EIP-55 encoded"
@@ -294,7 +324,13 @@ mod tests {
     fn test_prepare_login_ok() {
         let (ic, canister) = init();
         let address = encode_one(VALID_ADDRESS).unwrap();
-        let response: Result<String, String> = update(&ic, canister, "prepare_login", address);
+        let response: Result<String, String> = update(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "prepare_login",
+            address,
+        );
         assert!(response.is_ok());
         let siwe_message: Message = response.unwrap().parse().unwrap();
         assert_eq!(
@@ -308,7 +344,8 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xTOO-SHORT";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -320,7 +357,8 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -332,7 +370,8 @@ mod tests {
         let (ic, canister) = init();
         let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Invalid signature: Hex decoding failed"
@@ -348,7 +387,8 @@ mod tests {
         ic.advance_time(Duration::from_secs(10));
 
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Message not found for the given address"
@@ -362,7 +402,8 @@ mod tests {
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap(); // Wrong address
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             response.unwrap_err(),
             "Message not found for the given address"
@@ -377,7 +418,8 @@ mod tests {
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
         let args = encode_args((manipulated_signature, address, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(response.unwrap_err(), "Signature verification failed");
     }
 
@@ -387,7 +429,8 @@ mod tests {
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-        let response: Result<LoginOkResponse, String> = update(&ic, canister, "login", args);
+        let response: Result<LoginOkResponse, String> =
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert!(response.is_ok());
         assert!(response.unwrap().user_canister_pubkey.len() == 62);
     }
@@ -399,12 +442,12 @@ mod tests {
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
         let args = encode_args((signature, address, SESSION_KEY)).unwrap();
         let response: Result<LoginOkResponse, String> =
-            update(&ic, canister, "login", args.clone());
+            update(&ic, Principal::anonymous(), canister, "login", args.clone());
         assert!(response.is_ok());
 
         // Use the same signature again
         let second_response: Result<CanisterPublicKey, String> =
-            update(&ic, canister, "login", args);
+            update(&ic, Principal::anonymous(), canister, "login", args);
         assert_eq!(
             second_response.unwrap_err(),
             "Message not found for the given address"
@@ -416,25 +459,99 @@ mod tests {
         let (ic, canister) = init();
         let (wallet, address) = create_wallet();
         let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+
+        // Create a session identity
         let mut ed25519_seed = [0u8; 32];
         rand::thread_rng().fill(&mut ed25519_seed);
         let ed25519_keypair =
             ring::signature::Ed25519KeyPair::from_seed_unchecked(&ed25519_seed).unwrap();
         let session_identity = BasicIdentity::from_key_pair(ed25519_keypair);
-        let session_key = session_identity.public_key().unwrap();
-        let login_args = encode_args((signature, address.clone(), session_key.clone())).unwrap();
+        let session_pubkey = session_identity.public_key().unwrap();
+
+        // Login
+        let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
         let login_response: Result<LoginOkResponse, String> =
-            update(&ic, canister, "login", login_args);
+            update(&ic, Principal::anonymous(), canister, "login", login_args);
+
+        // Loin response, all good?
         assert!(login_response.is_ok());
         let login_response = login_response.unwrap();
-        let get_delegation_args =
-            encode_args((address, session_key, login_response.expiration)).unwrap();
-        let get_delegation_response: Result<SignedDelegation, String> =
-            query(&ic, canister, "get_delegation", get_delegation_args);
 
+        // Get the delegation
+        let get_delegation_args = encode_args((
+            address.clone(),
+            session_pubkey.clone(),
+            login_response.expiration,
+        ))
+        .unwrap();
+        let get_delegation_response: Result<SignedDelegationCandidType, String> = query(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "get_delegation",
+            get_delegation_args,
+        );
+
+        // Get delegation response, all good?
         assert!(get_delegation_response.is_ok());
-        println!("{:?}", get_delegation_response.unwrap());
+        let get_delegation_response = get_delegation_response.unwrap();
 
-        // TBC
+        // Create a delegated identity
+        let signed_delegation = SignedDelegation {
+            delegation: Delegation {
+                pubkey: session_pubkey,
+                expiration: login_response.expiration,
+                targets: None,
+                senders: None,
+            },
+            signature: get_delegation_response.signature.as_ref().to_vec(),
+        };
+        let delegated_identity = DelegatedIdentity::new(
+            login_response.user_canister_pubkey.to_vec(),
+            Box::new(session_identity),
+            vec![signed_delegation],
+        );
+
+        // Use the delegated identity to call the canister. Caller address should be the same as the
+        // address generated by `create_wallet`.
+        let caller_address_response: Result<String, String> = query(
+            &ic,
+            delegated_identity.sender().unwrap(),
+            canister,
+            "caller_address",
+            encode_one(()).unwrap(),
+        );
+
+        assert!(caller_address_response.is_ok());
+        assert_eq!(caller_address_response.unwrap(), address);
+
+        // Make an anonymous call to the canister to get the address of the delegate identity. This should
+        // be the same as the address generated by `create_wallet`.
+        let get_address_response: Result<String, String> = query(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "get_address",
+            encode_one(delegated_identity.sender().unwrap().as_slice()).unwrap(),
+        );
+
+        assert!(get_address_response.is_ok());
+        assert_eq!(get_address_response.unwrap(), address);
+
+        // Make an anonymous call to the canister to get the principal of the delegate identity. This should
+        // be the same as the principal represented by the delegate identity.
+        let get_principal_response: Result<ByteBuf, String> = query(
+            &ic,
+            Principal::anonymous(),
+            canister,
+            "get_principal",
+            encode_one(address).unwrap(),
+        );
+
+        assert!(get_principal_response.is_ok());
+        assert_eq!(
+            get_principal_response.unwrap(),
+            delegated_identity.sender().unwrap().as_slice()
+        );
     }
 }

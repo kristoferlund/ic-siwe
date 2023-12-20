@@ -1,6 +1,6 @@
 use crate::{
     types::{
-        delegation::{Delegation, SignedDelegation},
+        delegation::{DelegationCandidType, SignedDelegationCandidType},
         signature_map::SignatureMap,
         state::AssetHashes,
     },
@@ -26,7 +26,7 @@ pub fn get_delegation(
     address: &str,
     session_key: ByteBuf,
     expiration: u64,
-) -> Result<SignedDelegation, String> {
+) -> Result<SignedDelegationCandidType, String> {
     validate_eth_address(address)?;
 
     let seed = calculate_seed(address);
@@ -39,8 +39,8 @@ pub fn get_delegation(
             seed,
             expiration,
         )
-        .map(|signature| SignedDelegation {
-            delegation: Delegation {
+        .map(|signature| SignedDelegationCandidType {
+            delegation: DelegationCandidType {
                 pubkey: session_key,
                 expiration,
                 targets: None,
@@ -109,7 +109,7 @@ fn get_signature(
     let certificate =
         data_certificate().ok_or("get_signature must be called using a QUERY call")?;
 
-    let delegation_hash = delegation_hash(&Delegation {
+    let delegation_hash = delegation_hash(&DelegationCandidType {
         pubkey: session_key.clone(),
         expiration,
         targets: None,
@@ -119,53 +119,3 @@ fn get_signature(
 
     create_certified_signature(certificate, tree)
 }
-
-// fn get_signature(
-//     asset_hashes: &AssetHashes,
-//     signature_map: &SignatureMap,
-//     session_key: ByteBuf,
-//     seed: Hash,
-//     expiration: u64,
-// ) -> Result<Vec<u8>, String> {
-//     let certificate =
-//         data_certificate().ok_or("get_signature must be called using a QUERY call")?;
-
-//     let delegation_hash = delegation_signature_msg_hash(&Delegation {
-//         pubkey: session_key.clone(),
-//         expiration,
-//         targets: None,
-//     });
-
-//     let witness = signature_map
-//         .witness(hash::hash_bytes(seed), delegation_hash)
-//         .ok_or("Signature not found.")?;
-//     let witness_hash = witness.reconstruct();
-//     let root_hash = signature_map.root_hash();
-//     if witness_hash != root_hash {
-//         trap(&format!(
-//             "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
-//             hex::encode(&witness_hash),
-//             hex::encode(&root_hash)
-//         ));
-//     }
-
-//     let tree = ic_certified_map::fork(
-//         HashTree::Pruned(ic_certified_map::labeled_hash(
-//             LABEL_ASSETS,
-//             &asset_hashes.root_hash(),
-//         )),
-//         ic_certified_map::labeled(&LABEL_SIG[..], witness),
-//     );
-
-//     let certificate_signature = CertificateSignature {
-//         certificate: ByteBuf::from(certificate),
-//         tree,
-//     };
-
-//     let mut cbor_serializer = serde_cbor::ser::Serializer::new(Vec::new());
-//     cbor_serializer.self_describe().map_err(|e| e.to_string())?;
-//     certificate_signature
-//         .serialize(&mut cbor_serializer)
-//         .map_err(|e| e.to_string())?;
-//     Ok(cbor_serializer.into_inner())
-// }

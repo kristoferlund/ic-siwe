@@ -53,7 +53,7 @@ impl From<SignatureRecoveryError> for String {
 /// # Returns
 ///
 /// The recovered Ethereum address if successful, or an error.
-pub(crate) fn recover_eth_address(
+pub fn recover_eth_address(
     message: &str,
     signature: &str,
 ) -> Result<String, SignatureRecoveryError> {
@@ -85,8 +85,16 @@ pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, hex::FromHexError> {
     hex::decode(addr_trimmed)
 }
 
+pub fn bytes_to_eth_address(bytes: &[u8]) -> String {
+    // Encode the bytes to a hexadecimal string
+    let addr = hex::encode(bytes);
+
+    // Add the '0x' prefix
+    format!("0x{}", addr)
+}
+
 /// Decodes a hex-encoded signature.
-fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
+pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
     validate_eth_signature(signature).map_err(|_| SignatureRecoveryError::InvalidSignature)?;
 
     let signature = if signature.starts_with("0x") {
@@ -99,7 +107,7 @@ fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> 
 }
 
 /// Hashes a message using the EIP-191 standard.
-fn eip191_hash(message: &str) -> Result<[u8; 32], SignatureRecoveryError> {
+pub fn eip191_hash(message: &str) -> Result<[u8; 32], SignatureRecoveryError> {
     let mut keccak256 = [0; 32];
     let mut hasher = Keccak::v256();
     hasher.update(&eip191_bytes(message)?);
@@ -109,12 +117,12 @@ fn eip191_hash(message: &str) -> Result<[u8; 32], SignatureRecoveryError> {
 }
 
 /// Formats a message according to the EIP-191 standard.
-fn eip191_bytes(message: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
+pub fn eip191_bytes(message: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
     Ok(format!("\x19Ethereum Signed Message:\n{}{}", message.len(), message).into_bytes())
 }
 
 /// Derives an Ethereum address from a public key.
-fn derive_eth_address_from_public_key(
+pub fn derive_eth_address_from_public_key(
     key: &VerifyingKey,
 ) -> Result<String, SignatureRecoveryError> {
     let mut keccak256 = [0; 32];
@@ -127,7 +135,7 @@ fn derive_eth_address_from_public_key(
 }
 
 /// Converts an Ethereum address to EIP-55 format.
-fn convert_to_eip55(addr: &str) -> Result<String, String> {
+pub fn convert_to_eip55(addr: &str) -> Result<String, String> {
     let addr_trimmed = if addr.starts_with("0x") {
         addr.strip_prefix("0x").unwrap()
     } else {
@@ -178,7 +186,7 @@ fn convert_to_eip55(addr: &str) -> Result<String, String> {
 }
 
 /// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding.
-pub(crate) fn validate_eth_address(address: &str) -> Result<(), String> {
+pub fn validate_eth_address(address: &str) -> Result<(), String> {
     if !address.starts_with("0x") || address.len() != 42 {
         return Err(String::from(
             "Invalid Ethereum address: Must start with '0x' and be 42 characters long",
@@ -195,7 +203,7 @@ pub(crate) fn validate_eth_address(address: &str) -> Result<(), String> {
 }
 
 /// Validates an Ethereum signature by checking its length and hex encoding.
-pub(crate) fn validate_eth_signature(signature: &str) -> Result<(), String> {
+pub fn validate_eth_signature(signature: &str) -> Result<(), String> {
     if !signature.starts_with("0x") || signature.len() != 132 {
         return Err(String::from(
             "Invalid signature: Must start with '0x' and be 132 characters long",
