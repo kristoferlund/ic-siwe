@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use super::hash::{self, Value};
 use crate::{
-    settings::get_settings, signature_map::SignatureMap, siwe::SiweMessage, state::AssetHashes,
-    time::get_current_time, STATE,
+    settings::get_settings, signature_map::SignatureMap, siwe::SiweMessage, time::get_current_time,
+    AssetHashes, STATE,
 };
 use ic_cdk::{
     api::{data_certificate, set_certified_data},

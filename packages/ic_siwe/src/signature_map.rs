@@ -48,7 +48,6 @@ impl SignatureMap {
             self.certified_map.insert(seed_hash, submap);
         } else {
             self.certified_map.modify(&seed_hash[..], |submap| {
-                ic_cdk::println!("certified_map modify: {}", hex::encode(delegation_hash));
                 submap.insert(delegation_hash, Unit);
             });
         }
