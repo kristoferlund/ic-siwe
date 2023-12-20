@@ -39,7 +39,7 @@ fn init() -> (PocketIc, Principal) {
     ic.add_cycles(canister_id, 2_000_000_000_000);
 
     let wasm_path: std::ffi::OsString =
-        std::env::var_os("WASM_PATH").expect("Missing counter wasm file");
+        std::env::var_os("IC_SIWE_PROVIDER_PATH").expect("Missing ic_siwe_provider wasm file");
     let wasm_module = std::fs::read(wasm_path).unwrap();
 
     let settings = SettingsInput {
@@ -59,7 +59,7 @@ fn init() -> (PocketIc, Principal) {
 
     ic.install_canister(canister_id, wasm_module, arg.clone(), sender);
 
-    // Fast forward in time to allow the canister to be fully installed.
+    // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
     for _ in 0..5 {
         ic.tick();
     }
@@ -104,13 +104,19 @@ fn create_wallet() -> (ethers::signers::LocalWallet, String) {
 
 fn prepare_login_and_sign_message(
     ic: &PocketIc,
-    canister: Principal,
+    ic_siwe_provider_canister: Principal,
     wallet: Wallet<SigningKey>,
     address: &str,
 ) -> (String, String) {
     let args = encode_one(address).unwrap();
-    let siwe_message: String =
-        update(ic, Principal::anonymous(), canister, "prepare_login", args).unwrap();
+    let siwe_message: String = update(
+        ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "prepare_login",
+        args,
+    )
+    .unwrap();
     let hash = hash_message(siwe_message.as_bytes());
     let signature = wallet.sign_hash(hash).unwrap().to_string();
     (format!("0x{}", signature.as_str()), siwe_message)
@@ -146,9 +152,10 @@ fn create_delegated_identity(
     )
 }
 
-fn full_login(ic: &PocketIc, canister: Principal) -> (String, DelegatedIdentity) {
+fn full_login(ic: &PocketIc, ic_siwe_provider_canister: Principal) -> (String, DelegatedIdentity) {
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
 
     // Create a session identity
     let session_identity = create_session_identity();
@@ -156,8 +163,14 @@ fn full_login(ic: &PocketIc, canister: Principal) -> (String, DelegatedIdentity)
 
     // Login
     let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
-    let login_response: LoginOkResponse =
-        update(ic, Principal::anonymous(), canister, "login", login_args).unwrap();
+    let login_response: LoginOkResponse = update(
+        ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        login_args,
+    )
+    .unwrap();
 
     // Get the delegation
     let get_delegation_args = encode_args((
@@ -169,7 +182,7 @@ fn full_login(ic: &PocketIc, canister: Principal) -> (String, DelegatedIdentity)
     let get_delegation_response: SignedDelegationCandidType = query(
         ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "get_delegation",
         get_delegation_args,
     )
@@ -187,12 +200,12 @@ fn full_login(ic: &PocketIc, canister: Principal) -> (String, DelegatedIdentity)
 
 #[test]
 fn test_prepare_login_invalid_address() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let address = encode_one("invalid address").unwrap();
     let response: Result<String, String> = update(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "prepare_login",
         address,
     );
@@ -204,12 +217,12 @@ fn test_prepare_login_invalid_address() {
 
 #[test]
 fn test_prepare_login_none_eip55_address() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
     let response: Result<String, String> = update(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "prepare_login",
         address,
     );
@@ -221,12 +234,12 @@ fn test_prepare_login_none_eip55_address() {
 
 #[test]
 fn test_prepare_login_ok() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let address = encode_one(VALID_ADDRESS).unwrap();
     let response: Result<String, String> = update(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "prepare_login",
         address,
     );
@@ -240,11 +253,16 @@ fn test_prepare_login_ok() {
 
 #[test]
 fn test_login_signature_too_short() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let signature = "0xTOO-SHORT";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         response.unwrap_err(),
         "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -253,11 +271,16 @@ fn test_login_signature_too_short() {
 
 #[test]
 fn test_login_signature_too_long() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         response.unwrap_err(),
         "Invalid signature: Must start with '0x' and be 132 characters long"
@@ -266,11 +289,16 @@ fn test_login_signature_too_long() {
 
 #[test]
 fn test_incorrect_signature_format() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         response.unwrap_err(),
         "Invalid signature: Hex decoding failed"
@@ -279,15 +307,21 @@ fn test_incorrect_signature_format() {
 
 #[test]
 fn test_sign_in_message_expired() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
 
     ic.advance_time(Duration::from_secs(10));
 
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         response.unwrap_err(),
         "Message not found for the given address"
@@ -297,12 +331,18 @@ fn test_sign_in_message_expired() {
 // A valid signature but with a different address
 #[test]
 fn test_sign_in_address_mismatch() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap(); // Wrong address
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         response.unwrap_err(),
         "Message not found for the given address"
@@ -312,41 +352,64 @@ fn test_sign_in_address_mismatch() {
 // A manilulated signature with the correct address
 #[test]
 fn test_sign_in_signature_manipulated() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
     let args = encode_args((manipulated_signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(response.unwrap_err(), "Signature verification failed");
 }
 
 #[test]
 fn test_sign_in_ok() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert!(response.is_ok());
     assert!(response.unwrap().user_canister_pubkey.len() == 62);
 }
 
 #[test]
 fn test_sign_in_replay_attack() {
-    let (ic, canister) = init();
+    let (ic, ic_siwe_provider_canister) = init();
     let (wallet, address) = create_wallet();
-    let (signature, _) = prepare_login_and_sign_message(&ic, canister, wallet, &address);
+    let (signature, _) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args.clone());
+    let response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args.clone(),
+    );
     assert!(response.is_ok());
 
     // Use the same signature again
-    let second_response: Result<LoginOkResponse, String> =
-        update(&ic, Principal::anonymous(), canister, "login", args);
+    let second_response: Result<LoginOkResponse, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "login",
+        args,
+    );
     assert_eq!(
         second_response.unwrap_err(),
         "Message not found for the given address"
@@ -355,15 +418,15 @@ fn test_sign_in_replay_attack() {
 
 #[test]
 fn test_sign_in_get_delegation_ok() {
-    let (ic, canister) = init();
-    let (address, delegated_identity) = full_login(&ic, canister);
+    let (ic, ic_siwe_provider_canister) = init();
+    let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
 
-    // Use the delegated identity to call the canister. Caller address should be the same as the
+    // Use the delegated identity to call the ic_siwe_provider_canister. Caller address should be the same as the
     // address generated by `create_wallet`.
     let caller_address_response: Result<String, String> = query(
         &ic,
         delegated_identity.sender().unwrap(),
-        canister,
+        ic_siwe_provider_canister,
         "get_caller_address",
         encode_one(()).unwrap(),
     );
@@ -371,12 +434,12 @@ fn test_sign_in_get_delegation_ok() {
     assert!(caller_address_response.is_ok());
     assert_eq!(caller_address_response.unwrap(), address);
 
-    // Make an anonymous call to the canister to get the address of the delegate identity. This should
+    // Make an anonymous call to the ic_siwe_provider_canister to get the address of the delegate identity. This should
     // be the same as the address generated by `create_wallet`.
     let get_address_response: Result<String, String> = query(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "get_address",
         encode_one(delegated_identity.sender().unwrap().as_slice()).unwrap(),
     );
@@ -384,12 +447,12 @@ fn test_sign_in_get_delegation_ok() {
     assert!(get_address_response.is_ok());
     assert_eq!(get_address_response.unwrap(), address);
 
-    // Make an anonymous call to the canister to get the principal of the delegate identity. This should
+    // Make an anonymous call to the ic_siwe_provider_canister to get the principal of the delegate identity. This should
     // be the same as the principal represented by the delegate identity.
     let get_principal_response: Result<ByteBuf, String> = query(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "get_principal",
         encode_one(address).unwrap(),
     );
@@ -403,15 +466,15 @@ fn test_sign_in_get_delegation_ok() {
 
 #[test]
 fn test_sign_in_get_adress_unknown_principal() {
-    let (ic, canister) = init();
-    let (_, _) = full_login(&ic, canister);
+    let (ic, ic_siwe_provider_canister) = init();
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister);
 
-    // Make an anonymous call to the canister to get the address of the delegate identity. This should
+    // Make an anonymous call to the ic_siwe_provider_canister to get the address of the delegate identity. This should
     // be the same as the address generated by `create_wallet`.
     let get_address_response: Result<String, String> = query(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "get_address",
         encode_one("invalid principal".as_bytes()).unwrap(),
     );
@@ -424,15 +487,15 @@ fn test_sign_in_get_adress_unknown_principal() {
 
 #[test]
 fn test_sign_in_get_principal_unknown_address() {
-    let (ic, canister) = init();
-    let (_, _) = full_login(&ic, canister);
+    let (ic, ic_siwe_provider_canister) = init();
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister);
 
-    // Make an anonymous call to the canister to get the address of the delegate identity. This should
+    // Make an anonymous call to the ic_siwe_provider_canister to get the address of the delegate identity. This should
     // be the same as the address generated by `create_wallet`.
     let get_principal_response: Result<String, String> = query(
         &ic,
         Principal::anonymous(),
-        canister,
+        ic_siwe_provider_canister,
         "get_principal",
         encode_one(VALID_ADDRESS).unwrap(),
     );
@@ -440,5 +503,35 @@ fn test_sign_in_get_principal_unknown_address() {
     assert_eq!(
         get_principal_response.unwrap_err(),
         "No principal found for the given address"
+    );
+}
+
+#[test]
+fn test_sign_in_and_call_other_canister_ok() {
+    let (ic, ic_siwe_provider_canister) = init();
+    let (_, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
+
+    let test_canister = ic.create_canister();
+    ic.add_cycles(test_canister, 2_000_000_000_000);
+
+    let test_canister_wasm_path: std::ffi::OsString =
+        std::env::var_os("TEST_CANISTER_PATH").expect("Missing test_canister wasm file");
+    let test_canister_wasm_module = std::fs::read(test_canister_wasm_path).unwrap();
+
+    let sender = None;
+
+    ic.install_canister(test_canister, test_canister_wasm_module, vec![], sender);
+
+    let whoami_response: Result<String, String> = query(
+        &ic,
+        delegated_identity.sender().unwrap(),
+        test_canister,
+        "whoami",
+        encode_one(()).unwrap(),
+    );
+
+    assert_eq!(
+        whoami_response.unwrap(),
+        delegated_identity.sender().unwrap().to_text()
     );
 }
