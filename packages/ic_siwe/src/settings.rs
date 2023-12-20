@@ -32,7 +32,8 @@ pub struct Settings {
 ///
 /// # Returns
 ///
-/// A `Result` containing the current `Settings` or an error message if the settings are not initialized.
+/// A `Result` containing a clone of the current `Settings` or an error message if the settings are not
+/// initialized.
 pub fn get_settings() -> Result<Settings, String> {
     SETTINGS.with_borrow(|settings| {
         settings

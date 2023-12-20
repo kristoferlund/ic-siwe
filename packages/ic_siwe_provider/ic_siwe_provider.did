@@ -1,25 +1,25 @@
-type PublicKey = blob;
-type Timestamp = nat64;
 type Address = text;
-type SessionKey = PublicKey;
-type SiweSignature = text;
-type SiweMessage = text;
 type CanisterPublicKey = PublicKey;
 type Principal = blob;
+type PublicKey = blob;
+type SessionKey = PublicKey;
+type SiweMessage = text;
+type SiweSignature = text;
+type Timestamp = nat64;
 
-type PrepareLoginResponse = variant {
-  Ok : SiweMessage;
+type GetAddressResponse = variant {
+  Ok : Address;
   Err : text;
 };
 
-type LoginOkResponse = record {
-  expiration : Timestamp;
-  user_canister_pubkey : CanisterPublicKey;
+type GetDelegationResponse = variant {
+  Ok : SignedDelegation;
+  Err : text;
 };
 
-type LoginResponse = variant {
-  Ok : LoginOkResponse;
-  Err : text;
+type SignedDelegation = record {
+  delegation : Delegation;
+  signature : blob;
 };
 
 type Delegation = record {
@@ -28,31 +28,31 @@ type Delegation = record {
   targets : opt vec principal;
 };
 
-type SignedDelegation = record {
-  delegation : Delegation;
-  signature : blob;
-};
-
-type GetDelegationResponse = variant {
-  Ok : SignedDelegation;
-  Err : text;
-};
-
 type GetPrincipalResponse = variant {
   Ok : Principal;
   Err : text;
 };
 
-type GetAddressResponse = variant {
-  Ok : Address;
+type LoginResponse = variant {
+  Ok : LoginOkResponse;
+  Err : text;
+};
+
+type LoginOkResponse = record {
+  expiration : Timestamp;
+  user_canister_pubkey : CanisterPublicKey;
+};
+
+type PrepareLoginResponse = variant {
+  Ok : SiweMessage;
   Err : text;
 };
 
 service : {
-  "prepare_login" : (Address) -> (PrepareLoginResponse);
-  "login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
+  "get_address" : (Principal) -> (GetAddressResponse) query;
+  "get_caller_address" : () -> (GetAddressResponse) query;
   "get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
   "get_principal" : (Address) -> (GetPrincipalResponse) query;
-  "get_address" : (Principal) -> (GetAddressResponse) query;
-  "caller_address" : () -> (GetAddressResponse) query;
+  "login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
+  "prepare_login" : (Address) -> (PrepareLoginResponse);
 };
