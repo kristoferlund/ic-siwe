@@ -5,8 +5,11 @@ use crate::{
     settings::get_settings, signature_map::SignatureMap, siwe::SiweMessage, state::AssetHashes,
     time::get_current_time, STATE,
 };
-use ic_cdk::api::set_certified_data;
-use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash};
+use ic_cdk::{
+    api::{data_certificate, set_certified_data},
+    trap,
+};
+use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash, HashTree};
 use serde_bytes::ByteBuf;
 
 pub const LABEL_ASSETS: &[u8] = b"http_assets";
@@ -15,7 +18,7 @@ pub const LABEL_SIG: &[u8] = b"sig";
 const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
 
 use candid::{CandidType, Principal};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct SignedDelegationCandidType {
@@ -28,6 +31,12 @@ pub struct DelegationCandidType {
     pub pubkey: ByteBuf,
     pub expiration: u64,
     pub targets: Option<Vec<Principal>>,
+}
+
+#[derive(Serialize)]
+struct CertificateSignature<'a> {
+    certificate: ByteBuf,
+    tree: HashTree<'a>,
 }
 
 pub(crate) fn prepare_delegation(
@@ -151,4 +160,74 @@ pub(crate) fn der_encode_canister_sig_key(seed: Vec<u8>) -> Vec<u8> {
     der.push(0x00);
     der.extend(bitstring);
     der
+}
+
+fn handle_witness<'a>(
+    signature_map: &'a SignatureMap,
+    seed: Hash,
+    delegation_hash: Hash,
+    asset_hashes: &'a AssetHashes,
+) -> HashTree<'a> {
+    let witness = signature_map
+        .witness(hash::hash_bytes(seed), delegation_hash)
+        .unwrap_or_else(|| trap("Signature not found."));
+
+    let witness_hash = witness.reconstruct();
+    let root_hash = signature_map.root_hash();
+    if witness_hash != root_hash {
+        trap(&format!(
+            "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
+            hex::encode(witness_hash),
+            hex::encode(root_hash)
+        ));
+    }
+
+    ic_certified_map::fork(
+        HashTree::Pruned(ic_certified_map::labeled_hash(
+            LABEL_ASSETS,
+            &asset_hashes.root_hash(),
+        )),
+        ic_certified_map::labeled(LABEL_SIG, witness),
+    )
+}
+
+/// Creates a certified signature.
+pub fn create_certified_signature(certificate: Vec<u8>, tree: HashTree) -> Result<Vec<u8>, String> {
+    let certificate_signature = CertificateSignature {
+        certificate: ByteBuf::from(certificate),
+        tree,
+    };
+
+    cbor_serialize(&certificate_signature)
+}
+
+/// Serializes the given data using CBOR.
+pub fn cbor_serialize<T: Serialize>(data: &T) -> Result<Vec<u8>, String> {
+    let mut cbor_serializer = serde_cbor::ser::Serializer::new(Vec::new());
+    cbor_serializer.self_describe().map_err(|e| e.to_string())?;
+    data.serialize(&mut cbor_serializer)
+        .map_err(|e| e.to_string())?;
+
+    Ok(cbor_serializer.into_inner())
+}
+
+pub fn get_signature(
+    asset_hashes: &AssetHashes,
+    signature_map: &SignatureMap,
+    session_key: ByteBuf,
+    seed: Hash,
+    expiration: u64,
+) -> Result<Vec<u8>, String> {
+    let certificate =
+        data_certificate().ok_or("get_signature must be called using a QUERY call")?;
+
+    let delegation_hash = delegation_hash(&DelegationCandidType {
+        pubkey: session_key.clone(),
+        expiration,
+        targets: None,
+    });
+
+    let tree = handle_witness(signature_map, seed, delegation_hash, asset_hashes);
+
+    create_certified_signature(certificate, tree)
 }

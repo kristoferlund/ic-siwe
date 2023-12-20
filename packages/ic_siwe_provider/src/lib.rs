@@ -87,7 +87,7 @@ fn get_delegation(
     session_key: ByteBuf,
     expiration: u64,
 ) -> Result<SignedDelegationCandidType, String> {
-    ic_siwe::get_delegation(&address, session_key, expiration)
+    ic_siwe::login::get_delegation(&address, session_key, expiration)
 }
 
 // Login the user by verifying the signature of the SIWE message. If the signature is valid, the
@@ -99,7 +99,7 @@ fn login(
     address: String,
     session_key: PublicKey,
 ) -> Result<LoginOkResponse, String> {
-    match ic_siwe::login(&signature, &address, session_key) {
+    match ic_siwe::login::login(&signature, &address, session_key) {
         Ok(response) => {
             let principal: Blob<29> =
                 Principal::self_authenticating(&response.user_canister_pubkey).as_slice()[..29]
@@ -128,7 +128,7 @@ fn login(
 // Prepare the login by generating a challenge (the SIWE message) and returning it to the caller.
 #[update]
 fn prepare_login(address: String) -> Result<String, String> {
-    ic_siwe::prepare_login(&address).map(|m| m.into())
+    ic_siwe::login::prepare_login(&address).map(|m| m.into())
 }
 
 #[derive(CandidType, Deserialize, Debug, Clone)]
