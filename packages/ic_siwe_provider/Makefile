@@ -2,7 +2,8 @@
 
 build:
 	cd ../../; \
-	dfx build; \
+	dfx canister create --all
+	dfx build ic_siwe_provider; \
 	gzip --no-name --force "target/wasm32-unknown-unknown/release/ic_siwe_provider.wasm"; \
 
 test:

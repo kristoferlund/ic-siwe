@@ -2,5 +2,6 @@
 members = [
     "packages/ic_siwe_provider",
     "packages/ic_siwe",
+    "packages/test_canister"
 ]
 resolver = "2"

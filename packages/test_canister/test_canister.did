@@ -1,0 +1,8 @@
+type WhoAmIResponse = variant {
+  Ok : text;
+  Err : text;
+};
+
+service : {
+  "whoami" : () -> (WhoAmIResponse);
+};

@@ -4,6 +4,11 @@
       "candid": "packages/ic_siwe_provider/ic_siwe_provider.did",
       "package": "ic_siwe_provider",
       "type": "rust"
+    },
+    "test_canister": {
+      "candid": "packages/test_canister/test_canister.did",
+      "package": "test_canister",
+      "type": "rust"
     }
   },
   "output_env_file": ".env",
