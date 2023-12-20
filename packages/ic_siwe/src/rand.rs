@@ -1,5 +1,5 @@
 #[cfg(not(test))]
-pub(crate) fn generate_nonce() -> Result<[u8; 10], String> {
+pub fn generate_nonce() -> Result<[u8; 10], String> {
     use crate::RNG;
     use rand_chacha::rand_core::RngCore;
 
@@ -9,7 +9,7 @@ pub(crate) fn generate_nonce() -> Result<[u8; 10], String> {
 }
 
 #[cfg(test)]
-pub(crate) fn generate_nonce() -> Result<[u8; 10], String> {
+pub fn generate_nonce() -> Result<[u8; 10], String> {
     use rand::{thread_rng, Rng};
 
     let mut rng = thread_rng();

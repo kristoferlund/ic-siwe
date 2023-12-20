@@ -1,14 +1,10 @@
 use crate::{
-    types::{
-        delegation::{DelegationCandidType, SignedDelegationCandidType},
-        signature_map::SignatureMap,
-        state::AssetHashes,
-    },
-    utils::{
-        delegation::{calculate_seed, delegation_hash, LABEL_ASSETS, LABEL_SIG},
-        eth::validate_eth_address,
-        hash,
-    },
+    delegation::{calculate_seed, delegation_hash, LABEL_ASSETS, LABEL_SIG},
+    delegation::{DelegationCandidType, SignedDelegationCandidType},
+    eth::validate_eth_address,
+    hash,
+    signature_map::SignatureMap,
+    state::AssetHashes,
     STATE,
 };
 use ic_cdk::{api::data_certificate, trap};

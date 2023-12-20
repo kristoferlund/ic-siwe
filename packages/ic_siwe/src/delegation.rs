@@ -1,12 +1,9 @@
 use std::collections::HashMap;
 
 use super::hash::{self, Value};
-use crate::types::delegation::DelegationCandidType;
-use crate::types::siwe_message::SiweMessage;
-use crate::STATE;
 use crate::{
-    types::{settings::get_settings, signature_map::SignatureMap, state::AssetHashes},
-    utils::time::get_current_time,
+    settings::get_settings, signature_map::SignatureMap, siwe::SiweMessage, state::AssetHashes,
+    time::get_current_time, STATE,
 };
 use ic_cdk::api::set_certified_data;
 use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash};
@@ -16,6 +13,22 @@ pub const LABEL_ASSETS: &[u8] = b"http_assets";
 pub const LABEL_SIG: &[u8] = b"sig";
 
 const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
+
+use candid::{CandidType, Principal};
+use serde::Deserialize;
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct SignedDelegationCandidType {
+    pub delegation: DelegationCandidType,
+    pub signature: ByteBuf,
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct DelegationCandidType {
+    pub pubkey: ByteBuf,
+    pub expiration: u64,
+    pub targets: Option<Vec<Principal>>,
+}
 
 pub(crate) fn prepare_delegation(
     address: &str,

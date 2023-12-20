@@ -3,12 +3,10 @@ use serde::Deserialize;
 use serde_bytes::ByteBuf;
 
 use crate::{
-    types::settings::get_settings,
-    utils::{
-        delegation::prepare_delegation,
-        eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
-        siwe::{get_siwe_message, prune_expired_siwe_messages, remove_siwe_message},
-    },
+    delegation::prepare_delegation,
+    eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
+    settings::get_settings,
+    siwe::{get_siwe_message, prune_expired_siwe_messages, remove_siwe_message},
 };
 
 #[derive(Clone, Debug, CandidType, Deserialize)]

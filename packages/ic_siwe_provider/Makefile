@@ -10,5 +10,5 @@ test:
 		export POCKET_IC_BIN=../../pocket-ic; \
 		export WASM_PATH=../../target/wasm32-unknown-unknown/release/ic_siwe_provider.wasm.gz; \
 		make build; \
-		cargo test -- --nocapture; \
+		cargo test; \
 	}

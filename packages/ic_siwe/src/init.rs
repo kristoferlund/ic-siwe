@@ -2,7 +2,7 @@ use candid::Principal;
 use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use std::time::Duration;
 
-use crate::{types::settings::Settings, RNG, SETTINGS};
+use crate::{settings::Settings, RNG, SETTINGS};
 
 /// Initializes the SIWE library with the provided settings. Must be called before any other SIWE functions.
 ///
@@ -28,7 +28,7 @@ pub fn init(settings: Settings) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::types::settings::SettingsBuilder;
+    use crate::settings::SettingsBuilder;
 
     #[test]
     fn test_valid_settings() {

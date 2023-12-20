@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap};
 
 use ic_certified_map::{Hash, RbTree};
 
-use crate::types::siwe_message::SiweMessage;
+use crate::siwe::SiweMessage;
 
 use super::signature_map::SignatureMap;
 

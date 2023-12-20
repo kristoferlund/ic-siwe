@@ -2,13 +2,17 @@
 
 use candid::{CandidType, Principal};
 use ic_cdk::{init, post_upgrade, query, update};
-use ic_siwe::login::LoginOkResponse;
-use ic_siwe::types::delegation::SignedDelegationCandidType;
-use ic_siwe::types::settings::SettingsBuilder;
-use ic_siwe::utils::eth::{bytes_to_eth_address, convert_to_eip55, eth_address_to_bytes};
-use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
-use ic_stable_structures::storable::Blob;
-use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap};
+use ic_siwe::{
+    delegation::SignedDelegationCandidType,
+    eth::{bytes_to_eth_address, convert_to_eip55, eth_address_to_bytes},
+    login::LoginOkResponse,
+    settings::SettingsBuilder,
+};
+use ic_stable_structures::{
+    memory_manager::{MemoryId, MemoryManager, VirtualMemory},
+    storable::Blob,
+    DefaultMemoryImpl, StableBTreeMap,
+};
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
 use std::cell::RefCell;
@@ -190,7 +194,7 @@ mod tests {
         identity::{BasicIdentity, DelegatedIdentity, Delegation, SignedDelegation},
         Identity,
     };
-    use ic_siwe::{login::LoginOkResponse, types::delegation::SignedDelegationCandidType};
+    use ic_siwe::{delegation::SignedDelegationCandidType, login::LoginOkResponse};
     use pocket_ic::{PocketIc, WasmResult};
     use rand::Rng;
     use serde::Deserialize;

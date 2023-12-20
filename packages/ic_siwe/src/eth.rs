@@ -216,7 +216,7 @@ pub fn validate_eth_signature(signature: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::eth::{convert_to_eip55, validate_eth_address};
+    use crate::eth::{convert_to_eip55, validate_eth_address};
 
     #[test]
     fn test_eip55_invalid_address() {

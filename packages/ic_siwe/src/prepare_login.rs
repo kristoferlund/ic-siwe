@@ -1,9 +1,6 @@
 use crate::{
-    types::siwe_message::SiweMessage,
-    utils::{
-        eth::validate_eth_address,
-        siwe::{add_siwe_message, create_siwe_message},
-    },
+    eth::validate_eth_address,
+    siwe::{add_siwe_message, create_siwe_message, SiweMessage},
 };
 
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
@@ -19,7 +16,7 @@ pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        types::settings::{get_settings, SettingsBuilder},
+        settings::{get_settings, SettingsBuilder},
         SETTINGS,
     };
 
