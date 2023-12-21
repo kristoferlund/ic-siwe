@@ -12,5 +12,5 @@ test:
 		export IC_SIWE_PROVIDER_PATH=../../target/wasm32-unknown-unknown/release/ic_siwe_provider.wasm.gz; \
 		export TEST_CANISTER_PATH=../../target/wasm32-unknown-unknown/release/test_canister.wasm.gz; \
 		make build; \
-		cargo test --test integration_tests; \
+		cargo test --test integration_tests -- --nocapture; \
 	}

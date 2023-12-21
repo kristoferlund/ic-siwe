@@ -1,5 +1,5 @@
 type WhoAmIResponse = variant {
-  Ok : text;
+  Ok : record { text; text };
   Err : text;
 };
 
