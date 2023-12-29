@@ -1,5 +1,3 @@
-.PHONY: build test
-
 build:
 	cd ../../; \
 	dfx canister create --all; \
