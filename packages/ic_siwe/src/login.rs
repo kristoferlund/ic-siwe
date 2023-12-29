@@ -42,9 +42,13 @@ pub fn login(
 
     prune_expired_siwe_messages();
 
+    // Get the previously created SIWE message for current address. If it has expired or does not
+    // exist, return an error.
     let message = get_siwe_message(address)?;
     let message_string: String = message.clone().into();
 
+    // Verify the supplied signature against the SIWE message and recover the Ethereum address
+    // used to sign the message.
     let recovered_address = recover_eth_address(&message_string, signature)?;
     if recovered_address != address {
         return Err(String::from("Signature verification failed"));
@@ -55,7 +59,7 @@ pub fn login(
         .issued_at
         .saturating_add(settings.session_expires_in);
 
-    let user_canister_pubkey = prepare_delegation(address, session_key, &message)?;
+    let user_canister_pubkey = prepare_delegation(address, session_key, expiration)?;
 
     remove_siwe_message(address);
 

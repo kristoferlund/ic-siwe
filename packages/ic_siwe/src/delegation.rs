@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use super::hash::{self, Value};
 use crate::{
-    settings::get_settings, signature_map::SignatureMap, siwe::SiweMessage, time::get_current_time,
-    AssetHashes, STATE,
+    settings::get_settings, signature_map::SignatureMap, time::get_current_time, AssetHashes, STATE,
 };
 use ic_cdk::{
     api::{data_certificate, set_certified_data},
@@ -42,12 +41,8 @@ struct CertificateSignature<'a> {
 pub(crate) fn prepare_delegation(
     address: &str,
     session_key: ByteBuf,
-    message: &SiweMessage,
+    expiration: u64,
 ) -> Result<ByteBuf, String> {
-    let settings = get_settings()?;
-    let expiration = message
-        .issued_at
-        .saturating_add(settings.session_expires_in);
     let seed = calculate_seed(address);
 
     STATE.with(|state| {
