@@ -49,7 +49,7 @@ pub(crate) fn prepare_delegation(
         let mut signature_map = state.sigs.borrow_mut();
 
         prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
-        add_signature(&mut signature_map, session_key, seed, expiration);
+        add_signature(&mut signature_map, session_key, seed, expiration)?;
         update_root_hash(&state.asset_hashes.borrow(), &signature_map);
 
         Ok(ByteBuf::from(der_encode_canister_sig_key(seed.to_vec())))
@@ -93,11 +93,13 @@ pub(crate) fn add_signature(
     session_key: ByteBuf,
     seed: Hash,
     expiration: u64,
-) {
+) -> Result<(), String> {
+    let settings = get_settings()?;
+
     let delegation_hash = delegation_hash(&DelegationCandidType {
         pubkey: session_key,
         expiration,
-        targets: None,
+        targets: settings.targets.clone(),
     });
 
     let signature_expires_at = get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
@@ -107,6 +109,8 @@ pub(crate) fn add_signature(
         delegation_hash,
         signature_expires_at,
     );
+
+    Ok(())
 }
 
 pub(crate) fn delegation_hash(delegation: &DelegationCandidType) -> Hash {

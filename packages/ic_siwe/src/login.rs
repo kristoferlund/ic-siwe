@@ -77,6 +77,7 @@ pub fn get_delegation(
     validate_eth_address(address)?;
 
     let seed = calculate_seed(address);
+    let settings = get_settings()?;
 
     STATE.with(|state| {
         get_signature(
@@ -90,7 +91,7 @@ pub fn get_delegation(
             delegation: DelegationCandidType {
                 pubkey: session_key,
                 expiration,
-                targets: None,
+                targets: settings.targets.clone(),
             },
             signature: ByteBuf::from(signature),
         })

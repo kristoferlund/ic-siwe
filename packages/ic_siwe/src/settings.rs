@@ -1,3 +1,4 @@
+use candid::Principal;
 use url::Url;
 
 use crate::SETTINGS;
@@ -26,6 +27,10 @@ pub struct Settings {
 
     // The TTL for a session in nanoseconds.
     pub session_expires_in: u64,
+
+    // The list of canisters for which the identity delegation is allowed. Defaults to None, which means
+    // that the delegation is allowed for all canisters.
+    pub targets: Option<Vec<Principal>>,
 }
 
 /// Retrieves the current SIWE settings.
@@ -76,6 +81,7 @@ impl SettingsBuilder {
                 statement: DEFAULT_STATEMENT.to_string(),
                 sign_in_expires_in: DEFAULT_SIGN_IN_EXPIRES_IN,
                 session_expires_in: DEFAULT_SESSION_EXPIRES_IN,
+                targets: None,
             },
         }
     }
@@ -102,6 +108,11 @@ impl SettingsBuilder {
 
     pub fn session_expires_in(mut self, expires_in: u64) -> Self {
         self.settings.session_expires_in = expires_in;
+        self
+    }
+
+    pub fn targets(mut self, targets: Vec<Principal>) -> Self {
+        self.settings.targets = Some(targets);
         self
     }
 

@@ -27,20 +27,29 @@ struct SettingsInput {
     pub statement: Option<String>,
     pub sign_in_expires_in: Option<u64>,
     pub session_expires_in: Option<u64>,
+    pub targets: Option<Vec<Principal>>,
 }
 
 const VALID_ADDRESS: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
 const SESSION_KEY: &[u8] = b"987687687687687687687687686";
 
-fn init() -> (PocketIc, Principal) {
-    let ic = PocketIc::new();
-
+fn init(ic: &PocketIc, targets: Option<Vec<Principal>>) -> (Principal, Option<Vec<Principal>>) {
     let canister_id = ic.create_canister();
     ic.add_cycles(canister_id, 2_000_000_000_000);
 
     let wasm_path: std::ffi::OsString =
         std::env::var_os("IC_SIWE_PROVIDER_PATH").expect("Missing ic_siwe_provider wasm file");
     let wasm_module = std::fs::read(wasm_path).unwrap();
+
+    // If specific targets have been listed, add the canister id of this canister to the list of targets.
+    let targets: Option<Vec<Principal>> = match targets {
+        Some(targets) => {
+            let mut targets = targets;
+            targets.push(canister_id);
+            Some(targets)
+        }
+        None => None,
+    };
 
     let settings = SettingsInput {
         domain: "127.0.0.1".to_string(),
@@ -51,6 +60,7 @@ fn init() -> (PocketIc, Principal) {
         statement: Some("Login to the app".to_string()),
         sign_in_expires_in: Some(Duration::from_secs(3).as_nanos() as u64), // 3 seconds
         session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64), // 1 week
+        targets: targets.clone(),
     };
 
     let arg = encode_one(settings).unwrap();
@@ -64,7 +74,7 @@ fn init() -> (PocketIc, Principal) {
         ic.tick();
     }
 
-    (ic, canister_id)
+    (canister_id, targets)
 }
 
 fn update<T: CandidType + for<'de> Deserialize<'de>>(
@@ -134,13 +144,14 @@ fn create_delegated_identity(
     identity: BasicIdentity,
     login_response: &LoginOkResponse,
     signature: Vec<u8>,
+    targets: Option<Vec<Principal>>,
 ) -> DelegatedIdentity {
     // Create a delegated identity
     let signed_delegation = SignedDelegation {
         delegation: Delegation {
             pubkey: identity.public_key().unwrap(),
             expiration: login_response.expiration,
-            targets: None,
+            targets,
             senders: None,
         },
         signature,
@@ -152,7 +163,11 @@ fn create_delegated_identity(
     )
 }
 
-fn full_login(ic: &PocketIc, ic_siwe_provider_canister: Principal) -> (String, DelegatedIdentity) {
+fn full_login(
+    ic: &PocketIc,
+    ic_siwe_provider_canister: Principal,
+    targets: Option<Vec<Principal>>,
+) -> (String, DelegatedIdentity) {
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
@@ -193,6 +208,7 @@ fn full_login(ic: &PocketIc, ic_siwe_provider_canister: Principal) -> (String, D
         session_identity,
         &login_response,
         get_delegation_response.signature.as_ref().to_vec(),
+        targets,
     );
 
     (address, delegated_identity)
@@ -200,7 +216,8 @@ fn full_login(ic: &PocketIc, ic_siwe_provider_canister: Principal) -> (String, D
 
 #[test]
 fn test_prepare_login_invalid_address() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("invalid address").unwrap();
     let response: Result<String, String> = update(
         &ic,
@@ -217,7 +234,8 @@ fn test_prepare_login_invalid_address() {
 
 #[test]
 fn test_prepare_login_none_eip55_address() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
     let response: Result<String, String> = update(
         &ic,
@@ -234,7 +252,8 @@ fn test_prepare_login_none_eip55_address() {
 
 #[test]
 fn test_prepare_login_ok() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one(VALID_ADDRESS).unwrap();
     let response: Result<String, String> = update(
         &ic,
@@ -253,7 +272,8 @@ fn test_prepare_login_ok() {
 
 #[test]
 fn test_login_signature_too_short() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xTOO-SHORT";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
     let response: Result<LoginOkResponse, String> = update(
@@ -271,7 +291,8 @@ fn test_login_signature_too_short() {
 
 #[test]
 fn test_login_signature_too_long() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
     let response: Result<LoginOkResponse, String> = update(
@@ -289,7 +310,8 @@ fn test_login_signature_too_long() {
 
 #[test]
 fn test_incorrect_signature_format() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
     let response: Result<LoginOkResponse, String> = update(
@@ -307,7 +329,8 @@ fn test_incorrect_signature_format() {
 
 #[test]
 fn test_sign_in_message_expired() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
@@ -331,7 +354,8 @@ fn test_sign_in_message_expired() {
 // A valid signature but with a different address
 #[test]
 fn test_sign_in_address_mismatch() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
@@ -352,7 +376,8 @@ fn test_sign_in_address_mismatch() {
 // A manilulated signature with the correct address
 #[test]
 fn test_sign_in_signature_manipulated() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
@@ -370,7 +395,8 @@ fn test_sign_in_signature_manipulated() {
 
 #[test]
 fn test_sign_in_ok() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
@@ -388,7 +414,8 @@ fn test_sign_in_ok() {
 
 #[test]
 fn test_sign_in_replay_attack() {
-    let (ic, ic_siwe_provider_canister) = init();
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
@@ -418,8 +445,9 @@ fn test_sign_in_replay_attack() {
 
 #[test]
 fn test_sign_in_get_delegation_ok() {
-    let (ic, ic_siwe_provider_canister) = init();
-    let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, targets) = init(&ic, None);
+    let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
 
     // Use the delegated identity to call the ic_siwe_provider_canister. Caller address should be the same as the
     // address generated by `create_wallet`.
@@ -466,7 +494,7 @@ fn test_sign_in_get_delegation_ok() {
 
 // #[test]
 // fn test_session_expired() {
-//     let (ic, ic_siwe_provider_canister) = init();
+//     let (ic_siwe_provider_canister, _) = init(&ic, None);
 //     let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
 
 //     ic.advance_time(Duration::from_secs(60 * 60 * 24 * 7 + 1));
@@ -488,8 +516,9 @@ fn test_sign_in_get_delegation_ok() {
 
 #[test]
 fn test_sign_in_get_adress_unknown_principal() {
-    let (ic, ic_siwe_provider_canister) = init();
-    let (_, _) = full_login(&ic, ic_siwe_provider_canister);
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, targets) = init(&ic, None);
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister, targets);
 
     // Make an anonymous call to the ic_siwe_provider_canister to get the address of the delegate identity. This should
     // be the same as the address generated by `create_wallet`.
@@ -509,8 +538,9 @@ fn test_sign_in_get_adress_unknown_principal() {
 
 #[test]
 fn test_sign_in_get_principal_unknown_address() {
-    let (ic, ic_siwe_provider_canister) = init();
-    let (_, _) = full_login(&ic, ic_siwe_provider_canister);
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, targets) = init(&ic, None);
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister, targets);
 
     // Make an anonymous call to the ic_siwe_provider_canister to get the address of the delegate identity. This should
     // be the same as the address generated by `create_wallet`.
@@ -530,11 +560,18 @@ fn test_sign_in_get_principal_unknown_address() {
 
 #[test]
 fn test_call_get_address_from_other_canister() {
-    let (ic, ic_siwe_provider_canister) = init();
-    let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
+    let ic = PocketIc::new();
 
     let test_canister = ic.create_canister();
     ic.add_cycles(test_canister, 2_000_000_000_000);
+
+    let test_canister2 = ic.create_canister();
+
+    let (ic_siwe_provider_canister, targets) = init(&ic, Some(vec![test_canister2]));
+
+    println!("targets: {:?}", targets);
+
+    let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
 
     let test_canister_wasm_path: std::ffi::OsString =
         std::env::var_os("TEST_CANISTER_PATH").expect("Missing test_canister wasm file");
@@ -568,7 +605,7 @@ fn test_call_get_address_from_other_canister() {
 
 // #[test]
 // fn test_call_get_address_from_other_canister_session_expired() {
-//     let (ic, ic_siwe_provider_canister) = init();
+//     let (ic_siwe_provider_canister, _) = init(&ic, None);
 //     let (_, delegated_identity) = full_login(&ic, ic_siwe_provider_canister);
 
 //     let test_canister = ic.create_canister();
