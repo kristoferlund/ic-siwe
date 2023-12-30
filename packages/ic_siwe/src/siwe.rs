@@ -113,22 +113,22 @@ pub(crate) fn prune_expired_siwe_messages() {
 }
 
 /// Adds a SIWE message to state.
-pub(crate) fn add_siwe_message(message: SiweMessage) {
+pub(crate) fn add_siwe_message(message: SiweMessage, address_bytes: Vec<u8>) {
     STATE.with(|state| {
         state
             .siwe_messages
             .borrow_mut()
-            .insert(message.address.as_bytes().to_vec(), message);
+            .insert(address_bytes, message);
     });
 }
 
 /// Fetches the SIWE message associated with the provided address.
-pub(crate) fn get_siwe_message(address: &str) -> Result<SiweMessage, String> {
+pub(crate) fn get_siwe_message(address_bytes: Vec<u8>) -> Result<SiweMessage, String> {
     STATE.with(|state| {
         state
             .siwe_messages
             .borrow()
-            .get(address.as_bytes())
+            .get(&address_bytes)
             .cloned()
             .ok_or_else(|| String::from("Message not found for the given address"))
     })

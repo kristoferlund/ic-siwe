@@ -27,7 +27,10 @@ pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
 
     let message = create_siwe_message(address)?;
 
-    add_siwe_message(message.clone());
+    // Save the SIWE message for use in the login call
+    let address_hex_str = address.strip_prefix("0x").unwrap();
+    let address_bytes = hex::decode(address_hex_str).unwrap();
+    add_siwe_message(message.clone(), address_bytes);
 
     Ok(message)
 }
@@ -44,7 +47,9 @@ pub fn login(
 
     // Get the previously created SIWE message for current address. If it has expired or does not
     // exist, return an error.
-    let message = get_siwe_message(address)?;
+    let address_hex_str = address.strip_prefix("0x").unwrap();
+    let address_bytes = hex::decode(address_hex_str).unwrap();
+    let message = get_siwe_message(address_bytes)?;
     let message_string: String = message.clone().into();
 
     // Verify the supplied signature against the SIWE message and recover the Ethereum address
