@@ -7,6 +7,18 @@ type SiweMessage = text;
 type SiweSignature = text;
 type Timestamp = nat64;
 
+type SettingsInput = record {
+  domain : text;
+  uri : text;
+  salt : text;
+  chain_id : opt nat;
+  scheme : opt text;
+  statement : opt text;
+  sign_in_expires_in : opt nat64;
+  session_expires_in : opt nat64;
+  targets : opt vec text;
+};
+
 type GetAddressResponse = variant {
   Ok : Address;
   Err : text;
@@ -48,7 +60,7 @@ type PrepareLoginResponse = variant {
   Err : text;
 };
 
-service : {
+service : (settings_input : SettingsInput) -> {
   "get_address" : (Principal) -> (GetAddressResponse) query;
   "get_caller_address" : () -> (GetAddressResponse) query;
   "get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
