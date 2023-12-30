@@ -220,10 +220,12 @@ pub fn get_signature(
     let certificate =
         data_certificate().ok_or("get_signature must be called using a QUERY call")?;
 
+    let settings = get_settings()?;
+
     let delegation_hash = delegation_hash(&DelegationCandidType {
         pubkey: session_key.clone(),
         expiration,
-        targets: None,
+        targets: settings.targets.clone(),
     });
 
     let tree = handle_witness(signature_map, seed, delegation_hash, asset_hashes);
