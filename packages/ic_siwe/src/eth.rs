@@ -73,7 +73,7 @@ pub fn recover_eth_address(
     Ok(address)
 }
 
-pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, hex::FromHexError> {
+pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, String> {
     // Strip the '0x' prefix if present
     let addr_trimmed = if addr.starts_with("0x") {
         addr.strip_prefix("0x").unwrap()
@@ -83,6 +83,7 @@ pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, hex::FromHexError> {
 
     // Decode the hexadecimal string to bytes
     hex::decode(addr_trimmed)
+        .map_err(|_| String::from("Invalid Ethereum address: Hex decoding failed"))
 }
 
 pub fn bytes_to_eth_address(bytes: &[u8]) -> String {

@@ -7,7 +7,9 @@ use crate::{
         calculate_seed, der_encode_canister_sig_key, get_signature, prepare_delegation,
         DelegationCandidType, SignedDelegationCandidType,
     },
-    eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
+    eth::{
+        eth_address_to_bytes, recover_eth_address, validate_eth_address, validate_eth_signature,
+    },
     settings::Settings,
     siwe::{
         add_siwe_message, create_siwe_message, get_siwe_message, prune_expired_siwe_messages,
@@ -16,23 +18,22 @@ use crate::{
     with_settings, STATE,
 };
 
-#[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct LoginOkResponse {
-    pub expiration: u64,
-    pub user_canister_pubkey: ByteBuf,
-}
-
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
     validate_eth_address(address)?;
 
     let message = create_siwe_message(address)?;
 
     // Save the SIWE message for use in the login call
-    let address_hex_str = address.strip_prefix("0x").unwrap();
-    let address_bytes = hex::decode(address_hex_str).unwrap();
-    add_siwe_message(message.clone(), address_bytes);
+    let address = eth_address_to_bytes(address)?;
+    add_siwe_message(message.clone(), address);
 
     Ok(message)
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct LoginOkResponse {
+    pub expiration: u64,
+    pub user_canister_pubkey: ByteBuf,
 }
 
 pub fn login(
@@ -48,9 +49,8 @@ pub fn login(
 
     // Get the previously created SIWE message for current address. If it has expired or does not
     // exist, return an error.
-    let address_hex_str = address.strip_prefix("0x").unwrap();
-    let address_bytes = hex::decode(address_hex_str).unwrap();
-    let message = get_siwe_message(address_bytes)?;
+    let address_bytes = eth_address_to_bytes(address)?;
+    let message = get_siwe_message(&address_bytes)?;
     let message_string: String = message.clone().into();
 
     // Verify the supplied signature against the SIWE message and recover the Ethereum address
@@ -62,7 +62,7 @@ pub fn login(
 
     // At this point, the signature has been verified and the SIWE message has been used. Remove
     // the SIWE message from the state.
-    remove_siwe_message(address);
+    remove_siwe_message(&address_bytes);
 
     // The delegation is valid for the duration of the session as defined in the settings.
     let expiration = with_settings!(|settings: &Settings| {

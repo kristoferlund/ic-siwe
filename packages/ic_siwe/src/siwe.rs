@@ -125,20 +125,20 @@ pub(crate) fn add_siwe_message(message: SiweMessage, address_bytes: Vec<u8>) {
 }
 
 /// Fetches the SIWE message associated with the provided address.
-pub(crate) fn get_siwe_message(address_bytes: Vec<u8>) -> Result<SiweMessage, String> {
+pub(crate) fn get_siwe_message(address_bytes: &Vec<u8>) -> Result<SiweMessage, String> {
     STATE.with(|state| {
         state
             .siwe_messages
             .borrow()
-            .get(&address_bytes)
+            .get(address_bytes)
             .cloned()
             .ok_or_else(|| String::from("Message not found for the given address"))
     })
 }
 
 /// Removes the SIWE message associated with the provided address.
-pub(crate) fn remove_siwe_message(address: &str) {
+pub(crate) fn remove_siwe_message(address_bytes: &Vec<u8>) {
     STATE.with(|state| {
-        state.siwe_messages.borrow_mut().remove(address.as_bytes());
+        state.siwe_messages.borrow_mut().remove(address_bytes);
     });
 }
