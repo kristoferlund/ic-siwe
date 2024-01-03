@@ -1,6 +1,6 @@
 use crate::settings::Settings;
-use crate::with_settings;
-use crate::{rand::generate_nonce, time::get_current_time, STATE};
+use crate::{rand::generate_nonce, time::get_current_time};
+use crate::{with_settings, SIWE_MESSAGES};
 
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
@@ -106,30 +106,22 @@ pub(crate) fn create_siwe_message(address: &str) -> Result<SiweMessage, String> 
 pub(crate) fn prune_expired_siwe_messages() {
     let current_time = get_current_time();
 
-    STATE.with(|state| {
-        state
-            .siwe_messages
-            .borrow_mut()
-            .retain(|_, message| message.expiration_time > current_time);
+    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
+        siwe_message.retain(|_, message| message.expiration_time > current_time);
     });
 }
 
 /// Adds a SIWE message to state.
 pub(crate) fn add_siwe_message(message: SiweMessage, address_bytes: Vec<u8>) {
-    STATE.with(|state| {
-        state
-            .siwe_messages
-            .borrow_mut()
-            .insert(address_bytes, message);
+    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
+        siwe_message.insert(address_bytes, message);
     });
 }
 
 /// Fetches the SIWE message associated with the provided address.
 pub(crate) fn get_siwe_message(address_bytes: &Vec<u8>) -> Result<SiweMessage, String> {
-    STATE.with(|state| {
-        state
-            .siwe_messages
-            .borrow()
+    SIWE_MESSAGES.with_borrow(|siwe_message| {
+        siwe_message
             .get(address_bytes)
             .cloned()
             .ok_or_else(|| String::from("Message not found for the given address"))
@@ -138,7 +130,7 @@ pub(crate) fn get_siwe_message(address_bytes: &Vec<u8>) -> Result<SiweMessage, S
 
 /// Removes the SIWE message associated with the provided address.
 pub(crate) fn remove_siwe_message(address_bytes: &Vec<u8>) {
-    STATE.with(|state| {
-        state.siwe_messages.borrow_mut().remove(address_bytes);
+    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
+        siwe_message.remove(address_bytes);
     });
 }

@@ -1,6 +1,11 @@
 use ic_certified_map::{leaf_hash, AsHashTree, Hash, HashTree, RbTree};
 use std::borrow::Cow;
 use std::collections::BinaryHeap;
+
+use crate::time::get_current_time;
+
+const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
+
 #[derive(Default)]
 struct Unit;
 
@@ -41,7 +46,9 @@ pub struct SignatureMap {
 }
 
 impl SignatureMap {
-    pub fn put(&mut self, seed_hash: Hash, delegation_hash: Hash, signature_expires_at: u64) {
+    pub fn put(&mut self, seed_hash: Hash, delegation_hash: Hash) {
+        let signature_expires_at =
+            get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
         if self.certified_map.get(&seed_hash[..]).is_none() {
             let mut submap = RbTree::new();
             submap.insert(delegation_hash, Unit);
@@ -87,14 +94,6 @@ impl SignatureMap {
         num_pruned
     }
 
-    // pub fn len(&self) -> usize {
-    //     self.expiration_queue.len()
-    // }
-
-    // pub fn is_empty(&self) -> bool {
-    //     self.expiration_queue.is_empty()
-    // }
-
     pub fn root_hash(&self) -> Hash {
         self.certified_map.root_hash()
     }
@@ -109,6 +108,3 @@ impl SignatureMap {
         Some(witness)
     }
 }
-
-// #[cfg(test)]
-// mod test;

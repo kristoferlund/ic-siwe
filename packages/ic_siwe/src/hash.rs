@@ -14,7 +14,7 @@ pub enum Value<'a> {
 }
 
 /// Computes a hash of a map where keys are strings and values are `Value`.
-pub fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
+pub(crate) fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
     let mut hashes = map
         .into_iter()
         .map(|(key, val)| hash_key_value(key.as_ref(), val))
@@ -30,7 +30,7 @@ pub fn hash_of_map<S: AsRef<str>>(map: HashMap<S, Value>) -> Hash {
 }
 
 /// Computes a hash with a domain separator.
-pub fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
+pub(crate) fn hash_with_domain(sep: &[u8], bytes: &[u8]) -> Hash {
     let mut hasher = Sha256::new();
     hasher.update([sep.len() as u8]);
     hasher.update(sep);
@@ -47,12 +47,12 @@ fn hash_key_value(key: &str, val: Value<'_>) -> Vec<u8> {
 }
 
 /// Hashes a string.
-pub fn hash_string(value: &str) -> Hash {
+pub(crate) fn hash_string(value: &str) -> Hash {
     hash_bytes(value.as_bytes())
 }
 
 /// Hashes a byte slice.
-pub fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
+pub(crate) fn hash_bytes(value: impl AsRef<[u8]>) -> Hash {
     let mut hasher = Sha256::new();
     hasher.update(value.as_ref());
     hasher.finalize().into()

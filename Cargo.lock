@@ -1894,6 +1894,7 @@ dependencies = [
  "hex",
  "ic-agent",
  "ic-cdk 0.11.3",
+ "ic-certified-map",
  "ic-stable-structures",
  "ic_siwe",
  "pocket-ic",

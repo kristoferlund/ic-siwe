@@ -1,33 +1,22 @@
 use std::collections::HashMap;
 
 use super::hash::{self, Value};
-use crate::{
-    settings::Settings, signature_map::SignatureMap, time::get_current_time, with_settings,
-    AssetHashes, STATE,
-};
-use ic_cdk::{
-    api::{data_certificate, set_certified_data},
-    trap,
-};
-use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash, HashTree};
+use crate::{settings::Settings, signature_map::SignatureMap, with_settings};
+
+use ic_certified_map::{Hash, HashTree};
 use serde_bytes::ByteBuf;
-
-pub const LABEL_ASSETS: &[u8] = b"http_assets";
-pub const LABEL_SIG: &[u8] = b"sig";
-
-const DELEGATION_SIGNATURE_EXPIRES_AT: u64 = 60 * 1_000_000_000; // 1 minute
 
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct SignedDelegationCandidType {
-    pub delegation: DelegationCandidType,
+pub struct SignedDelegation {
+    pub delegation: Delegation,
     pub signature: ByteBuf,
 }
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct DelegationCandidType {
+pub struct Delegation {
     pub pubkey: ByteBuf,
     pub expiration: u64,
     pub targets: Option<Vec<Principal>>,
@@ -39,7 +28,17 @@ struct CertificateSignature<'a> {
     tree: HashTree<'a>,
 }
 
-pub(crate) fn calculate_seed(address: &str) -> Hash {
+/// The seed is what uniquely identifies the delegation. It is derived from the salt,
+/// the Ethereum address and the SIWE message URI.
+///
+/// # Parameters
+///
+/// * `address`: The Ethereum address as a string slice.
+///
+/// # Returns
+///
+/// A hash value representing the unique seed.
+pub fn generate_seed(address: &str) -> Hash {
     with_settings!(|settings: &Settings| {
         let mut seed: Vec<u8> = vec![];
 
@@ -59,55 +58,78 @@ pub(crate) fn calculate_seed(address: &str) -> Hash {
     })
 }
 
-pub(crate) fn prepare_delegation(seed: Hash, session_key: ByteBuf, expiration: u64) {
-    STATE.with(|state| {
-        let mut signature_map = state.sigs.borrow_mut();
-        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
-        add_signature(&mut signature_map, session_key, seed, expiration);
-        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
-    });
-}
-
-pub(crate) fn prune_expired_signatures(
-    asset_hashes: &AssetHashes,
-    signature_map: &mut SignatureMap,
-) {
-    const MAX_SIGS_TO_PRUNE: usize = 10;
-    let num_pruned = signature_map.prune_expired(get_current_time(), MAX_SIGS_TO_PRUNE);
-
-    if num_pruned > 0 {
-        update_root_hash(asset_hashes, signature_map);
-    }
-}
-
-pub(crate) fn add_signature(
-    signature_map: &mut SignatureMap,
-    session_key: ByteBuf,
-    seed: Hash,
-    expiration: u64,
-) {
+/// Creates a delegation with the provided session key and expiration. The delegation also contains
+/// the list of canisters for which the identity delegation is allowed.
+///
+/// # Parameters
+///
+/// * `session_key`: A key that uniquely identifies the session.
+/// * `expiration`: The expiration time of the delegation in nanoseconds since the UNIX epoch.
+pub fn create_delegation(session_key: ByteBuf, expiration: u64) -> Delegation {
     with_settings!(|settings: &Settings| {
-        let delegation_hash = delegation_hash(&DelegationCandidType {
-            pubkey: session_key,
+        Delegation {
+            pubkey: session_key.clone(),
             expiration,
             targets: settings.targets.clone(),
-        });
-
-        let signature_expires_at =
-            get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
-
-        signature_map.put(
-            hash::hash_bytes(seed),
-            delegation_hash,
-            signature_expires_at,
-        );
-    });
+        }
+    })
 }
 
-pub(crate) fn delegation_hash(delegation: &DelegationCandidType) -> Hash {
+/// Constructs a hash tree that acts as a proof that there is a entry (seed_hash/delegation_hash) in
+/// the signature map.
+///
+/// # Parameters
+///
+/// * `signature_map`: The map of signatures.
+/// * `seed`: The unique seed that identifies the delegation.
+/// * `delegation_hash`: The hash of the delegation.
+pub fn witness(
+    signature_map: &SignatureMap,
+    seed: Hash,
+    delegation_hash: Hash,
+) -> Result<HashTree, String> {
+    let witness = signature_map
+        .witness(hash::hash_bytes(seed), delegation_hash)
+        .expect("Signature not found.");
+
+    let witness_hash = witness.reconstruct();
+    let root_hash = signature_map.root_hash();
+    if witness_hash != root_hash {
+        return Err(format!(
+            "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
+            hex::encode(witness_hash),
+            hex::encode(root_hash)
+        ));
+    }
+
+    Ok(witness)
+}
+
+/// Creates a certified signature using a certificate and a state hash tree.
+///
+/// # Parameters
+///
+/// * `certificate`: A vector of bytes representing the certificate.
+/// * `tree`: The `HashTree` used for certification.
+///
+/// # Returns
+///
+/// A `Result` containing a vector of bytes of the certified signature, or an error string.
+pub fn create_certified_signature(certificate: Vec<u8>, tree: HashTree) -> Result<Vec<u8>, String> {
+    let certificate_signature = CertificateSignature {
+        certificate: ByteBuf::from(certificate),
+        tree,
+    };
+
+    cbor_serialize(&certificate_signature)
+}
+
+pub fn create_delegation_hash(delegation: &Delegation) -> Hash {
     let mut delegation_map = HashMap::new();
+
     delegation_map.insert("pubkey", Value::Bytes(&delegation.pubkey));
     delegation_map.insert("expiration", Value::U64(delegation.expiration));
+
     if let Some(targets) = delegation.targets.as_ref() {
         let mut arr = Vec::with_capacity(targets.len());
         for t in targets.iter() {
@@ -115,19 +137,23 @@ pub(crate) fn delegation_hash(delegation: &DelegationCandidType) -> Hash {
         }
         delegation_map.insert("targets", Value::Array(arr));
     }
+
     let delegation_map_hash = hash::hash_of_map(delegation_map);
+
     hash::hash_with_domain(b"ic-request-auth-delegation", &delegation_map_hash)
 }
 
-pub(crate) fn update_root_hash(asset_hashes: &AssetHashes, signature_map: &SignatureMap) {
-    let prefixed_root_hash = fork_hash(
-        &labeled_hash(LABEL_ASSETS, &asset_hashes.root_hash()),
-        &labeled_hash(LABEL_SIG, &signature_map.root_hash()),
-    );
-    set_certified_data(&prefixed_root_hash[..]);
-}
-
-pub(crate) fn der_encode_canister_sig_key(seed: Vec<u8>) -> Vec<u8> {
+/// Creates a DER-encoded public key for the user canister using the given seed. This public key will be
+/// used to create a self-authenticating principal for the user.
+///
+/// # Parameters
+///
+/// * `seed`: A vector of bytes representing the seed.
+///
+/// # Returns
+///
+/// A vector of bytes representing the DER-encoded public key.
+pub(crate) fn create_user_canister_pubkey(seed: Vec<u8>) -> Vec<u8> {
     let my_canister_id: Vec<u8> = ic_cdk::api::id().as_ref().to_vec();
 
     let mut bitstring: Vec<u8> = vec![];
@@ -152,74 +178,20 @@ pub(crate) fn der_encode_canister_sig_key(seed: Vec<u8>) -> Vec<u8> {
     der
 }
 
-fn handle_witness<'a>(
-    signature_map: &'a SignatureMap,
-    seed: Hash,
-    delegation_hash: Hash,
-    asset_hashes: &'a AssetHashes,
-) -> HashTree<'a> {
-    let witness = signature_map
-        .witness(hash::hash_bytes(seed), delegation_hash)
-        .unwrap_or_else(|| trap("Signature not found."));
-
-    let witness_hash = witness.reconstruct();
-    let root_hash = signature_map.root_hash();
-    if witness_hash != root_hash {
-        trap(&format!(
-            "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
-            hex::encode(witness_hash),
-            hex::encode(root_hash)
-        ));
-    }
-
-    ic_certified_map::fork(
-        HashTree::Pruned(ic_certified_map::labeled_hash(
-            LABEL_ASSETS,
-            &asset_hashes.root_hash(),
-        )),
-        ic_certified_map::labeled(LABEL_SIG, witness),
-    )
-}
-
-/// Creates a certified signature.
-pub fn create_certified_signature(certificate: Vec<u8>, tree: HashTree) -> Result<Vec<u8>, String> {
-    let certificate_signature = CertificateSignature {
-        certificate: ByteBuf::from(certificate),
-        tree,
-    };
-
-    cbor_serialize(&certificate_signature)
-}
-
-/// Serializes the given data using CBOR.
-pub fn cbor_serialize<T: Serialize>(data: &T) -> Result<Vec<u8>, String> {
+/// Serializes the given data into CBOR format.
+///
+/// # Parameters
+///
+/// * `data`: A reference to the data to be serialized.
+///
+/// # Returns
+///
+/// A `Result` containing the CBOR serialized data as a vector of bytes, or an error string.
+fn cbor_serialize<T: Serialize>(data: &T) -> Result<Vec<u8>, String> {
     let mut cbor_serializer = serde_cbor::ser::Serializer::new(Vec::new());
     cbor_serializer.self_describe().map_err(|e| e.to_string())?;
     data.serialize(&mut cbor_serializer)
         .map_err(|e| e.to_string())?;
 
     Ok(cbor_serializer.into_inner())
-}
-
-pub fn get_signature(
-    asset_hashes: &AssetHashes,
-    signature_map: &SignatureMap,
-    session_key: ByteBuf,
-    seed: Hash,
-    expiration: u64,
-) -> Result<Vec<u8>, String> {
-    let certificate =
-        data_certificate().ok_or("get_signature must be called using a QUERY call")?;
-
-    with_settings!(|settings: &Settings| {
-        let delegation_hash = delegation_hash(&DelegationCandidType {
-            pubkey: session_key.clone(),
-            expiration,
-            targets: settings.targets.clone(),
-        });
-
-        let tree = handle_witness(signature_map, seed, delegation_hash, asset_hashes);
-
-        create_certified_signature(certificate, tree)
-    })
 }

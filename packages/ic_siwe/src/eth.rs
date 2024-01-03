@@ -70,6 +70,7 @@ pub fn recover_eth_address(
         .map_err(|_| SignatureRecoveryError::PublicKeyRecoveryFailure)?;
 
     let address = derive_eth_address_from_public_key(&verifying_key)?;
+
     Ok(address)
 }
 

@@ -7,10 +7,13 @@ use ethers::{
     utils::{hash_message, to_checksum},
 };
 use ic_agent::{
-    identity::{BasicIdentity, DelegatedIdentity, Delegation, SignedDelegation},
+    identity::{
+        BasicIdentity, DelegatedIdentity, Delegation as AgentDelegation,
+        SignedDelegation as AgentSignedDelegation,
+    },
     Identity,
 };
-use ic_siwe::{delegation::SignedDelegationCandidType, login::LoginOkResponse};
+use ic_siwe::{delegation::SignedDelegation, login::LoginOkResponse};
 use pocket_ic::{PocketIc, WasmResult};
 use rand::Rng;
 use serde::Deserialize;
@@ -147,8 +150,8 @@ fn create_delegated_identity(
     targets: Option<Vec<Principal>>,
 ) -> DelegatedIdentity {
     // Create a delegated identity
-    let signed_delegation = SignedDelegation {
-        delegation: Delegation {
+    let signed_delegation = AgentSignedDelegation {
+        delegation: AgentDelegation {
             pubkey: identity.public_key().unwrap(),
             expiration: login_response.expiration,
             targets,
@@ -194,7 +197,7 @@ fn full_login(
         login_response.expiration,
     ))
     .unwrap();
-    let get_delegation_response: SignedDelegationCandidType = query(
+    let get_delegation_response: SignedDelegation = query(
         ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,

@@ -4,20 +4,39 @@ use serde_bytes::ByteBuf;
 
 use crate::{
     delegation::{
-        calculate_seed, der_encode_canister_sig_key, get_signature, prepare_delegation,
-        DelegationCandidType, SignedDelegationCandidType,
+        create_delegation, create_delegation_hash, create_user_canister_pubkey, generate_seed,
     },
     eth::{
         eth_address_to_bytes, recover_eth_address, validate_eth_address, validate_eth_signature,
     },
+    hash,
     settings::Settings,
+    signature_map::SignatureMap,
     siwe::{
         add_siwe_message, create_siwe_message, get_siwe_message, prune_expired_siwe_messages,
         remove_siwe_message, SiweMessage,
     },
-    with_settings, STATE,
+    time::get_current_time,
+    with_settings,
 };
 
+const MAX_SIGS_TO_PRUNE: usize = 10;
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct LoginOkResponse {
+    pub expiration: u64,
+    pub user_canister_pubkey: ByteBuf,
+}
+
+/// This function is the first step of the user login process. It validates the provided Ethereum address,
+/// creates a SIWE message, saves it for future use, and returns it.
+///
+/// # Parameters
+/// * `address`: A string slice (`&str`) representing the user's Ethereum address. This address is
+///   validated and used to create the SIWE message.
+///
+/// # Returns
+/// A `Result` that, on success, contains the `SiweMessage` for the user, or an error string on failure.
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
     validate_eth_address(address)?;
 
@@ -30,21 +49,30 @@ pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
     Ok(message)
 }
 
-#[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct LoginOkResponse {
-    pub expiration: u64,
-    pub user_canister_pubkey: ByteBuf,
-}
-
+/// Handles the second step of the user login process. It verifies the signature against the SIWE message,
+/// creates a delegation for the session, adds it to the signature map, and returns login response information.
+///
+/// # Parameters
+/// * `signature`: The SIWE message signature to verify.
+/// * `address`: The Ethereum address used to sign the SIWE message.
+/// * `session_key`: A unique session key to be used for the delegation.
+/// * `signature_map`: A mutable reference to `SignatureMap` to which the delegation hash will be added
+///   after successful validation.
+///
+/// # Returns
+/// A `Result` that, on success, contains the `LoginOkResponse` with session expiration and user canister
+/// public key, or an error string on failure.
 pub fn login(
     signature: &str,
     address: &str,
     session_key: ByteBuf,
+    signature_map: &mut SignatureMap,
 ) -> Result<LoginOkResponse, String> {
     validate_eth_signature(signature)?;
     validate_eth_address(address)?;
 
-    // Remove expired SIWE messages from the state before proceeding
+    // Remove expired SIWE messages from the state before proceeding. The init settings determines
+    // the time to live for SIWE messages.
     prune_expired_siwe_messages();
 
     // Get the previously created SIWE message for current address. If it has expired or does not
@@ -73,49 +101,23 @@ pub fn login(
 
     // The seed is what uniquely identifies the delegation. It is derived from the salt, the
     // Ethereum address and the SIWE message URI.
-    let seed = calculate_seed(address);
+    let seed = generate_seed(address);
 
-    // Prepare the delegation by adding the signature to the state and updating the root hash of the
-    // certificate tree.
-    prepare_delegation(seed, session_key, expiration);
+    // Before adding the signature to the signature map, prune any expired signatures.
+    signature_map.prune_expired(get_current_time(), MAX_SIGS_TO_PRUNE);
+
+    // Create the delegation and add its hash to the signature map. The seed is used as the map key.
+    let delegation = create_delegation(session_key, expiration);
+    let delegation_hash = create_delegation_hash(&delegation);
+    signature_map.put(hash::hash_bytes(seed), delegation_hash);
 
     // Create the user canister public key from the seed. From this key, the client can derive the
     // user principal.
-    let user_canister_pubkey = ByteBuf::from(der_encode_canister_sig_key(seed.to_vec()));
+    let user_canister_pubkey = ByteBuf::from(create_user_canister_pubkey(seed.to_vec()));
 
     Ok(LoginOkResponse {
         expiration,
         user_canister_pubkey,
-    })
-}
-
-pub fn get_delegation(
-    address: &str,
-    session_key: ByteBuf,
-    expiration: u64,
-) -> Result<SignedDelegationCandidType, String> {
-    validate_eth_address(address)?;
-
-    let seed = calculate_seed(address);
-
-    with_settings!(|settings: &Settings| {
-        STATE.with(|state| {
-            get_signature(
-                &state.asset_hashes.borrow(),
-                &state.sigs.borrow(),
-                session_key.clone(),
-                seed,
-                expiration,
-            )
-            .map(|signature| SignedDelegationCandidType {
-                delegation: DelegationCandidType {
-                    pubkey: session_key,
-                    expiration,
-                    targets: settings.targets.clone(),
-                },
-                signature: ByteBuf::from(signature),
-            })
-        })
     })
 }
 
