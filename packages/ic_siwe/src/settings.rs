@@ -1,8 +1,6 @@
 use candid::Principal;
 use url::Url;
 
-use crate::SETTINGS;
-
 const DEFAULT_SCHEME: &str = "https";
 const DEFAULT_STATEMENT: &str = "SIWE Fields:";
 const DEFAULT_CHAIN_ID: u32 = 1; // Ethereum mainnet
@@ -33,19 +31,17 @@ pub struct Settings {
     pub targets: Option<Vec<Principal>>,
 }
 
-/// Retrieves the current SIWE settings.
-///
-/// # Returns
-///
-/// A `Result` containing a clone of the current `Settings` or an error message if the settings are not
-/// initialized.
-pub fn get_settings() -> Result<Settings, String> {
-    SETTINGS.with_borrow(|settings| {
-        settings
-            .as_ref()
-            .cloned()
-            .ok_or_else(|| String::from("Settings are not initialized"))
-    })
+#[macro_export]
+macro_rules! with_settings {
+    ($body:expr) => {
+        $crate::SETTINGS.with_borrow(|s| {
+            let settings = s
+                .as_ref()
+                .unwrap_or_else(|| ic_cdk::trap("Settings are not initialized."));
+            #[allow(clippy::redundant_closure_call)]
+            $body(settings)
+        })
+    };
 }
 
 /// A builder for creating `Settings` instances.

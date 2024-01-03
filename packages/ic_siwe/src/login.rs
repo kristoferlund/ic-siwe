@@ -4,16 +4,16 @@ use serde_bytes::ByteBuf;
 
 use crate::{
     delegation::{
-        calculate_seed, get_signature, prepare_delegation, DelegationCandidType,
-        SignedDelegationCandidType,
+        calculate_seed, der_encode_canister_sig_key, get_signature, prepare_delegation,
+        DelegationCandidType, SignedDelegationCandidType,
     },
     eth::{recover_eth_address, validate_eth_address, validate_eth_signature},
-    settings::get_settings,
+    settings::Settings,
     siwe::{
         add_siwe_message, create_siwe_message, get_siwe_message, prune_expired_siwe_messages,
         remove_siwe_message, SiweMessage,
     },
-    STATE,
+    with_settings, STATE,
 };
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
@@ -43,6 +43,7 @@ pub fn login(
     validate_eth_signature(signature)?;
     validate_eth_address(address)?;
 
+    // Remove expired SIWE messages from the state before proceeding
     prune_expired_siwe_messages();
 
     // Get the previously created SIWE message for current address. If it has expired or does not
@@ -59,14 +60,28 @@ pub fn login(
         return Err(String::from("Signature verification failed"));
     }
 
-    let settings = get_settings()?;
-    let expiration = message
-        .issued_at
-        .saturating_add(settings.session_expires_in);
-
-    let user_canister_pubkey = prepare_delegation(address, session_key, expiration)?;
-
+    // At this point, the signature has been verified and the SIWE message has been used. Remove
+    // the SIWE message from the state.
     remove_siwe_message(address);
+
+    // The delegation is valid for the duration of the session as defined in the settings.
+    let expiration = with_settings!(|settings: &Settings| {
+        message
+            .issued_at
+            .saturating_add(settings.session_expires_in)
+    });
+
+    // The seed is what uniquely identifies the delegation. It is derived from the salt, the
+    // Ethereum address and the SIWE message URI.
+    let seed = calculate_seed(address);
+
+    // Prepare the delegation by adding the signature to the state and updating the root hash of the
+    // certificate tree.
+    prepare_delegation(seed, session_key, expiration);
+
+    // Create the user canister public key from the seed. From this key, the client can derive the
+    // user principal.
+    let user_canister_pubkey = ByteBuf::from(der_encode_canister_sig_key(seed.to_vec()));
 
     Ok(LoginOkResponse {
         expiration,
@@ -82,33 +97,31 @@ pub fn get_delegation(
     validate_eth_address(address)?;
 
     let seed = calculate_seed(address);
-    let settings = get_settings()?;
 
-    STATE.with(|state| {
-        get_signature(
-            &state.asset_hashes.borrow(),
-            &state.sigs.borrow(),
-            session_key.clone(),
-            seed,
-            expiration,
-        )
-        .map(|signature| SignedDelegationCandidType {
-            delegation: DelegationCandidType {
-                pubkey: session_key,
+    with_settings!(|settings: &Settings| {
+        STATE.with(|state| {
+            get_signature(
+                &state.asset_hashes.borrow(),
+                &state.sigs.borrow(),
+                session_key.clone(),
+                seed,
                 expiration,
-                targets: settings.targets.clone(),
-            },
-            signature: ByteBuf::from(signature),
+            )
+            .map(|signature| SignedDelegationCandidType {
+                delegation: DelegationCandidType {
+                    pubkey: session_key,
+                    expiration,
+                    targets: settings.targets.clone(),
+                },
+                signature: ByteBuf::from(signature),
+            })
         })
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        settings::{get_settings, SettingsBuilder},
-        SETTINGS,
-    };
+    use crate::{settings::SettingsBuilder, SETTINGS};
 
     use super::*;
 
@@ -199,15 +212,15 @@ mod tests {
 
         let result = prepare_login(VALID_ADDRESS).expect("Should succeed with valid address");
 
-        let settings = get_settings().unwrap();
-
-        assert_eq!(result.address, VALID_ADDRESS);
-        assert_eq!(result.scheme, settings.scheme);
-        assert_eq!(result.domain, settings.domain);
-        assert_eq!(result.statement, settings.statement);
-        assert_eq!(result.uri, settings.uri);
-        assert_eq!(result.version, 1);
-        assert_eq!(result.chain_id, settings.chain_id);
+        with_settings!(|settings: &Settings| {
+            assert_eq!(result.address, VALID_ADDRESS);
+            assert_eq!(result.scheme, settings.scheme);
+            assert_eq!(result.domain, settings.domain);
+            assert_eq!(result.statement, settings.statement);
+            assert_eq!(result.uri, settings.uri);
+            assert_eq!(result.version, 1);
+            assert_eq!(result.chain_id, settings.chain_id);
+        });
     }
 
     // #[test]

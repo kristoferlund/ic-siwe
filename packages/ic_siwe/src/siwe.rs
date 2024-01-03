@@ -1,4 +1,6 @@
-use crate::{rand::generate_nonce, settings::get_settings, time::get_current_time, STATE};
+use crate::settings::Settings;
+use crate::with_settings;
+use crate::{rand::generate_nonce, time::get_current_time, STATE};
 
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
@@ -81,22 +83,22 @@ impl From<SiweMessage> for String {
 
 /// Create SIWE message for the given address.
 pub(crate) fn create_siwe_message(address: &str) -> Result<SiweMessage, String> {
-    let settings = get_settings()?;
     let nonce = generate_nonce()?;
 
-    let message = SiweMessage {
-        scheme: settings.scheme,
-        domain: settings.domain,
-        address: address.to_string(),
-        statement: settings.statement,
-        uri: settings.uri,
-        version: 1,
-        chain_id: settings.chain_id,
-        nonce: hex::encode(nonce),
-        issued_at: get_current_time(),
-        expiration_time: get_current_time().saturating_add(settings.sign_in_expires_in),
-    };
-
+    let message = with_settings!(|settings: &Settings| {
+        SiweMessage {
+            scheme: settings.scheme.clone(),
+            domain: settings.domain.clone(),
+            address: address.to_string(),
+            statement: settings.statement.clone(),
+            uri: settings.uri.clone(),
+            version: 1,
+            chain_id: settings.chain_id,
+            nonce: hex::encode(nonce),
+            issued_at: get_current_time(),
+            expiration_time: get_current_time().saturating_add(settings.sign_in_expires_in),
+        }
+    });
     Ok(message)
 }
 

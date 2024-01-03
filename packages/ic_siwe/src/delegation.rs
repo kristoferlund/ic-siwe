@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use super::hash::{self, Value};
 use crate::{
-    settings::get_settings, signature_map::SignatureMap, time::get_current_time, AssetHashes, STATE,
+    settings::Settings, signature_map::SignatureMap, time::get_current_time, with_settings,
+    AssetHashes, STATE,
 };
 use ic_cdk::{
     api::{data_certificate, set_certified_data},
@@ -38,42 +39,33 @@ struct CertificateSignature<'a> {
     tree: HashTree<'a>,
 }
 
-pub(crate) fn prepare_delegation(
-    address: &str,
-    session_key: ByteBuf,
-    expiration: u64,
-) -> Result<ByteBuf, String> {
-    let seed = calculate_seed(address);
+pub(crate) fn calculate_seed(address: &str) -> Hash {
+    with_settings!(|settings: &Settings| {
+        let mut seed: Vec<u8> = vec![];
 
-    STATE.with(|state| {
-        let mut signature_map = state.sigs.borrow_mut();
+        let salt = settings.salt.as_bytes();
+        seed.push(salt.len() as u8);
+        seed.extend_from_slice(salt);
 
-        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
-        add_signature(&mut signature_map, session_key, seed, expiration)?;
-        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
+        let address = address.as_bytes();
+        seed.push(address.len() as u8);
+        seed.extend(address);
 
-        Ok(ByteBuf::from(der_encode_canister_sig_key(seed.to_vec())))
+        let uri = settings.uri.as_bytes();
+        seed.push(uri.len() as u8);
+        seed.extend(uri);
+
+        hash::hash_bytes(seed)
     })
 }
 
-pub(crate) fn calculate_seed(address: &str) -> Hash {
-    let settings = get_settings().unwrap();
-
-    let mut blob: Vec<u8> = vec![];
-
-    let salt = settings.salt.as_bytes();
-    blob.push(salt.len() as u8);
-    blob.extend_from_slice(salt);
-
-    let address = address.as_bytes();
-    blob.push(address.len() as u8);
-    blob.extend(address);
-
-    let uri = settings.uri.as_bytes();
-    blob.push(uri.len() as u8);
-    blob.extend(uri);
-
-    hash::hash_bytes(blob)
+pub(crate) fn prepare_delegation(seed: Hash, session_key: ByteBuf, expiration: u64) {
+    STATE.with(|state| {
+        let mut signature_map = state.sigs.borrow_mut();
+        prune_expired_signatures(&state.asset_hashes.borrow(), &mut signature_map);
+        add_signature(&mut signature_map, session_key, seed, expiration);
+        update_root_hash(&state.asset_hashes.borrow(), &signature_map);
+    });
 }
 
 pub(crate) fn prune_expired_signatures(
@@ -93,24 +85,23 @@ pub(crate) fn add_signature(
     session_key: ByteBuf,
     seed: Hash,
     expiration: u64,
-) -> Result<(), String> {
-    let settings = get_settings()?;
+) {
+    with_settings!(|settings: &Settings| {
+        let delegation_hash = delegation_hash(&DelegationCandidType {
+            pubkey: session_key,
+            expiration,
+            targets: settings.targets.clone(),
+        });
 
-    let delegation_hash = delegation_hash(&DelegationCandidType {
-        pubkey: session_key,
-        expiration,
-        targets: settings.targets.clone(),
+        let signature_expires_at =
+            get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
+
+        signature_map.put(
+            hash::hash_bytes(seed),
+            delegation_hash,
+            signature_expires_at,
+        );
     });
-
-    let signature_expires_at = get_current_time().saturating_add(DELEGATION_SIGNATURE_EXPIRES_AT);
-
-    signature_map.put(
-        hash::hash_bytes(seed),
-        delegation_hash,
-        signature_expires_at,
-    );
-
-    Ok(())
 }
 
 pub(crate) fn delegation_hash(delegation: &DelegationCandidType) -> Hash {
@@ -220,15 +211,15 @@ pub fn get_signature(
     let certificate =
         data_certificate().ok_or("get_signature must be called using a QUERY call")?;
 
-    let settings = get_settings()?;
+    with_settings!(|settings: &Settings| {
+        let delegation_hash = delegation_hash(&DelegationCandidType {
+            pubkey: session_key.clone(),
+            expiration,
+            targets: settings.targets.clone(),
+        });
 
-    let delegation_hash = delegation_hash(&DelegationCandidType {
-        pubkey: session_key.clone(),
-        expiration,
-        targets: settings.targets.clone(),
-    });
+        let tree = handle_witness(signature_map, seed, delegation_hash, asset_hashes);
 
-    let tree = handle_witness(signature_map, seed, delegation_hash, asset_hashes);
-
-    create_certified_signature(certificate, tree)
+        create_certified_signature(certificate, tree)
+    })
 }
