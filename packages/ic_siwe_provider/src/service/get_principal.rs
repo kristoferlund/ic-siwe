@@ -4,6 +4,14 @@ use serde_bytes::ByteBuf;
 
 use crate::ADDRESS_PRINCIPAL;
 
+/// Retrieves the principal associated with the given Ethereum address.
+///
+/// # Arguments
+/// * `address` - The EIP-55-compliant Ethereum address.
+///
+/// # Returns
+/// * `Ok(ByteBuf)` - The principal if found.
+/// * `Err(String)` - An error message if the address cannot be converted or no principal is found.
 #[query]
 fn get_principal(address: String) -> Result<ByteBuf, String> {
     let address: [u8; 20] = eth_address_to_bytes(&address)
