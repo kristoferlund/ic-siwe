@@ -10,8 +10,26 @@ use time::OffsetDateTime;
 
 /// Represents a SIWE (Sign-In With Ethereum) message.
 ///
-/// This struct contains all the fields required for a SIWE message as per the EIP-4361 specification.
-/// It includes the Ethereum address, domain, statement, and various timestamps.
+/// This struct and its implementation methods support all required fields in the [ERC-4361](https://eips.ethereum.org/EIPS/eip-4361)
+/// specification.
+///
+/// # Examples
+///
+/// The following is an example of a SIWE message formatted according to the [ERC-4361](https://eips.ethereum.org/EIPS/eip-4361) specification:
+///
+/// ```
+/// 127.0.0.1 wants you to sign in with your Ethereum account:
+/// 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
+///
+/// Login to the app
+///
+/// URI: http://127.0.0.1:5173
+/// Version: 1
+/// Chain ID: 10
+/// Nonce: ee1ee5ead5b55fe8c8e9
+/// Issued At: 2021-05-06T19:17:10Z
+/// Expiration Time: 2021-05-06T19:17:13Z
+/// ```
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
 pub struct SiweMessage {
     pub scheme: String,
@@ -26,6 +44,50 @@ pub struct SiweMessage {
     pub expiration_time: u64,
 }
 
+impl SiweMessage {
+    /// Constructs a new `SiweMessage` for a given Ethereum address using the settings defined in the
+    /// global [`Settings`] struct.
+    ///
+    /// # Arguments
+    ///
+    /// * `address`: The Ethereum address of the user.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` that, on success, contains a new [`SiweMessage`] instance.
+    pub fn new(address: &str) -> Result<Self, String> {
+        let nonce = generate_nonce().map_err(|e| e.to_string())?;
+
+        let current_time = get_current_time();
+
+        let message = with_settings!(|settings: &Settings| {
+            SiweMessage {
+                scheme: settings.scheme.clone(),
+                domain: settings.domain.clone(),
+                address: address.to_string(),
+                statement: settings.statement.clone(),
+                uri: settings.uri.clone(),
+                version: 1,
+                chain_id: settings.chain_id,
+                nonce: hex::encode(nonce),
+                issued_at: get_current_time(),
+                expiration_time: current_time.saturating_add(settings.sign_in_expires_in),
+            }
+        });
+        Ok(message)
+    }
+
+    /// Checks if the SIWE message is currently valid.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the message is within its valid time period, `false` otherwise.
+    pub fn is_expired(&self) -> bool {
+        let current_time = get_current_time();
+        self.issued_at < current_time || current_time > self.expiration_time
+    }
+}
+
 impl fmt::Display for SiweMessage {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| fmt::Error)?;
@@ -33,24 +95,12 @@ impl fmt::Display for SiweMessage {
     }
 }
 
-impl SiweMessage {
-    /// Checks if the SIWE message is currently valid based on its issue and expiration times.
+impl From<SiweMessage> for String {
+    /// Converts the SIWE message to the [ERC-4361](https://eips.ethereum.org/EIPS/eip-4361) string format.
     ///
     /// # Returns
     ///
-    /// `true` if the message is currently within its valid time period, `false` otherwise.
-    pub fn is_expired(&self) -> bool {
-        let current_time = get_current_time();
-        self.issued_at < current_time || current_time > self.expiration_time
-    }
-}
-
-/// Converts the SIWE message to the ERC-4361 string format.
-///
-/// # Returns
-///
-/// A string representation of the SIWE message in the ERC-4361 format.
-impl From<SiweMessage> for String {
+    /// A string representation of the SIWE message in the ERC-4361 format.
     fn from(val: SiweMessage) -> Self {
         let issued_at_datetime =
             OffsetDateTime::from_unix_timestamp_nanos(val.issued_at as i128).unwrap();
@@ -62,14 +112,14 @@ impl From<SiweMessage> for String {
 
         format!(
             "{domain} wants you to sign in with your Ethereum account:\n\
-                {address}\n\n\
-                {statement}\n\n\
-                URI: {uri}\n\
-                Version: {version}\n\
-                Chain ID: {chain_id}\n\
-                Nonce: {nonce}\n\
-                Issued At: {issued_at_iso_8601}\n\
-                Expiration Time: {expiration_iso_8601}",
+            {address}\n\n\
+            {statement}\n\n\
+            URI: {uri}\n\
+            Version: {version}\n\
+            Chain ID: {chain_id}\n\
+            Nonce: {nonce}\n\
+            Issued At: {issued_at_iso_8601}\n\
+            Expiration Time: {expiration_iso_8601}",
             domain = val.domain,
             address = val.address,
             statement = val.statement,
@@ -79,27 +129,6 @@ impl From<SiweMessage> for String {
             nonce = val.nonce,
         )
     }
-}
-
-/// Create SIWE message for the given address.
-pub(crate) fn create_siwe_message(address: &str) -> Result<SiweMessage, String> {
-    let nonce = generate_nonce()?;
-
-    let message = with_settings!(|settings: &Settings| {
-        SiweMessage {
-            scheme: settings.scheme.clone(),
-            domain: settings.domain.clone(),
-            address: address.to_string(),
-            statement: settings.statement.clone(),
-            uri: settings.uri.clone(),
-            version: 1,
-            chain_id: settings.chain_id,
-            nonce: hex::encode(nonce),
-            issued_at: get_current_time(),
-            expiration_time: get_current_time().saturating_add(settings.sign_in_expires_in),
-        }
-    });
-    Ok(message)
 }
 
 /// Removes SIWE messages that have exceeded their time to live.

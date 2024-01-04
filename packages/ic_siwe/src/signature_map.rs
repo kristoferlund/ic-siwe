@@ -39,6 +39,7 @@ impl PartialOrd for SigExpiration {
     }
 }
 
+/// The SignatureMap maintains the tree of delegation hashes required for authentication.
 #[derive(Default)]
 pub struct SignatureMap {
     certified_map: RbTree<Hash, RbTree<Hash, Unit>>,

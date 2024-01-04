@@ -2,16 +2,15 @@ use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use std::fmt;
 use tiny_keccak::{Hasher, Keccak};
 
-/// An error type for signature recovery.
+/// The SignatureRecoveryError is returned when an error occurs during signature recovery. It is
+/// used by the [`recover_eth_address`] and associated functions.
 #[derive(Debug)]
 pub enum SignatureRecoveryError {
     DecodingError(hex::FromHexError),
     InvalidSignature,
-    InvalidSignatureLength,
     InvalidRecoveryId,
     PublicKeyRecoveryFailure,
-    Eip191HashError,
-    Eip191BytesError,
+    Eip55Error(String),
 }
 
 impl From<hex::FromHexError> for SignatureRecoveryError {
@@ -25,15 +24,11 @@ impl fmt::Display for SignatureRecoveryError {
         match self {
             SignatureRecoveryError::DecodingError(e) => write!(f, "Decoding error: {}", e),
             SignatureRecoveryError::InvalidSignature => write!(f, "Invalid signature"),
-            SignatureRecoveryError::InvalidSignatureLength => {
-                write!(f, "Invalid signature length")
-            }
             SignatureRecoveryError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
             SignatureRecoveryError::PublicKeyRecoveryFailure => {
                 write!(f, "Public key recovery failure")
             }
-            SignatureRecoveryError::Eip191HashError => write!(f, "EIP-191 hash error"),
-            SignatureRecoveryError::Eip191BytesError => write!(f, "EIP-191 bytes error"),
+            SignatureRecoveryError::Eip55Error(e) => write!(f, "EIP-55 error: {}", e),
         }
     }
 }
@@ -45,7 +40,7 @@ impl From<SignatureRecoveryError> for String {
 }
 /// Recovers an Ethereum address from a given message and signature.
 ///
-/// # Arguments
+/// # Parameters
 ///
 /// * `message` - The message that was signed.
 /// * `signature` - The hex-encoded signature.
@@ -57,7 +52,7 @@ pub fn recover_eth_address(
     message: &str,
     signature: &str,
 ) -> Result<String, SignatureRecoveryError> {
-    let message_hash = eip191_hash(message)?;
+    let message_hash = eip191_hash(message);
     let signature_bytes = decode_signature(signature)?;
 
     let recovery_id = RecoveryId::try_from(signature_bytes[64] % 27)
@@ -74,28 +69,49 @@ pub fn recover_eth_address(
     Ok(address)
 }
 
-pub fn eth_address_to_bytes(addr: &str) -> Result<Vec<u8>, String> {
-    // Strip the '0x' prefix if present
-    let addr_trimmed = if addr.starts_with("0x") {
-        addr.strip_prefix("0x").unwrap()
-    } else {
-        addr
-    };
+/// Hashes a message using the EIP-191 standard. See [EIP-191 spec](https://eips.ethereum.org/EIPS/eip-191) for
+/// more information.
+///
+/// # Parameters
+///
+/// * `message` - The message to hash.
+///
+/// # Returns
+///
+/// A 32-byte array containing the hash.
+pub fn eip191_hash(message: &str) -> [u8; 32] {
+    let mut keccak256 = [0; 32];
+    let mut hasher = Keccak::v256();
+    hasher.update(&eip191_bytes(message));
+    hasher.finalize(&mut keccak256);
 
-    // Decode the hexadecimal string to bytes
-    hex::decode(addr_trimmed)
-        .map_err(|_| String::from("Invalid Ethereum address: Hex decoding failed"))
+    keccak256
 }
 
-pub fn bytes_to_eth_address(bytes: &[u8]) -> String {
-    // Encode the bytes to a hexadecimal string
-    let addr = hex::encode(bytes);
-
-    // Add the '0x' prefix
-    format!("0x{}", addr)
+/// Formats a message according to the EIP-191 standard. See [EIP-191 spec](https://eips.ethereum.org/EIPS/eip-191) for
+/// for more information.
+///
+/// # Parameters
+///
+/// * `message` - The message to format.
+///
+/// # Returns
+///
+/// A vector of bytes containing the formatted message.
+pub fn eip191_bytes(message: &str) -> Vec<u8> {
+    format!("\x19Ethereum Signed Message:\n{}{}", message.len(), message).into_bytes()
 }
 
-/// Decodes a hex-encoded signature.
+/// Decodes a hex-encoded Ethereum signature.
+///
+/// # Parameters
+///
+/// * `signature` - The hex-encoded signature. The signature must be prefixed with '0x' and be 132
+///  characters long.
+///
+/// # Returns
+///
+/// A vector of bytes containing the decoded signature if successful, or an error.
 pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
     validate_eth_signature(signature).map_err(|_| SignatureRecoveryError::InvalidSignature)?;
 
@@ -108,22 +124,52 @@ pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryErr
     hex::decode(signature).map_err(SignatureRecoveryError::DecodingError)
 }
 
-/// Hashes a message using the EIP-191 standard.
-pub fn eip191_hash(message: &str) -> Result<[u8; 32], SignatureRecoveryError> {
-    let mut keccak256 = [0; 32];
-    let mut hasher = Keccak::v256();
-    hasher.update(&eip191_bytes(message)?);
-    hasher.finalize(&mut keccak256);
+/// Converts an Ethereum address to bytes by stripping the '0x' prefix and decoding the hexadecimal
+/// string.
+///
+/// # Parameters
+///
+/// * `address` - The Ethereum address to convert.
+///
+/// # Returns
+///
+/// A vector of bytes containing the decoded address if successful, or an error.
+pub fn eth_address_to_bytes(address: &str) -> Result<Vec<u8>, String> {
+    // Strip the '0x' prefix if present
+    let addr_trimmed = if address.starts_with("0x") {
+        address.strip_prefix("0x").unwrap()
+    } else {
+        address
+    };
 
-    Ok(keccak256)
+    // Decode the hexadecimal string to bytes
+    hex::decode(addr_trimmed)
+        .map_err(|_| String::from("Invalid Ethereum address: Hex decoding failed"))
 }
 
-/// Formats a message according to the EIP-191 standard.
-pub fn eip191_bytes(message: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
-    Ok(format!("\x19Ethereum Signed Message:\n{}{}", message.len(), message).into_bytes())
+/// Converts a byte array to an Ethereum address by encoding the bytes to a hexadecimal string and
+/// adding the '0x' prefix.
+///
+/// # Parameters
+///
+/// * `bytes` - The byte array to convert. Must be 20 bytes long.
+pub fn bytes_to_eth_address(bytes: &[u8; 20]) -> String {
+    // Encode the bytes to a hexadecimal string
+    let addr = hex::encode(bytes);
+
+    // Add the '0x' prefix
+    format!("0x{}", addr)
 }
 
-/// Derives an Ethereum address from a public key.
+/// Derives an Ethereum address from an ECDSA public key.
+///
+/// # Parameters
+///
+/// * `key` - The ECDSA public key to derive the address from.
+///
+/// # Returns
+///
+/// The derived Ethereum address if successful, or an error.
 pub fn derive_eth_address_from_public_key(
     key: &VerifyingKey,
 ) -> Result<String, SignatureRecoveryError> {
@@ -133,27 +179,36 @@ pub fn derive_eth_address_from_public_key(
     hasher.finalize(&mut keccak256);
 
     let keccak256_hex = hex::encode(keccak256);
-    Ok(convert_to_eip55(&keccak256_hex[24..]).unwrap())
+    convert_to_eip55(&keccak256_hex[24..]).map_err(SignatureRecoveryError::Eip55Error)
 }
 
-/// Converts an Ethereum address to EIP-55 format.
-pub fn convert_to_eip55(addr: &str) -> Result<String, String> {
-    let addr_trimmed = if addr.starts_with("0x") {
-        addr.strip_prefix("0x").unwrap()
+/// Converts an Ethereum address to EIP-55 format. See [EIP-55 spec](https://eips.ethereum.org/EIPS/eip-55) for
+/// more information.
+///
+/// # Parameters
+///
+/// * `address` - The Ethereum address to convert.
+///
+/// # Returns
+///
+/// The EIP-55-compliant Ethereum address if successful, or an error.
+pub fn convert_to_eip55(address: &str) -> Result<String, String> {
+    let address_trimmed = if address.starts_with("0x") {
+        address.strip_prefix("0x").unwrap()
     } else {
-        addr
+        address
     };
 
-    let addr_lowercase = addr_trimmed.to_lowercase();
+    let address_lowercase = address_trimmed.to_lowercase();
 
     // Compute Keccak-256 hash of the lowercase address
     let mut hash = [0; 32];
     let mut hasher = Keccak::v256();
-    hasher.update(addr_lowercase.as_bytes());
+    hasher.update(address_lowercase.as_bytes());
     hasher.finalize(&mut hash);
 
     // Iterate over each character in the original address
-    let checksummed_addr = addr_trimmed
+    let checksummed_addr = address_trimmed
         .char_indices()
         .map(|(i, c)| {
             let result = match c {
@@ -187,7 +242,8 @@ pub fn convert_to_eip55(addr: &str) -> Result<String, String> {
     Ok(format!("0x{}", checksummed_addr))
 }
 
-/// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding.
+/// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding. A valid
+/// address must be prefixed with '0x', be 42 characters long, and be EIP-55 encoded.
 pub fn validate_eth_address(address: &str) -> Result<(), String> {
     if !address.starts_with("0x") || address.len() != 42 {
         return Err(String::from(
@@ -204,7 +260,8 @@ pub fn validate_eth_address(address: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Validates an Ethereum signature by checking its length and hex encoding.
+/// Validates an Ethereum signature by checking its length and hex encoding. A valid signature must
+/// be prefixed with '0x' and be 132 characters long.
 pub fn validate_eth_signature(signature: &str) -> Result<(), String> {
     if !signature.starts_with("0x") || signature.len() != 132 {
         return Err(String::from(

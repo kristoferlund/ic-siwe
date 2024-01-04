@@ -1,3 +1,4 @@
+/// Utilities for computing hashes of values.
 use ic_certified_map::Hash;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

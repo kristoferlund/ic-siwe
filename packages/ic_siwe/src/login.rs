@@ -13,8 +13,8 @@ use crate::{
     settings::Settings,
     signature_map::SignatureMap,
     siwe::{
-        add_siwe_message, create_siwe_message, get_siwe_message, prune_expired_siwe_messages,
-        remove_siwe_message, SiweMessage,
+        add_siwe_message, get_siwe_message, prune_expired_siwe_messages, remove_siwe_message,
+        SiweMessage,
     },
     time::get_current_time,
     with_settings,
@@ -40,7 +40,7 @@ pub struct LoginOkResponse {
 pub fn prepare_login(address: &str) -> Result<SiweMessage, String> {
     validate_eth_address(address)?;
 
-    let message = create_siwe_message(address)?;
+    let message = SiweMessage::new(address)?;
 
     // Save the SIWE message for use in the login call
     let address = eth_address_to_bytes(address)?;

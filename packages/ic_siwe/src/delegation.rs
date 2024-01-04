@@ -10,16 +10,16 @@ use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
-pub struct SignedDelegation {
-    pub delegation: Delegation,
-    pub signature: ByteBuf,
-}
-
-#[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct Delegation {
     pub pubkey: ByteBuf,
     pub expiration: u64,
     pub targets: Option<Vec<Principal>>,
+}
+
+#[derive(Clone, Debug, CandidType, Deserialize)]
+pub struct SignedDelegation {
+    pub delegation: Delegation,
+    pub signature: ByteBuf,
 }
 
 #[derive(Serialize)]
