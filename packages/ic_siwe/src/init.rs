@@ -1,8 +1,4 @@
-use candid::Principal;
-use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
-use std::time::Duration;
-
-use crate::{settings::Settings, RNG, SETTINGS};
+use crate::{settings::Settings, SETTINGS};
 
 /// Initializes the SIWE library with the provided settings. Must be called before any other SIWE functions.
 ///
@@ -11,6 +7,19 @@ use crate::{settings::Settings, RNG, SETTINGS};
 /// * `settings` - The SIWE settings to be initialized.
 pub fn init(settings: Settings) -> Result<(), String> {
     SETTINGS.set(Some(settings));
+
+    #[cfg(feature = "nonce")]
+    init_rng();
+
+    Ok(())
+}
+
+#[cfg(feature = "nonce")]
+fn init_rng() {
+    use crate::RNG;
+    use candid::Principal;
+    use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
+    use std::time::Duration;
 
     // Initialize the random number generator with a seed from the management canister.
     ic_cdk_timers::set_timer(Duration::ZERO, || {
@@ -22,8 +31,6 @@ pub fn init(settings: Settings) -> Result<(), String> {
             RNG.with_borrow_mut(|rng| *rng = Some(ChaCha20Rng::from_seed(seed)));
         })
     });
-
-    Ok(())
 }
 
 #[cfg(test)]

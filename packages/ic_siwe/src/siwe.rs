@@ -57,9 +57,7 @@ impl SiweMessage {
     /// A `Result` that, on success, contains a new [`SiweMessage`] instance.
     pub fn new(address: &str) -> Result<Self, String> {
         let nonce = generate_nonce().map_err(|e| e.to_string())?;
-
         let current_time = get_current_time();
-
         let message = with_settings!(|settings: &Settings| {
             SiweMessage {
                 scheme: settings.scheme.clone(),
@@ -69,7 +67,7 @@ impl SiweMessage {
                 uri: settings.uri.clone(),
                 version: 1,
                 chain_id: settings.chain_id,
-                nonce: hex::encode(nonce),
+                nonce,
                 issued_at: get_current_time(),
                 expiration_time: current_time.saturating_add(settings.sign_in_expires_in),
             }

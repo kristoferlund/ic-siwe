@@ -11,13 +11,12 @@ serde_cbor = "0.11"
 candid = "0.9.11"
 hex = "0.4.3"
 ic-cdk = "0.11.3"
-ic-cdk-timers = "0.5.1"
+ic-cdk-timers = {version = "0.5.1", optional = true }
 ic-certified-map = "0.4.0"
 url = "2.4.1"
 time = { version = "0.3.30", features = ["formatting"] }
-rand_chacha = "0.3.1"
+rand_chacha = { version = "0.3.1", optional = true }
 getrandom = { version = "0.2.10", features = ["custom"] }
-ed25519-dalek = { version = "2.1.0", features = ["default"] }
 k256 = "0.13.2"
 tiny-keccak = {version = "2.0.2", features = ["keccak"]}
 sha2 = "0.9.1"
@@ -27,3 +26,6 @@ ethers = "2.0.10"
 tokio = { version = "1.13.0", features = ["full"] }
 rand = "0.8.4"
 hex-literal = "0.2.1"
+
+[features]
+nonce = ["rand_chacha", "ic-cdk-timers"]
