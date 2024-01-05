@@ -1,0 +1,46 @@
+{
+  "name": "ic-use-siwe-identity",
+  "version": "0.0.1",
+  "description": "",
+  "type": "module",
+  "main": "dist/index.jsx",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint ./src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "build": "rm -rf dist && node build.js && tsc --emitDeclarationOnly",
+    "dev": "run-p dev:*",
+    "dev:tsc": "tsc --watch --preserveWatchOutput",
+    "dev:esbuild": "npm run build --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "@dfinity/agent": ">=0.20.0",
+    "@dfinity/candid": ">=0.20.0",
+    "@dfinity/identity": ">=0.20.0",
+    "react": ">=18.0.0",
+    "viem": ">=2.0.0",
+    "wagmi": ">=2.0.0"
+  },
+  "devDependencies": {
+    "@dfinity/agent": "^0.20.2",
+    "@dfinity/candid": "^0.20.2",
+    "@dfinity/identity": "^0.20.2",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0",
+    "@types/node": "^20.10.6",
+    "@types/react": "^18.2.39",
+    "esbuild": "^0.19.5",
+    "npm-run-all": "^4.1.5",
+    "react": "^18.2.0",
+    "typescript": "^5.2.2",
+    "viem": "^2.0.0",
+    "wagmi": "^2.0.1",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4"
+  }
+}

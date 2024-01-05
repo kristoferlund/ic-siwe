@@ -1,0 +1,7 @@
+{
+  "name": "ic-siwe",
+  "version": "0.0.1",
+  "workspaces": [
+    "packages/ic-use-siwe-identity"
+  ]
+}
