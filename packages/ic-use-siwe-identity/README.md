@@ -15,7 +15,7 @@ A SIWE enabled canister is a canister that integrates the `ic_siwe` library and 
 - **Login progress**: State varibles are provided to indicate whether the user is logged in, logging in, or logged out.
 - **Wagmi Integration**: Uses [wagmi](https://wagmi.sh) for Ethereum wallet integration.
 - **Works with ic-use-actor**: Plays nicely with [ic-use-actor](https://www.npmjs.com/package/ic-use-actor) for hassle free frontend integration.
-- **Works with ic_siwe_provider**: An easy alternative to integrating with `ic_siwe` directly is using the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. The provider canister can be added to your project as a dependency and used as a proxy for all `ic_siwe` calls.
+- **Works with ic_siwe_provider**: An easy alternative to integrating with `ic_siwe` directly is using the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. The provider canister can be added to your project as a dependency and used as a login provider for you project.
 
 ## Login Flow
 

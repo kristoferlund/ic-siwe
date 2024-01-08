@@ -15,7 +15,9 @@
     "internet computer",
     "react",
     "hook",
-    "actor"
+    "actor",
+    "siwe",
+    "ethereum"
   ],
   "license": "MIT",
   "type": "module",
