@@ -43,8 +43,34 @@ export const useSiweIdentity = (): SiweIdentityContextType => {
 };
 
 /**
- * Provider component for the SIWE identity context.
- * Manages identity state and provides authentication-related functionalities.
+ * Provider component for the SIWE identity context. Manages identity state and provides authentication-related functionalities.
+ *
+ * @prop {IDL.InterfaceFactory} idlFactory - Required. The Interface Description Language (IDL) factory for the canister. This factory is used to create an actor interface for the canister.
+ * @prop {string} canisterId - Required. The unique identifier of the canister on the Internet Computer network. This ID is used to establish a connection to the canister.
+ * @prop {HttpAgentOptions} httpAgentOptions - Optional. Configuration options for the HTTP agent used to communicate with the Internet Computer network.
+ * @prop {ActorConfig} actorOptions - Optional. Configuration options for the actor. These options are passed to the actor upon its creation.
+ * @prop {ReactNode} children - Required. The child components that the SiweIdentityProvider will wrap. This allows any child component to access the authentication context provided by the SiweIdentityProvider.
+ *
+ * @example
+ * ```tsx
+ * import { SiweIdentityProvider } from 'ic-use-siwe-identity';
+ * import {canisterId, idlFactory} from "path-to/siwe-enabled-canister/index";
+ * import { _SERVICE } from "path-to/siwe-enabled-canister.did";
+ *
+ * function App() {
+ *   return (
+ *     <SiweIdentityProvider<_SERVICE>
+ *       idlFactory={idlFactory}
+ *       canisterId={canisterId}
+ *       // ...other props
+ *     >
+ *       {... your app components}
+ *     </App>
+ *   );
+ * }
+ *
+ * import { SiweIdentityProvider } from "ic-use-siwe-identity";
+ *```
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
@@ -54,10 +80,19 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
   canisterId,
   children,
 }: {
+  /** Configuration options for the HTTP agent used to communicate with the Internet Computer network. */
   httpAgentOptions?: HttpAgentOptions;
+
+  /** Configuration options for the actor. These options are passed to the actor upon its creation. */
   actorOptions?: ActorConfig;
+
+  /** The Interface Description Language (IDL) factory for the canister. This factory is used to create an actor interface for the canister. */
   idlFactory: IDL.InterfaceFactory;
+
+  /** The unique identifier of the canister on the Internet Computer network. This ID is used to establish a connection to the canister. */
   canisterId: string;
+
+  /** The child components that the SiweIdentityProvider will wrap. This allows any child component to access the authentication context provided by the SiweIdentityProvider. */
   children: ReactNode;
 }) {
   const { signMessage, data, status, reset } = useSignMessage();
