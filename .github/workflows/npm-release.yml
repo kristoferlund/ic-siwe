@@ -1,0 +1,21 @@
+name: ic-use-siwe-identity Publish to NPM
+run-name: ic-use-siwe-identity Publish to NPM
+
+on:
+  push:
+    branches: main
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run build --workspace ic-use-siwe-identity
+      - uses: JS-DevTools/npm-publish@v3
+        with:
+          package: packages/ic-use-siwe-identity
+          token: ${{ secrets.NPM_TOKEN }}
