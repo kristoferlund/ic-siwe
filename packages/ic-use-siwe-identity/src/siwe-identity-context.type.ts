@@ -15,7 +15,7 @@ export type SiweIdentityContextType = {
 
   /** Status of the SIWE message signing process. This is a re-export of the Wagmi
    * signMessage / status type. */
-  signMessageStatus: "idle" | "pending" | "success" | "error";
+  signMessageStatus: "error" | "loading" | "success" | "idle";
 
   /** The delegation chain is available after successfully loading the identity from local
    * storage or completing the login process. */
