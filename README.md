@@ -16,20 +16,32 @@ to build applications that leverage the strengths of both platforms.
 
 The project consists of several packages:
 
-## [ic_siwe](packages/ic_siwe/README.md)
+## [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe)
 
 Rust library that provides the necessary tools for integrating Sign-In with Ethereum (SIWE) into IC canisters, allowing users to sign in using their Ethereum wallets.
 
-## [ic-siwe-provider](packages/ic_siwe_provider/README.md)
+## [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider)
 
 Prebuilt canister serving as a SIWE identity provider for Internet Computer canisters. `ic_siwe-provider` packages the `ic_siwe` library and makes it available as a canister that can easily be integrated into any Internet Computer application, independent of the application's programming language.
 
-## [ic-use-siwe-identity](packages/ic-use-siwe-identity/README.md)
+## [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity)
 
 React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
 
 ## [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
 
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](packages/ic-use-siwe-identity/README.md) hook and [ic-siwe-provider](packages/ic_siwe_provider/README.md) canister.
+React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 The deployed demo can also be accessed here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
+
+## Updates
+
+See the respective package CHANGELOG for details on updates.
+
+## Contributing
+
+Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for more details.

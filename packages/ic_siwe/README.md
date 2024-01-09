@@ -134,7 +134,7 @@ The login flow is illustrated in the following diagram:
                                 └────────┘                                        └────────┘                              └─────────┘
 ```
 
-# Crate features
+## Crate features
 
 The library has one optional feature that is disabled by default.
 
@@ -143,3 +143,15 @@ The library has one optional feature that is disabled by default.
   unique nonces for each generated SIWE message. Nonces don't add any additional security to the SIWE login
   flow but are required by the SIWE standard. When this feature is disabled, the nonce is always set to the
   hex encoded string `Not in use`.
+
+## Updates
+
+See the [CHANGELOG](CHANGELOG.md) for details on updates.
+
+## Contributing
+
+Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for more details.

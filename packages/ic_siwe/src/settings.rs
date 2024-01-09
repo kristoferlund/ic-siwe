@@ -18,11 +18,22 @@ const DEFAULT_SESSION_EXPIRES_IN: u64 = 30 * 60 * 1_000_000_000; // 30 minutes
 /// to initialize the library.
 #[derive(Default, Debug, Clone)]
 pub struct Settings {
+    // The domain from where the frontend that uses SIWE is served.
     pub domain: String,
+
+    // The full URI, potentially including port number of the frontend that uses SIWE.
     pub uri: String,
+
+    // The salt is used when generating the seed that uniquely identifies each user principal.
     pub salt: String,
+
+    // The Ethereum chain ID for ic-siwe, defaults to 1 (Ethereum mainnet).
     pub chain_id: u32,
+
+    // The scheme used to serve the frontend that uses SIWE. Defaults to "https".
     pub scheme: String,
+
+    // The statement is a message or declaration, often presented to the user by the Ethereum wallet
     pub statement: String,
 
     // The TTL for a sign-in message in nanoseconds. After this time, the sign-in message will be pruned.
