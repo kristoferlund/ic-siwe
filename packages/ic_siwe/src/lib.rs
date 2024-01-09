@@ -13,7 +13,7 @@ to build applications that leverage the strengths of both platforms.
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
-## Prebuilt ic_siwe_provider Canister
+## Prebuilt ic_siwe_provider canister
 
 While the `ic_siwe` library can be used to build custom solutions, the `ic_siwe_provider` canister provides a
 prebuilt solution for handling the login flow and delegating identities within the IC platform.
