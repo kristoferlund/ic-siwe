@@ -1,6 +1,6 @@
 # ic-siwe
 
-The `ic-siwe` library allows Ethereum developers to extend their applications onto the Internet Computer (IC) platform, utilizing the Sign-In With Ethereum (SIWE) standard.
+The `ic-siwe` library allows Ethereum developers to extend their applications onto the Internet Computer (IC) platform, allowing users to sign in with their Ethereum wallets to interact with IC canisters.
 
 ### Key Features:
 
