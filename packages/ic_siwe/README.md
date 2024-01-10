@@ -27,7 +27,7 @@ This approach simplifies the development process, focusing on configuration over
 [ERC-4361: Sign-In with Ethereum](https://eips.ethereum.org/EIPS/eip-4361) - Off-chain authentication for
 Ethereum accounts to establish sessions
 
-`ic_siwe` implements most parts of the Sign In with Ethereum (SIW standard,
+`ic_siwe` implements most parts of the Sign In with Ethereum (SIWE standard,
 [EIP-4361](https://eips.ethereum.org/EIPS/eip-4361) with some notable exceptions:
 
 - `nonce` - The SIWE standard requires that each SIWE message has a unique nonce. In the context of this
