@@ -1,3 +1,5 @@
+![Sign in with Ethereum for the Internet Computer](/media/header.png)
+
 # ic-siwe
 
 The `ic-siwe` project facilitates the integration of Ethereum wallet-based authentication with applications on the Internet Computer (IC) platform.
