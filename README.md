@@ -1,6 +1,6 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic-siwe` is a project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic-siwe` is a project that enables Ethereum wallet-based authentication for applications on the [Internet Computer](https://internetcomputer.org) (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Key Features
 
@@ -37,7 +37,7 @@ React hook and context provider for easy frontend integration with SIWE enabled 
 
 ## [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
 
-A React context provider for managing Internet Computer (IC) actors with enhanced features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
+React hook and context provider for managing Internet Computer (IC) actors with features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
 
 ## Updates
 
