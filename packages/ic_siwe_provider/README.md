@@ -21,6 +21,8 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 
 See the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) for a complete example of how to integrate the `ic_siwe_provider` canister into an IC application. The easiest way to get started is to fork the demo and modify it to suit your needs.
 
+The [integration tests](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/tests/integration_tests.rs) for the `ic_siwe_provider` canister also provide a good overview of how to integrate the canister into an IC application.
+
 The high-level integration flow for the `ic_siwe_provider` canister is as follows:
 
 1. An IC application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
@@ -114,15 +116,11 @@ function MyComponent() {
 }
 ```
 
-## API
+## Service Interface
 
 The `ic_siwe_provider` canister exposes the following endpoints:
 
-## API Endpoints
-
-The `ic_siwe_provider` canister exposes several endpoints, each serving a specific function in the Ethereum wallet authentication process for Internet Computer applications.
-
-### `get_address`
+### [get_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_address.rs)
 
 - **Purpose**: Retrieves the Ethereum address associated with a given IC principal.
 - **Input**: A `ByteBuf` containing the principal's bytes (expected to be 29 bytes).
@@ -130,12 +128,12 @@ The `ic_siwe_provider` canister exposes several endpoints, each serving a specif
   - `Ok(String)`: The EIP-55-compliant Ethereum address, if found.
   - `Err(String)`: An error message if the principal cannot be converted or no address is found.
 
-### `get_caller_address`
+### [get_caller_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_calle_address.rs)
 
 - **Purpose**: Retrieves the Ethereum address associated with the caller. This is a convenience function that internally calls `get_address`.
 - **Output**: Same as `get_address`.
 
-### `get_delegation`
+### [get_delegation](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_delegation.rs)
 
 - **Purpose**: Fetches the delegation to be used for authentication once the user is logged in.
 - **Input**: Ethereum address (`String`), session key (`ByteBuf`), and expiration timestamp (`u64`).
@@ -143,7 +141,7 @@ The `ic_siwe_provider` canister exposes several endpoints, each serving a specif
   - `Ok(SignedDelegation)`: The delegation if the process is successful.
   - `Err(String)`: An error message if there is a failure in fetching the delegation.
 
-### `get_principal`
+### [get_principal](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_principal.rs)
 
 - **Purpose**: Retrieves the principal associated with the given Ethereum address.
 - **Input**: The EIP-55-compliant Ethereum address (`String`).
@@ -151,7 +149,7 @@ The `ic_siwe_provider` canister exposes several endpoints, each serving a specif
   - `Ok(ByteBuf)`: The principal if found.
   - `Err(String)`: An error message if the address cannot be converted or no principal is found.
 
-### `login`
+### [login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/login.rs)
 
 - **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
 - **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
@@ -159,7 +157,7 @@ The `ic_siwe_provider` canister exposes several endpoints, each serving a specif
   - `Ok(LoginOkResponse)`: The public key and other login response data if the login is successful.
   - `Err(String)`: An error message if the login process fails.
 
-### `prepare_login`
+### [prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/prepare_login.rs)
 
 - **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process.
 - **Input**: Ethereum address (`String`).
@@ -169,13 +167,13 @@ The `ic_siwe_provider` canister exposes several endpoints, each serving a specif
 
 In addition to the key functionalities for Ethereum wallet authentication, the `ic_siwe_provider` canister includes initialization and upgrade endpoints essential for setting up and maintaining the canister.
 
-### `init`
+### [init](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/init.rs)
 
 - **Purpose**: Initializes the `ic_siwe_provider` canister with necessary settings for the SIWE process.
 - **Input**: `SettingsInput` struct containing configuration details like domain, URI, salt, chain ID, etc.
 - **Operation**: Sets up the SIWE library with the provided settings. This function is invoked when the canister is created.
 
-### `upgrade`
+### [upgrade](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/upgrade.rs)
 
 - **Purpose**: Maintains the state and settings of the `ic_siwe_provider` canister during an upgrade.
 - **Input**: `SettingsInput` struct similar to the `init` function.

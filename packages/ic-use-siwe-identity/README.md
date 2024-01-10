@@ -1,10 +1,10 @@
-# ic-use-siwe-identity
+![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+`ic-use-siwe-identity` is a React hook and context provider for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters.
 
-**TL;DR:** `ic_siwe` allows users to login to Internet Computer canisters using their Ethereum wallet.
+`ic-use-siwe-identity` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
-A SIWE enabled canister is a canister that integrates the `ic_siwe` library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures. The library is available here: [ic-siwe](https://github.com/kristoferlund/ic-siwe).
+A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
 
 ![npm](https://img.shields.io/npm/v/ic-use-siwe-identity)
 ![npm](https://img.shields.io/npm/dw/ic-use-siwe-identity)
