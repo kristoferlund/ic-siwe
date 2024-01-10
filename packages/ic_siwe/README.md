@@ -1,11 +1,10 @@
-# ic_siwe
+![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-The `ic_siwe` library facilitates the integration of Ethereum wallet-based authentication with applications on
-the Internet Computer (IC) platform. The library provides the necessary tools for integrating Sign-In with
-Ethereum (SIWE) into IC canisters, allowing users to sign in using their Ethereum wallets.
+`ic_siwe` is the Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
+the Internet Computer (IC) platform. The library provides all necessary tools for integrating Sign-In with
+Ethereum (SIWE) into IC canisters, from generating SIWE messages to creating delegate identities.
 
-`ic_siwe` enhances the interoperability between Ethereum and the Internet Computer platform, enabling developers
-to build applications that leverage the strengths of both platforms.
+`ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Key Features
 
@@ -15,9 +14,9 @@ to build applications that leverage the strengths of both platforms.
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
-## Prebuilt ic_siwe_provider canister
+## Prebuilt `ic_siwe_provider` canister
 
-While the `ic_siwe` library can be used to build custom solutions, the `ic_siwe_provider` canister provides a
+While the `ic_siwe` library can be used to build custom solutions, the [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister provides a
 prebuilt solution for handling the login flow and delegating identities within the IC platform.
 
 Developers can integrate this canister into their projects with minimal coding effort by adding it to their `dfx.json`.

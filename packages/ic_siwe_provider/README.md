@@ -1,8 +1,10 @@
-# ic_siwe_provider
+![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-The `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into your [Internet Computer](https://internetcomputer.org) application.
+Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into your [Internet Computer](https://internetcomputer.org) application.
 
 The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing IC applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an IC project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
+
+`ic_siwe_provider` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Features
 
@@ -22,47 +24,12 @@ See the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react
 The high-level integration flow for the `ic_siwe_provider` canister is as follows:
 
 1. An IC application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
-2. The `ic_siwe_provider` canister generates a SIWE message and returns it to the application.
-3. The application displays the SIWE message to the user who signs it with their Ethereum wallet.
-4. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user.
-5. The `ic_siwe_provider` canister verifies the signature and creates an identity for the user.
-6. The application can now use the identity to authenticate the user and perform privileged operations on their behalf.
+2. The application displays the SIWE message to the user who signs it with their Ethereum wallet.
+3. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user. The canister verifies the signature and creates an identity for the user.
+4. The application retrieves the identity from the `ic_siwe_provider` canister.
+5. The application can now use the identity to make authenticated calls to canisters.
 
-```text
-┌───┐          ┌────────────────┐          ┌────────────┐
-│app│          │ic_siwe_provider│          │app_canister│
-└─┬─┘          └───────┬────────┘          └─────┬──────┘
- ┌┴┐ Get SIWE message ┌┴┐                        │
- │ │ ────────────────>│ │                        │
- │ │                  │ │                        │
- │ │                  │ │                        │
- │ │ <─ ─ ─ ─ ─ ─ ─ ─ │ │                        │
- │ │                  │ │                        │
- │ │────┐             │ │                        │
- │ │    │ Sign message│ │                        │
- │ │<───┘             │ │                        │
- │ │                  │ │                        │
- │ │      Login       │ │                        │
- │ │ ────────────────>│ │                        │
- │ │                  │ │                        │
- │ │                  │ │                        │
- │ │ <─ ─ ─ ─ ─ ─ ─ ─ │ │                        │
- │ │                  │ │                        │
- │ │   Get identity   │ │                        │
- │ │ ────────────────>│ │                        │
- │ │                  └┬┘                        │
- │ │                   │                         │
- │ │ <─ ─ ─ ─ ─ ─ ─ ─ ─                          │
- │ │                   │                         │
- │ │             Authenticated call             ┌┴┐
- │ │ ──────────────────────────────────────────>│ │
- └┬┘                   │                        └┬┘
-  │                    │                         │
-  │<─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─│
-┌─┴─┐          ┌───────┴────────┐          ┌─────┴──────┐
-│app│          │ic_siwe_provider│          │app_canister│
-└───┘          └────────────────┘          └────────────┘
-```
+![Sign in with Ethereum - Login flow](/media/flow.png)
 
 ## Installation
 
