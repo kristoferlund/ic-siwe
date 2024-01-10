@@ -47,19 +47,19 @@ Ethereum accounts to establish sessions
 
 Three canister methods need to be exposed to implement the login flow: `prepare_login`, `login`, and `get_delegation`.
 
-`prepare_login`
+## `prepare_login`
 - The `prepare_login` method is called by the frontend application to initiate the login flow. The method
   takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application
   uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
 - See: [`login::prepare_login`]
 
-`login`
+## `login`
 - The `login` method is called by the frontend application after the user has signed the SIWE message. The
   method takes the user's Ethereum address, signature, and session identity as parameters. The method
   verifies the signature and Ethereum address and returns a delegation.
 - See: [`login::login`]
 
-`get_delegation`
+## `get_delegation`
 - The `get_delegation` method is called by the frontend application after a successful login. The method
   takes the delegation expiration time as a parameter and returns a delegation.
 - The `get_delegation` method is not mirrored by one function in the `ic_siwe` library. The creation of delegate
