@@ -17,6 +17,18 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 - **Works with ic-use-actor**: Plays nicely with [ic-use-actor](https://www.npmjs.com/package/ic-use-actor) for hassle free frontend integration.
 - **Works with ic_siwe_provider**: An easy alternative to integrating with `ic_siwe` directly is using the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. The provider canister can be added to your project as a dependency and used as a login provider for you project.
 
+## Table of Contents
+
+- [Login Flow](#login-flow)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [1. Setup the `SiweIdentityProvider` component](#1-setup-the-siweidentityprovider-component)
+  - [2. Use the `useSiweIdentity` hook](#2-use-the-usesiweidentity-hook)
+- [SiweIdentityProvider props](#siweidentityprovider-props)
+- [useSiweIdentity interface](#usesiweidentity-interface)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Login Flow
 
 ### 1. **Initialization**

@@ -14,6 +14,19 @@ Ethereum (SIWE) into IC canisters, from generating SIWE messages to creating del
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
+## Table of Contents
+
+- [Prebuilt `ic_siwe_provider` canister](#prebuilt-ic_siwe_provider-canister)
+- [SIWE Standard](#siwe-standard)
+- [Login flow](#login-flow)
+  - [`prepare_login`](#prepare_login)
+  - [`login`](#login)
+  - [`get_delegation`](#get_delegation)
+- [Crate features](#crate-features)
+- [Updates](#updates)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Prebuilt `ic_siwe_provider` canister
 
 While the `ic_siwe` library can be used to build custom solutions, the [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister provides a
@@ -38,25 +51,25 @@ Ethereum accounts to establish sessions
 - `not-before`, `request-id`, `resources` - Not implemented. These fields are marked as OPTIONAL in the
   SIWE standard and are not required for current implementation.
 
-# Login flow
+## Login flow
 
 Three canister methods need to be exposed to implement the login flow: `prepare_login`, `login`, and `get_delegation`.
 
-## `prepare_login`
+### `prepare_login`
 
 - The `prepare_login` method is called by the frontend application to initiate the login flow. The method
   takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application
   uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
 - See: [`login::prepare_login`]
 
-## `login`
+### `login`
 
 - The `login` method is called by the frontend application after the user has signed the SIWE message. The
   method takes the user's Ethereum address, signature, and session identity as parameters. The method
   verifies the signature and Ethereum address and returns a delegation.
 - See: [`login::login`]
 
-## `get_delegation`
+### `get_delegation`
 
 - The `get_delegation` method is called by the frontend application after a successful login. The method
   takes the delegation expiration time as a parameter and returns a delegation.

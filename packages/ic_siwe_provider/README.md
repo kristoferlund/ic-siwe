@@ -17,6 +17,16 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
+## Table of Contents
+
+- [Integration overview](#integration-overview)
+- [Installation](#installation)
+- [Service Interface](#service-interface)
+- [Data Structures](#data-structures)
+- [Updates](#updates)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Integration overview
 
 See the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) for a complete example of how to integrate the `ic_siwe_provider` canister into an IC application. The easiest way to get started is to fork the demo and modify it to suit your needs.
