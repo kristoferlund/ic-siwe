@@ -218,6 +218,105 @@ fn full_login(
 }
 
 #[test]
+#[should_panic]
+fn test_init_with_no_settings() {
+    let ic = PocketIc::new();
+
+    let canister_id = ic.create_canister();
+    ic.add_cycles(canister_id, 2_000_000_000_000);
+
+    let wasm_path: std::ffi::OsString =
+        std::env::var_os("IC_SIWE_PROVIDER_PATH").expect("Missing ic_siwe_provider wasm file");
+    let wasm_module = std::fs::read(wasm_path).unwrap();
+
+    let sender = None;
+
+    // Empty init argument, should cause a panic
+    ic.install_canister(canister_id, wasm_module, encode_one(()).unwrap(), sender);
+}
+
+#[test]
+fn test_upgrade_with_changed_arguments() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
+
+    let wasm_path: std::ffi::OsString =
+        std::env::var_os("IC_SIWE_PROVIDER_PATH").expect("Missing ic_siwe_provider wasm file");
+    let wasm_module = std::fs::read(wasm_path).unwrap();
+
+    // If specific targets have been listed, add the canister id of this canister to the list of targets.
+    let targets: Option<Vec<Principal>> = Some(vec![ic_siwe_provider_canister]);
+
+    let settings = SettingsInput {
+        domain: "192.168.0.1".to_string(),
+        uri: "http://192.168.0.1:666".to_string(),
+        salt: "another salt".to_string(),
+        chain_id: Some(666),
+        scheme: Some("https".to_string()),
+        statement: Some("Some login statement".to_string()),
+        sign_in_expires_in: Some(Duration::from_secs(300).as_nanos() as u64), // 5 minutes
+        session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 14).as_nanos() as u64), // 2 weeks
+        targets: targets.clone(),
+    };
+
+    let arg = encode_one(settings).unwrap();
+
+    let sender = None;
+
+    let upgrade_result =
+        ic.upgrade_canister(ic_siwe_provider_canister, wasm_module, arg.clone(), sender);
+
+    assert!(upgrade_result.is_ok());
+
+    // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
+    for _ in 0..5 {
+        ic.tick();
+    }
+
+    // Call prepare_login, check that new settings are reflected in returned siwe_message
+    let address = encode_one(VALID_ADDRESS).unwrap();
+    let response: Result<String, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "prepare_login",
+        address,
+    );
+
+    assert!(response.is_ok());
+
+    let siwe_message: Message = response.unwrap().parse().unwrap();
+    assert_eq!(siwe_message.domain, "192.168.0.1");
+    assert_eq!(siwe_message.uri, "http://192.168.0.1:666");
+    assert_eq!(siwe_message.chain_id, 666);
+    assert_eq!(
+        siwe_message.statement,
+        Some(String::from("Some login statement"))
+    );
+}
+
+#[test]
+fn test_upgrade_with_no_settings() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
+
+    let wasm_path: std::ffi::OsString =
+        std::env::var_os("IC_SIWE_PROVIDER_PATH").expect("Missing ic_siwe_provider wasm file");
+    let wasm_module = std::fs::read(wasm_path).unwrap();
+
+    let sender = None;
+
+    // Empty init argument, should cause a panic
+    let result = ic.upgrade_canister(
+        ic_siwe_provider_canister,
+        wasm_module,
+        encode_one(()).unwrap(),
+        sender,
+    );
+    assert!(result.is_err());
+}
+
+#[test]
 fn test_prepare_login_invalid_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
@@ -571,8 +670,6 @@ fn test_call_get_address_from_other_canister() {
     let test_canister2 = ic.create_canister();
 
     let (ic_siwe_provider_canister, targets) = init(&ic, Some(vec![test_canister2]));
-
-    println!("targets: {:?}", targets);
 
     let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
 
