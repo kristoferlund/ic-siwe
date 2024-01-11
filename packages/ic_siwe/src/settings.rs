@@ -18,32 +18,32 @@ const DEFAULT_SESSION_EXPIRES_IN: u64 = 30 * 60 * 1_000_000_000; // 30 minutes
 /// to initialize the library.
 #[derive(Default, Debug, Clone)]
 pub struct Settings {
-    // The domain from where the frontend that uses SIWE is served.
+    /// The domain from where the frontend that uses SIWE is served.
     pub domain: String,
 
-    // The full URI, potentially including port number of the frontend that uses SIWE.
+    /// The full URI, potentially including port number of the frontend that uses SIWE.
     pub uri: String,
 
-    // The salt is used when generating the seed that uniquely identifies each user principal.
+    /// The salt is used when generating the seed that uniquely identifies each user principal.
     pub salt: String,
 
-    // The Ethereum chain ID for ic-siwe, defaults to 1 (Ethereum mainnet).
+    /// The Ethereum chain ID for ic-siwe, defaults to 1 (Ethereum mainnet).
     pub chain_id: u32,
 
     // The scheme used to serve the frontend that uses SIWE. Defaults to "https".
     pub scheme: String,
 
-    // The statement is a message or declaration, often presented to the user by the Ethereum wallet
+    /// The statement is a message or declaration, often presented to the user by the Ethereum wallet
     pub statement: String,
 
-    // The TTL for a sign-in message in nanoseconds. After this time, the sign-in message will be pruned.
+    /// The TTL for a sign-in message in nanoseconds. After this time, the sign-in message will be pruned.
     pub sign_in_expires_in: u64,
 
-    // The TTL for a session in nanoseconds.
+    /// The TTL for a session in nanoseconds.
     pub session_expires_in: u64,
 
-    // The list of canisters for which the identity delegation is allowed. Defaults to None, which means
-    // that the delegation is allowed for all canisters.
+    /// The list of canisters for which the identity delegation is allowed. Defaults to None, which means
+    /// that the delegation is allowed for all canisters.
     pub targets: Option<Vec<Principal>>,
 }
 
