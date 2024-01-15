@@ -13,21 +13,22 @@ import {
   type SignedDelegation,
 } from "@dfinity/identity";
 import { type ReactNode, useEffect, useState } from "react";
-import type { SiweIdentityContextType } from "./siwe-identity-context.type";
+import type { SiweIdentityContextType } from "./context.type";
 import { useAccount, useSignMessage } from "wagmi";
 import { IDL } from "@dfinity/candid";
 import { Principal } from "@dfinity/principal";
-import type { SIWE_IDENTITY_SERVICE } from "./siwe-identity-service.interface";
+import type { SIWE_IDENTITY_SERVICE } from "./service.interface";
 import { clearIdentity, loadIdentity, saveIdentity } from "./local-storage";
 import { callGetDelegation, callLogin, createAnonymousActor } from "./ic";
 import { asDerEncodedPublicKey, asSignature } from "./utils";
+import type { State } from "./state.type";
 
 /**
  * Re-export types
  */
-export * from "./siwe-identity-context.type";
-export * from "./siwe-identity-service.interface";
-export * from "./siwe-identity-storage.type";
+export * from "./context.type";
+export * from "./service.interface";
+export * from "./storage.type";
 
 /**
  * React context for managing SIWE (Sign-In with Ethereum) identity.
@@ -105,15 +106,9 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
   const { signMessage, data, status, reset } = useSignMessage();
   const { address } = useAccount();
 
-  const [state, setState] = useState({
-    anonymousActor: undefined as
-      | ActorSubclass<SIWE_IDENTITY_SERVICE>
-      | undefined,
+  const [state, setState] = useState<State>({
     isLoading: true,
     isLoggingIn: false,
-    identity: undefined as DelegationIdentity | undefined,
-    identityAddress: undefined as string | undefined,
-    delegationChain: undefined as DelegationChain | undefined,
   });
 
   /**

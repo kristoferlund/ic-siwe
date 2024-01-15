@@ -7,7 +7,7 @@ import {
   type ActorSubclass,
 } from "@dfinity/agent";
 import type { IDL } from "@dfinity/candid";
-import type { SIWE_IDENTITY_SERVICE } from "./siwe-identity-service.interface";
+import type { SIWE_IDENTITY_SERVICE } from "./service.interface";
 
 /**
  * Creates an anonymous actor for interactions with the Internet Computer.
