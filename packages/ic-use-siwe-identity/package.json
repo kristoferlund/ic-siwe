@@ -1,6 +1,6 @@
 {
   "name": "ic-use-siwe-identity",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
