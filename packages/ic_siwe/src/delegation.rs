@@ -90,7 +90,7 @@ pub fn witness(
 ) -> Result<HashTree, String> {
     let witness = signature_map
         .witness(hash::hash_bytes(seed), delegation_hash)
-        .expect("Signature not found.");
+        .ok_or("Signature not found.")?;
 
     let witness_hash = witness.reconstruct();
     let root_hash = signature_map.root_hash();
