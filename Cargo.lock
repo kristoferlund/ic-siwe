@@ -1828,7 +1828,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe_provider"
-version = "0.0.1"
+version = "0.0.3"
 dependencies = [
  "candid",
  "ethers",
