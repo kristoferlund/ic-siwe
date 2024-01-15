@@ -224,16 +224,4 @@ mod tests {
             assert_eq!(result.chain_id, settings.chain_id);
         });
     }
-
-    // #[test]
-    // fn test_create_message_as_erc_4361() {
-    //     init();
-
-    //     let result = create_message_as_erc_4361(VALID_ADDRESS);
-    //     assert!(result.is_ok());
-
-    //     // Parse the ERC-4361 message and assert it is ok
-    //     let message_result: Result<Message, _> = result.unwrap().parse();
-    //     assert!(message_result.is_ok(), "Parsing the message should succeed");
-    // }
 }
