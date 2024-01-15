@@ -5,6 +5,7 @@ esbuild.build({
   bundle: true,
   outfile: "dist/index.jsx",
   format: "esm",
+  minify: true,
   external: [
     "react",
     "react-dom",
