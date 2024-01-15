@@ -55,7 +55,7 @@ fn login(
 
                 Ok(login_response)
             }
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(e),
         }
     })
 }
