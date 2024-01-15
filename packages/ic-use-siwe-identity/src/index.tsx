@@ -23,6 +23,13 @@ import { callGetDelegation, callLogin, createAnonymousActor } from "./ic";
 import { asDerEncodedPublicKey, asSignature } from "./utils";
 
 /**
+ * Re-export types
+ */
+export * from "./siwe-identity-context.type";
+export * from "./siwe-identity-service.interface";
+export * from "./siwe-identity-storage.type";
+
+/**
  * React context for managing SIWE (Sign-In with Ethereum) identity.
  */
 export const SiweIdentityContext = createContext<
