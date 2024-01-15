@@ -1,11 +1,11 @@
 /*!
-`ic_siwe` is the Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
+s`ic_siwe` is a Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
 the Internet Computer (IC) platform. The library provides all necessary tools for integrating Sign-In with
 Ethereum (SIWE) into IC canisters, from generating SIWE messages to creating delegate identities.
 
-`ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based
-authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability
-between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project. The goal of the project is to enhance
+the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage
+the strengths of both platforms.
 
 ## Key Features
 - **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for IC applications. Sign in with any eth wallet to generate an
@@ -18,6 +18,19 @@ irrespective of the client used.
 within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
+## Table of Contents
+
+- [Prebuilt `ic_siwe_provider` canister](#prebuilt-ic_siwe_provider-canister)
+- [The SIWE Standard](#the-siwe-standard)
+- [Login flow](#login-flow)
+  - [`prepare_login`](#prepare_login)
+  - [`login`](#login)
+  - [`get_delegation`](#get_delegation)
+- [Crate features](#crate-features)
+- [Updates](#updates)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Prebuilt `ic_siwe_provider` canister
 
 While the `ic_siwe` library can be used to build custom solutions, the
@@ -27,7 +40,7 @@ prebuilt solution for handling the login flow and delegating identities within t
 Developers can integrate this canister into their projects with minimal coding effort by adding it to their `dfx.json`.
 This approach simplifies the development process, focusing on configuration over coding.
 
-## SIWE Standard
+## The SIWE Standard
 
 [ERC-4361: Sign-In with Ethereum](https://eips.ethereum.org/EIPS/eip-4361) - Off-chain authentication for
 Ethereum accounts to establish sessions
@@ -145,6 +158,17 @@ unique nonces for each generated SIWE message. Nonces don't add any additional s
 flow but are required by the SIWE standard. When this feature is disabled, the nonce is always set to the
 hex encoded string `Not in use`.
 
+## Updates
+
+See the [CHANGELOG](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe/CHANGELOG.md) for details on updates.
+
+## Contributing
+
+Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for more details.
 */
 pub mod delegation;
 pub mod eth;

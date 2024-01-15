@@ -1,10 +1,10 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic_siwe` is the Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
+`ic_siwe` is a Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
 the Internet Computer (IC) platform. The library provides all necessary tools for integrating Sign-In with
 Ethereum (SIWE) into IC canisters, from generating SIWE messages to creating delegate identities.
 
-`ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Key Features
 
@@ -17,7 +17,7 @@ Ethereum (SIWE) into IC canisters, from generating SIWE messages to creating del
 ## Table of Contents
 
 - [Prebuilt `ic_siwe_provider` canister](#prebuilt-ic_siwe_provider-canister)
-- [SIWE Standard](#siwe-standard)
+- [The SIWE Standard](#the-siwe-standard)
 - [Login flow](#login-flow)
   - [`prepare_login`](#prepare_login)
   - [`login`](#login)
@@ -35,7 +35,7 @@ prebuilt solution for handling the login flow and delegating identities within t
 Developers can integrate this canister into their projects with minimal coding effort by adding it to their `dfx.json`.
 This approach simplifies the development process, focusing on configuration over coding.
 
-## SIWE Standard
+## The SIWE Standard
 
 [ERC-4361: Sign-In with Ethereum](https://eips.ethereum.org/EIPS/eip-4361) - Off-chain authentication for
 Ethereum accounts to establish sessions
