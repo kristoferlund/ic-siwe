@@ -19,33 +19,16 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 
 ## Table of Contents
 
-- [Login Flow](#login-flow)
 - [Installation](#installation)
 - [Usage](#usage)
-  - [1. Setup the `SiweIdentityProvider` component](#1-setup-the-siweidentityprovider-component)
-  - [2. Use the `useSiweIdentity` hook](#2-use-the-usesiweidentity-hook)
+  - [1. Add an Ethereum wallet provider](#1-add-an-ethereum-wallet-provider)
+  - [2. Setup the `SiweIdentityProvider` component](#2-setup-the-siweidentityprovider-component)
+  - [3. Prepare the login](#3-prepare-the-login)
+  - [4. Initiate the login process](#4-initiate-the-login-process)
 - [SiweIdentityProvider props](#siweidentityprovider-props)
 - [useSiweIdentity interface](#usesiweidentity-interface)
 - [Contributing](#contributing)
 - [License](#license)
-
-## Login Flow
-
-### 1. **Initialization**
-
-On mount, the `SiweIdentityProvider` component initializes by creating an anonymous actor and loading any existing identity from local storage.
-
-### 2. **Starting the Login Process**
-
-The login process begins with the `login` function. It requests a SIWE message from the backend, which the user signs using their Ethereum wallet.
-
-### 3. **Processing the Signed Message**
-
-Once the user signs the SIWE message, the library handles the authentication with the backend. It involves generating a session identity and establishing a delegation chain.
-
-### 4. **Completing the Authentication**
-
-After successful backend authentication, the user's session identity and delegation chain are stored both locally and in the component's state, finalizing the login process.
 
 ## Installation
 
@@ -63,12 +46,32 @@ npm install ic-use-siwe-identity @dfinity/agent @dfinity/identity @dfinity/candi
 
 ## Usage
 
+> [!TIP]
+> For a complete example, see the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) demo project.
+
 To use `ic-use-siwe-identity` in your React application, follow these steps:
 
-### 1. Setup the `SiweIdentityProvider` component
+### 1. Add an Ethereum wallet provider
 
-Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICE`
-type argument, where `_SERVICE` represents the canister service definition of a canister that implements the [SIWE login interface](src/siwe-identity-service.interface.ts).
+Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets, and is used internally by `ic-use-siwe-identity`. We also recommend adding [RainbowKit](https://www.rainbowkit.com/) to handle the wallet connection UI.
+
+```jsx
+// main.tsx
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <WagmiConfig config={wagmiConfig}>
+      <RainbowKitProvider>
+        // ...your app
+      </RainbowKitProvider>
+    </WagmiConfig>
+  </React.StrictMode>
+);
+```
+
+### 2. Setup the `SiweIdentityProvider` component
+
+Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICE` type argument, where `_SERVICE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
 
 ```jsx
 // App.tsx
@@ -83,25 +86,63 @@ function App() {
       canisterId={/* Canister ID */}
       // ...other props
     >
-      {/* Your app components */}
+      // ...your app components
     </App>
   );
 }
 ```
 
-### 2. Use the `useSiweIdentity` hook
+### 3. Prepare the login
 
-Use the useSiweIdentity hook in your components to access identity-related functionalities:
+This is an optional step, as the login process will automatically call `prepareLogin` if it has not been called manually. However, calling `prepareLogin` before initiating the login process improves the user experience by reducing the time it takes to complete the login process. The `prepareLogin` function requests a SIWE message from the backend. This is an update call that usually takes two to three seconds to complete.
+
+The `prepareLoginStatus` state variable can be used to indicate the status of the prepare login process. Errors that occur during the prepare login process are stored in the `prepareLoginError` state variable.
+
+> [!IMPORTANT]
+> Be sure to call `prepareLogin` again on wallet change, as the SIWE message is signed using the user's Ethereum wallet.
 
 ```jsx
-// Component.tsx
+const { isConnected, address } = useAccount(); // Wagmi hook
+const { prepareLogin, prepareLoginStatus, prepareLoginError, loginError } =
+  useSiweIdentity();
 
-import { useSiweIdentity } from "ic-use-siwe-identity";
+/**
+ * Preload a Siwe message on every address change.
+ */
+useEffect(() => {
+  if (
+    prepareLoginStatus === "success" ||
+    prepareLoginStatus === "loading" ||
+    !isConnected ||
+    !address
+  )
+    return;
+  prepareLogin();
+}, [isConnected, address, prepareLogin, prepareLoginStatus]);
+```
 
-function MyComponent() {
-  const { login, clear, identity, ... } = useSiweIdentity();
-  // ...
-}
+### 4. Initiate the login process
+
+The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
+
+The `loginStatus` state variable can be used to indicate the status of the login process. Errors that occur during the login process are stored in the `loginError` state variable.
+
+```jsx
+const { isConnected } = useAccount(); // Wagmi hook
+const { login, loginStatus, prepareLoginStatus } = useSiweIdentity();
+
+const text = loginStatus === "logging-in" ? "Signing in …" : "Sign in";
+
+const disabled =
+  loginStatus === "logging-in" ||
+  !isConnected ||
+  prepareLoginStatus !== "success";
+
+return (
+  <Button disabled={disabled} onClick={login}>
+    {text}
+  </Button>
+);
 ```
 
 ## SiweIdentityProvider props
@@ -129,21 +170,36 @@ function MyComponent() {
 
 ```ts
 export type SiweIdentityContextType = {
+  /** Is set to `true` on mount until a stored identity is loaded from local storage or
+   * none is found. */
+  isInitializing: boolean;
+
+  /** Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
+   * is optional, as it will be called automatically on login if not called manually. */
+  prepareLogin: () => void;
+
+  /** "error" | "loading" | "success" | "idle" - Reflects the current status of the prepareLogin process. */
+  prepareLoginStatus: PrepareLoginStatus;
+
+  /** Error that occurred during the prepareLogin process. */
+  prepareLoginError?: Error;
+
   /** Initiates the login process by requesting a SIWE message from the backend. */
   login: () => void;
 
-  /** Clears the identity from the state and local storage. Effectively "logs the user out". */
-  clear: () => void;
+  /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
+  loginStatus: LoginStatus;
 
-  /** Is set to `true` on mount until the identity is loaded from local storage. */
-  isLoading: boolean;
-
-  /** Is set to `true` while the login process is in progress. */
-  isLoggingIn: boolean;
+  /** Error that occurred during the login process. */
+  loginError?: Error;
 
   /** Status of the SIWE message signing process. This is a re-export of the Wagmi
    * signMessage / status type. */
-  signMessageStatus: "idle" | "pending" | "success" | "error";
+  signMessageStatus: "error" | "loading" | "success" | "idle";
+
+  /** Error that occurred during the SIWE message signing process. This is a re-export of the
+   * Wagmi signMessage / error type. */
+  signMessageError: Error | null;
 
   /** The delegation chain is available after successfully loading the identity from local
    * storage or completing the login process. */
@@ -157,6 +213,9 @@ export type SiweIdentityContextType = {
    * the same as the address of the currently connected wallet - on wallet change, the addresses
    * will differ. */
   identityAddress?: string;
+
+  /** Clears the identity from the state and local storage. Effectively "logs the user out". */
+  clear: () => void;
 };
 ```
 
