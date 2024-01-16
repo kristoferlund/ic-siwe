@@ -230,10 +230,13 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
   }, []);
 
   /**
-   * On address change, clear the state and local storage.
+   * On address change, reset the state. Action is conditional on state.isInitializing
+   * being false.
    */
   useEffect(() => {
+    if (state.isInitializing) return;
     clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address]);
 
   /**
