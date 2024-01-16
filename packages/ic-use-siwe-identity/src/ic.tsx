@@ -52,7 +52,9 @@ export async function callLogin(
   address: `0x${string}` | undefined,
   sessionPublicKey: DerEncodedPublicKey
 ) {
-  if (!anonymousActor || !data || !address) return;
+  if (!anonymousActor || !data || !address) {
+    throw new Error("Invalid actor, data or address");
+  }
 
   const loginReponse = await anonymousActor.login(
     data,
@@ -61,8 +63,7 @@ export async function callLogin(
   );
 
   if ("Err" in loginReponse) {
-    console.error(loginReponse.Err);
-    return;
+    throw new Error(loginReponse.Err);
   }
 
   return loginReponse.Ok;
@@ -77,7 +78,9 @@ export async function callGetDelegation(
   sessionPublicKey: DerEncodedPublicKey,
   expiration: bigint
 ) {
-  if (!anonymousActor || !address) return;
+  if (!anonymousActor || !address) {
+    throw new Error("Invalid actor or address");
+  }
 
   const response = await anonymousActor.get_delegation(
     address,
@@ -86,8 +89,7 @@ export async function callGetDelegation(
   );
 
   if ("Err" in response) {
-    console.error(response.Err);
-    return;
+    throw new Error(response.Err);
   }
 
   return response.Ok;
