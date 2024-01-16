@@ -99,7 +99,7 @@ This is an optional step, as the login process will automatically call `prepareL
 The `prepareLoginStatus` state variable can be used to indicate the status of the prepare login process. Errors that occur during the prepare login process are stored in the `prepareLoginError` state variable.
 
 > [!IMPORTANT]
-> Be sure to call `prepareLogin` again on wallet change, as the SIWE message is signed using the user's Ethereum wallet.
+> Be sure to call `prepareLogin` again on wallet change, as the SIWE message is unique to the Ethereum address of the user. If the user changes their wallet, the SIWE message will be invalid and a new one must be requested.
 
 ```jsx
 const { isConnected, address } = useAccount(); // Wagmi hook
