@@ -1,23 +1,37 @@
 import { DelegationChain, DelegationIdentity } from "@dfinity/identity";
+import type { LoginStatus, PrepareLoginStatus } from "./state.type";
 
 export type SiweIdentityContextType = {
-  preloadSiweMessage: () => void;
+  /** Is set to `true` on mount until a stored identity is loaded from local storage or
+   * none is found. */
+  isInitializing: boolean;
+
+  /** Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
+   * is optional, as it will be called automatically on login if not called manually. */
+  prepareLogin: () => void;
+
+  /** "error" | "loading" | "success" | "idle" - Reflects the current status of the prepareLogin process. */
+  prepareLoginStatus: PrepareLoginStatus;
+
+  /** Error that occurred during the prepareLogin process. */
+  prepareLoginError?: Error;
 
   /** Initiates the login process by requesting a SIWE message from the backend. */
   login: () => void;
 
-  /** Clears the identity from the state and local storage. Effectively "logs the user out". */
-  clear: () => void;
+  /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
+  loginStatus: LoginStatus;
 
-  /** Is set to `true` on mount until the identity is loaded from local storage. */
-  isLoading: boolean;
-
-  /** Is set to `true` while the login process is in progress. */
-  isLoggingIn: boolean;
+  /** Error that occurred during the login process. */
+  loginError?: Error;
 
   /** Status of the SIWE message signing process. This is a re-export of the Wagmi
    * signMessage / status type. */
   signMessageStatus: "error" | "loading" | "success" | "idle";
+
+  /** Error that occurred during the SIWE message signing process. This is a re-export of the
+   * Wagmi signMessage / error type. */
+  signMessageError: Error | null;
 
   /** The delegation chain is available after successfully loading the identity from local
    * storage or completing the login process. */
@@ -31,4 +45,7 @@ export type SiweIdentityContextType = {
    * the same as the address of the currently connected wallet - on wallet change, the addresses
    * will differ. */
   identityAddress?: string;
+
+  /** Clears the identity from the state and local storage. Effectively "logs the user out". */
+  clear: () => void;
 };
