@@ -39,9 +39,6 @@
     "viem": ">=1.19.8",
     "wagmi": ">=1.4.7"
   },
-  "dependencies": {
-    "siwe": "^2.1.4"
-  },
   "devDependencies": {
     "@dfinity/agent": "^0.20.2",
     "@dfinity/candid": "^0.20.2",
