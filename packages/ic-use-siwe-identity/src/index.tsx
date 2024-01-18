@@ -221,7 +221,9 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
         isInitializing: false,
       }));
     } catch (e) {
-      console.error("Error loading identity:", e);
+      if (e instanceof Error) {
+        console.log("Could not load identity from local storage: ", e.message);
+      }
       setState((prevState) => ({
         ...prevState,
         isInitializing: false,
