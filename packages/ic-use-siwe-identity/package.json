@@ -1,6 +1,6 @@
 {
   "name": "ic-use-siwe-identity",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
@@ -21,7 +21,7 @@
   ],
   "license": "MIT",
   "type": "module",
-  "main": "dist/index.jsx",
+  "main": "dist/index.js",
   "scripts": {
     "clean": "rm -rf dist",
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -31,18 +31,17 @@
     "dev:tsc": "tsc --watch --preserveWatchOutput",
     "dev:esbuild": "npm run build --watch"
   },
+  "dependencies": {
+    "@dfinity/agent": "^=0.20.0",
+    "@dfinity/candid": "^=0.20.0",
+    "@dfinity/identity": "^=0.20.0"
+  },
   "peerDependencies": {
-    "@dfinity/agent": ">=0.20.0",
-    "@dfinity/candid": ">=0.20.0",
-    "@dfinity/identity": ">=0.20.0",
     "react": ">=18.0.0",
     "viem": ">=1.19.8",
     "wagmi": ">=1.4.7"
   },
   "devDependencies": {
-    "@dfinity/agent": "^0.20.2",
-    "@dfinity/candid": "^0.20.2",
-    "@dfinity/identity": "^0.20.2",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.39",
     "@typescript-eslint/eslint-plugin": "^6.10.0",
