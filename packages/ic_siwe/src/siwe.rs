@@ -17,7 +17,7 @@ use time::OffsetDateTime;
 ///
 /// The following is an example of a SIWE message formatted according to the [ERC-4361](https://eips.ethereum.org/EIPS/eip-4361) specification:
 ///
-/// ```
+/// ```text
 /// 127.0.0.1 wants you to sign in with your Ethereum account:
 /// 0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed
 ///

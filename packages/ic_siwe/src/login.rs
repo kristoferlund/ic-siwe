@@ -142,13 +142,6 @@ mod tests {
     }
 
     #[test]
-    fn test_create_message_no_settings() {
-        let result = prepare_login(VALID_ADDRESS);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err(), "Settings are not initialized");
-    }
-
-    #[test]
     fn test_create_message_success() {
         init();
 

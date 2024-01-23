@@ -57,8 +57,6 @@ pub struct Settings {
 /// Basic usage:
 ///
 /// ```
-/// use your_crate::{SettingsBuilder, Settings};
-///
 /// let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
 ///     .chain_id(1)  // Ethereum mainnet
 ///     .scheme("https")
@@ -230,8 +228,6 @@ fn validate_session_expires_in(expires_in: u64) -> Result<u64, String> {
 /// Basic usage:
 ///
 /// ```
-/// use your_crate::{with_settings, Settings};
-///
 /// with_settings!(|settings: &Settings| {
 ///     // You can access the settings here
 ///     println!("Current domain: {}", settings.domain);
