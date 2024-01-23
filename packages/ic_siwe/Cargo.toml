@@ -7,7 +7,7 @@ description = "Integrate Ethereum wallet-based authentication (SIWE) with applic
 license = "MIT"
 homepage = "https://github.com/kristoferlund/ic-siwe"
 repository = "https://github.com/kristoferlund/ic-siwe"
-keywords = ["ethereum", "wallet", "internet computer", "authentication", "siwe"]
+keywords = ["ethereum", "wallet", "internet-computer", "authentication", "siwe"]
 categories = ["authentication", "cryptography::cryptocurrencies"]
 
 [dependencies]
