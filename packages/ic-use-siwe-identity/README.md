@@ -2,7 +2,7 @@
 
 `ic-use-siwe-identity` is a React hook and context provider for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters.
 
-`ic-use-siwe-identity` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic-use-siwe-identity` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
 
@@ -19,6 +19,8 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 
 ## Table of Contents
 
+- [Features](#features)
+- [Table of Contents](#table-of-contents)
 - [Installation](#installation)
 - [Usage](#usage)
   - [1. Add an Ethereum wallet provider](#1-add-an-ethereum-wallet-provider)
@@ -68,17 +70,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
 ### 2. Setup the `SiweIdentityProvider` component
 
-Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICE` type argument, where `_SERVICE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
+Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICPE` type argument, where `_SERVICPE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
 
 ```jsx
 // App.tsx
 
 import { SiweIdentityProvider } from 'ic-use-siwe-identity';
-import { _SERVICE } from "path-to/siwe-enabled-canister.did";
+import { _SERVICPE } from "path-to/siwe-enabled-canister.did";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICE>
+    <SiweIdentityProvider<_SERVICPE>
       idlFactory={/* IDL Interface Factory */}
       canisterId={/* Canister ID */}
       // ...other props

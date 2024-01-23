@@ -1,10 +1,10 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into your [Internet Computer](https://internetcomputer.org) application.
+Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into your [Internet Computer](https://internetcomputer.org) (ICP) application.
 
-The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing IC applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an IC project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
+The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
 
-`ic_siwe_provider` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic_siwe_provider` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Features
 
@@ -29,13 +29,13 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 
 ## Integration overview
 
-See the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) for a complete example of how to integrate the `ic_siwe_provider` canister into an IC application. The easiest way to get started is to fork the demo and modify it to suit your needs.
+See the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) for a complete example of how to integrate the `ic_siwe_provider` canister into an ICP application. The easiest way to get started is to fork the demo and modify it to suit your needs.
 
-The [integration tests](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/tests/integration_tests.rs) for the `ic_siwe_provider` canister also provide a good overview of how to integrate the canister into an IC application.
+The [integration tests](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/tests/integration_tests.rs) for the `ic_siwe_provider` canister also provide a good overview of how to integrate the canister into an ICP application.
 
 The high-level integration flow for the `ic_siwe_provider` canister is as follows:
 
-1. An IC application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
+1. An ICP application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
 2. The application displays the SIWE message to the user who signs it with their Ethereum wallet.
 3. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user. The canister verifies the signature and creates an identity for the user.
 4. The application retrieves the identity from the `ic_siwe_provider` canister.
@@ -96,11 +96,11 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 // App.tsx
 
 import { SiweIdentityProvider } from 'ic-use-siwe-identity';
-import { _SERVICE } from "path-to/ic_siwe_provider.did";
+import { _SERVICPE } from "path-to/ic_siwe_provider.did";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICE>
+    <SiweIdentityProvider<_SERVICPE>
       idlFactory={/* IDL Interface Factory */}
       canisterId={/* Canister ID */}
       // ...other props
@@ -132,7 +132,7 @@ The `ic_siwe_provider` canister exposes the following endpoints:
 
 ### [get_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_address.rs)
 
-- **Purpose**: Retrieves the Ethereum address associated with a given IC principal.
+- **Purpose**: Retrieves the Ethereum address associated with a given ICP principal.
 - **Input**: A `ByteBuf` containing the principal's bytes (expected to be 29 bytes).
 - **Output**:
   - `Ok(String)`: The EIP-55-compliant Ethereum address, if found.
