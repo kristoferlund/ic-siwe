@@ -1,5 +1,5 @@
 /*!
-s`ic_siwe` is a Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
+`ic_siwe` is a Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on
 the Internet Computer (ICP) platform. The library provides all necessary tools for integrating Sign-In with
 Ethereum (SIWE) into ICP canisters, from generating SIWE messages to creating delegate identities.
 
@@ -21,6 +21,7 @@ within the scope of the current application.
 ## Table of Contents
 
 - [Prebuilt `ic_siwe_provider` canister](#prebuilt-ic_siwe_provider-canister)
+- [React demo application](#react-demo-application)
 - [The SIWE Standard](#the-siwe-standard)
 - [Login flow](#login-flow)
   - [`prepare_login`](#prepare_login)
@@ -33,19 +34,35 @@ within the scope of the current application.
 
 ## Prebuilt `ic_siwe_provider` canister
 
-While the `ic_siwe` library can be used to build custom solutions, the
-[ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister provides a
-prebuilt solution for handling the login flow and delegating identities within the ICP platform.
+While the `ic_siwe` library can be integrated with any Rust based ICP project, using the pre built
+[ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider)
+canister is the easiest way to integrate Ethereum wallet authentication into your  application.
 
-Developers can integrate this canister into their projects with minimal coding effort by adding it to their `dfx.json`.
-This approach simplifies the development process, focusing on configuration over coding.
+The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP
+applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json`
+of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications.
+The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling
+user session management.
+
+## React demo application
+
+A demo application that uses the `ic_siwe_provider` canister to demonstrate the full login flow is available at
+[ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust). The demo uses another package
+from the `ic-siwe` project, [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity),
+ a React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
 
 ## The SIWE Standard
 
 [ERC-4361: Sign-In with Ethereum](https://eips.ethereum.org/EIPS/eip-4361) - Off-chain authentication for
-Ethereum accounts to establish sessions
+Ethereum accounts to establish sessions.
 
-`ic_siwe` implements most parts of the Sign In with Ethereum (SIW standard,
+The SIWE standard defines a protocol for off-chain authentication of Ethereum accounts. The protocol is designed to
+enable Ethereum wallet-based authentication for applications on other platforms, such as the Internet Computer. At the
+core of the protocol is the SIWE message, which is a signed message that contains the Ethereum address of the user and
+some additional metadata. The SIWE message is signed by the user's Ethereum wallet and then sent to the application's
+backend. The backend verifies the signature and Ethereum address and then creates a session for the user.
+
+`ic_siwe` implements most parts of the Sign In with Ethereum (SIWE standard,
 [EIP-4361](https://eips.ethereum.org/EIPS/eip-4361) with some notable exceptions:
 
 - `nonce` - The SIWE standard requires that each SIWE message has a unique nonce. In the context of this
@@ -54,7 +71,7 @@ Ethereum accounts to establish sessions
   using a cryptographically secure random number generator.
 
 - `not-before`, `request-id`, `resources` - Not implemented. These fields are marked as OPTIONAL in the
-  SIWE standard and are not required for current implementation.
+  SIWE standard and are not currently implemented.
 
 # Login flow
 
