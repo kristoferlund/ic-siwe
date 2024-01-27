@@ -1,6 +1,6 @@
 use candid::Principal;
 use ic_cdk::update;
-use ic_siwe::{eth::eth_address_to_bytes, login::LoginOkResponse};
+use ic_siwe::{eth::eth_address_to_bytes, login::LoginDetails};
 use ic_stable_structures::storable::Blob;
 use serde_bytes::ByteBuf;
 
@@ -18,11 +18,11 @@ use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, STATE};
 /// * `Ok(LoginOkResponse)`: Contains the user canister public key and other login response data if the login is successful.
 /// * `Err(String)`: An error message if the login process fails.
 #[update]
-fn login(
+fn siwe_login(
     signature: String,
     address: String,
     session_key: ByteBuf,
-) -> Result<LoginOkResponse, String> {
+) -> Result<LoginDetails, String> {
     STATE.with(|state| {
         let signature_map = &mut *state.signature_map.borrow_mut();
 
@@ -55,7 +55,7 @@ fn login(
 
                 Ok(login_response)
             }
-            Err(e) => Err(e),
+            Err(e) => Err(e.to_string()),
         }
     })
 }

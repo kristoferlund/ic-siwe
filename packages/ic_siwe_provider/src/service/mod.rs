@@ -1,7 +1,7 @@
 pub mod get_address;
 pub mod get_caller_address;
-pub mod get_delegation;
 pub mod get_principal;
 pub mod init_upgrade;
-pub mod login;
-pub mod prepare_login;
+pub mod siwe_get_delegation;
+pub mod siwe_login;
+pub mod siwe_prepare_login;

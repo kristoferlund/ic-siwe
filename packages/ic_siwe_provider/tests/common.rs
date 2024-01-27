@@ -13,7 +13,7 @@ use ic_agent::{
     },
     Identity,
 };
-use ic_siwe::{delegation::SignedDelegation, login::LoginOkResponse};
+use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
 use pocket_ic::{PocketIc, WasmResult};
 use rand::Rng;
 use serde::Deserialize;
@@ -132,7 +132,7 @@ pub fn prepare_login_and_sign_message(
         ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "prepare_login",
+        "siwe_prepare_login",
         args,
     )
     .unwrap();
@@ -151,7 +151,7 @@ pub fn create_session_identity() -> BasicIdentity {
 
 pub fn create_delegated_identity(
     identity: BasicIdentity,
-    login_response: &LoginOkResponse,
+    login_response: &LoginDetails,
     signature: Vec<u8>,
     targets: Option<Vec<Principal>>,
 ) -> DelegatedIdentity {
@@ -187,11 +187,11 @@ pub fn full_login(
 
     // Login
     let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
-    let login_response: LoginOkResponse = update(
+    let login_response: LoginDetails = update(
         ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         login_args,
     )
     .unwrap();
@@ -207,7 +207,7 @@ pub fn full_login(
         ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "get_delegation",
+        "siwe_get_delegation",
         get_delegation_args,
     )
     .unwrap();

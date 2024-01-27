@@ -2,17 +2,17 @@ mod common;
 
 use candid::{encode_args, encode_one, Principal};
 use common::{
-    create_session_identity, create_wallet, full_login, init, prepare_login_and_sign_message,
-    query, update, valid_settings, SESSION_KEY, VALID_ADDRESS,
+    create_session_identity, create_wallet, full_login, init, query, update, valid_settings,
+    SESSION_KEY, VALID_ADDRESS,
 };
 use ic_agent::Identity;
-use ic_siwe::{delegation::SignedDelegation, login::LoginOkResponse};
+use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
 use pocket_ic::PocketIc;
 use serde_bytes::ByteBuf;
 use siwe::Message;
 use std::time::Duration;
 
-use crate::common::SettingsInput;
+use crate::common::{prepare_login_and_sign_message, SettingsInput};
 
 #[test]
 #[should_panic]
@@ -80,13 +80,13 @@ fn test_upgrade_with_changed_arguments() {
         ic.tick();
     }
 
-    // Call prepare_login, check that new settings are reflected in returned siwe_message
+    // Call siwe_prepare_login, check that new settings are reflected in returned siwe_message
     let address = encode_one(VALID_ADDRESS).unwrap();
     let response: Result<String, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "prepare_login",
+        "siwe_prepare_login",
         address,
     );
     assert!(response.is_ok());
@@ -118,7 +118,7 @@ fn test_upgrade_with_no_settings() {
 }
 
 #[test]
-fn test_prepare_login_invalid_address() {
+fn test_siwe_prepare_login_invalid_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("invalid address").unwrap();
@@ -126,17 +126,17 @@ fn test_prepare_login_invalid_address() {
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "prepare_login",
+        "siwe_prepare_login",
         address,
     );
     assert_eq!(
         response.unwrap_err(),
-        "Invalid Ethereum address: Must start with '0x' and be 42 characters long"
+        "Format error: Must start with '0x' and be 42 characters long"
     );
 }
 
 #[test]
-fn test_prepare_login_not_eip55_address() {
+fn test_siwe_prepare_login_not_eip55_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
@@ -144,17 +144,14 @@ fn test_prepare_login_not_eip55_address() {
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "prepare_login",
+        "siwe_prepare_login",
         address,
     );
-    assert_eq!(
-        response.unwrap_err(),
-        "Invalid Ethereum address: Not EIP-55 encoded"
-    );
+    assert_eq!(response.unwrap_err(), "EIP-55 error: Not EIP-55 encoded");
 }
 
 #[test]
-fn test_prepare_login_ok() {
+fn test_siwe_prepare_login_ok() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one(VALID_ADDRESS).unwrap();
@@ -162,7 +159,7 @@ fn test_prepare_login_ok() {
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "prepare_login",
+        "siwe_prepare_login",
         address,
     );
     assert!(response.is_ok());
@@ -179,16 +176,16 @@ fn test_login_signature_too_short() {
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xTOO-SHORT";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
     assert_eq!(
         response.unwrap_err(),
-        "Invalid signature: Must start with '0x' and be 132 characters long"
+        "Format error: Must start with '0x' and be 132 characters long"
     );
 }
 
@@ -198,16 +195,16 @@ fn test_login_signature_too_long() {
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
     assert_eq!(
         response.unwrap_err(),
-        "Invalid signature: Must start with '0x' and be 132 characters long"
+        "Format error: Must start with '0x' and be 132 characters long"
     );
 }
 
@@ -217,16 +214,16 @@ fn test_incorrect_signature_format() {
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
     assert_eq!(
         response.unwrap_err(),
-        "Invalid signature: Hex decoding failed"
+        "Decoding error: Invalid character 'Ã' at position 0"
     );
 }
 
@@ -242,17 +239,14 @@ fn test_sign_in_message_expired() {
     ic.advance_time(Duration::from_secs(10));
 
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
-    assert_eq!(
-        response.unwrap_err(),
-        "Message not found for the given address"
-    );
+    assert_eq!(response.unwrap_err(), "Message not found");
 }
 
 // A valid signature but with a different address
@@ -264,17 +258,14 @@ fn test_sign_in_address_mismatch() {
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap(); // Wrong address
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
-    assert_eq!(
-        response.unwrap_err(),
-        "Message not found for the given address"
-    );
+    assert_eq!(response.unwrap_err(), "Message not found");
 }
 
 // A manilulated signature with the correct address
@@ -287,14 +278,14 @@ fn test_sign_in_signature_manipulated() {
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
     let args = encode_args((manipulated_signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
-    assert_eq!(response.unwrap_err(), "Signature verification failed");
+    assert_eq!(response.unwrap_err(), "Recovered address does not match");
 }
 
 #[test]
@@ -305,11 +296,11 @@ fn test_sign_in_ok() {
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
     assert!(response.is_ok());
@@ -325,29 +316,26 @@ fn test_sign_in_replay_attack() {
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let args = encode_args((signature, address, SESSION_KEY)).unwrap();
-    let response: Result<LoginOkResponse, String> = update(
+    let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args.clone(),
     );
     assert!(response.is_ok());
-    let second_response: Result<LoginOkResponse, String> = update(
+    let second_response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         args,
     );
-    assert_eq!(
-        second_response.unwrap_err(),
-        "Message not found for the given address"
-    );
+    assert_eq!(second_response.unwrap_err(), "Message not found");
 }
 
 #[test]
-fn test_sign_in_get_delegation() {
+fn test_sign_in_siwe_get_delegation() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, targets) = init(&ic, None);
     let (_, _) = full_login(&ic, ic_siwe_provider_canister, targets);
@@ -356,7 +344,7 @@ fn test_sign_in_get_delegation() {
 // After login, the delegation needs to be fetched before the delegation signature expires. Fast forward in time to make
 // the delegation signature expire.
 #[test]
-fn test_sign_in_get_delegation_timeout() {
+fn test_sign_in_siwe_get_delegation_timeout() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
 
@@ -369,11 +357,11 @@ fn test_sign_in_get_delegation_timeout() {
 
     // Login
     let login_args = encode_args((signature, address1.clone(), session_pubkey.clone())).unwrap();
-    let login_response: LoginOkResponse = update(
+    let login_response: LoginDetails = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         login_args,
     )
     .unwrap();
@@ -391,31 +379,31 @@ fn test_sign_in_get_delegation_timeout() {
 
     // Login address 2, this should cause the delegation signature for address 1 to be pruned
     let login_args2 = encode_args((signature2, address2.clone(), session_pubkey2.clone())).unwrap();
-    let _: LoginOkResponse = update(
+    let _: LoginDetails = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "login",
+        "siwe_login",
         login_args2,
     )
     .unwrap();
 
     // Get the delegation for address 1, this should fail because the delegation signature has been pruned
-    let get_delegation_args = encode_args((
+    let siwe_get_delegation_args = encode_args((
         address1.clone(),
         session_pubkey.clone(),
         login_response.expiration,
     ))
     .unwrap();
-    let get_delegation_response: Result<SignedDelegation, String> = query(
+    let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
-        "get_delegation",
-        get_delegation_args,
+        "siwe_get_delegation",
+        siwe_get_delegation_args,
     );
 
-    assert!(get_delegation_response.is_err());
+    assert!(siwe_get_delegation_response.is_err());
 }
 
 #[test]

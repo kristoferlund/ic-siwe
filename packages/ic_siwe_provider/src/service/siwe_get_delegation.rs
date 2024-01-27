@@ -19,7 +19,7 @@ use crate::{LABEL_ASSETS, LABEL_SIG, STATE};
 /// * `Ok(SignedDelegation)`: A signed delegation containing the session key, expiration, and targets if successful.
 /// * `Err(String)`: An error message if there is a failure in creating or certifying the delegation.
 #[query]
-fn get_delegation(
+fn siwe_get_delegation(
     address: String,
     session_key: ByteBuf,
     expiration: u64,

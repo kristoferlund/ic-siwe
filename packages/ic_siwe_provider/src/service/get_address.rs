@@ -28,4 +28,6 @@ pub(crate) fn get_address(principal: ByteBuf) -> Result<String, String> {
     })?;
 
     convert_to_eip55(&address)
+        .map(|a| a.to_string())
+        .map_err(|e| e.to_string())
 }
