@@ -201,8 +201,8 @@ pub(crate) mod time;
 pub use init::init;
 
 use settings::Settings;
-use siwe::SiweMessage;
-use std::{cell::RefCell, collections::HashMap};
+use siwe::SiweMessageMap;
+use std::cell::RefCell;
 
 #[cfg(feature = "nonce")]
 use rand_chacha::ChaCha20Rng;
@@ -219,6 +219,6 @@ thread_local! {
 
     // SIWE messages are stored in global state during the login process. The key is the
     // Ethereum address as a byte array and the value is the SIWE message. After a successful
-    // login, the SIWE message is removed from the state.
-    static SIWE_MESSAGES: RefCell<HashMap<Vec<u8>, SiweMessage>> = RefCell::new(HashMap::new());
+    // login, the SIWE message is removed from state.
+    static SIWE_MESSAGES: RefCell<SiweMessageMap> = RefCell::new(SiweMessageMap::new());
 }

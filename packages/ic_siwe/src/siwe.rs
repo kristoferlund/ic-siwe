@@ -1,12 +1,32 @@
 use crate::settings::Settings;
+use crate::with_settings;
 use crate::{rand::generate_nonce, time::get_current_time};
-use crate::{with_settings, SIWE_MESSAGES};
 
 use candid::{CandidType, Deserialize};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fmt;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+
+#[derive(Debug)]
+pub enum SiweMessageError {
+    MessageNotFound,
+}
+
+impl fmt::Display for SiweMessageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SiweMessageError::MessageNotFound => write!(f, "Message not found"),
+        }
+    }
+}
+
+impl From<SiweMessageError> for String {
+    fn from(error: SiweMessageError) -> Self {
+        error.to_string()
+    }
+}
 
 /// Represents a SIWE (Sign-In With Ethereum) message.
 ///
@@ -55,10 +75,10 @@ impl SiweMessage {
     /// # Returns
     ///
     /// A `Result` that, on success, contains a new [`SiweMessage`] instance.
-    pub fn new(address: &str) -> Result<Self, String> {
-        let nonce = generate_nonce().map_err(|e| e.to_string())?;
+    pub fn new(address: &str) -> SiweMessage {
+        let nonce = generate_nonce();
         let current_time = get_current_time();
-        let message = with_settings!(|settings: &Settings| {
+        with_settings!(|settings: &Settings| {
             SiweMessage {
                 scheme: settings.scheme.clone(),
                 domain: settings.domain.clone(),
@@ -71,8 +91,7 @@ impl SiweMessage {
                 issued_at: get_current_time(),
                 expiration_time: current_time.saturating_add(settings.sign_in_expires_in),
             }
-        });
-        Ok(message)
+        })
     }
 
     /// Checks if the SIWE message is currently valid.
@@ -129,35 +148,49 @@ impl From<SiweMessage> for String {
     }
 }
 
-/// Removes SIWE messages that have exceeded their time to live.
-pub(crate) fn prune_expired_siwe_messages() {
-    let current_time = get_current_time();
-
-    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
-        siwe_message.retain(|_, message| message.expiration_time > current_time);
-    });
+/// The SiweMessageMap is a map of SIWE messages keyed by the Ethereum address of the user. SIWE messages
+/// are stored in the map during the course of the login process and are removed once the login process
+/// is complete. The map is also pruned periodically to remove expired SIWE messages.
+pub struct SiweMessageMap {
+    map: HashMap<Vec<u8>, SiweMessage>,
 }
 
-/// Adds a SIWE message to state.
-pub(crate) fn add_siwe_message(message: SiweMessage, address_bytes: Vec<u8>) {
-    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
-        siwe_message.insert(address_bytes, message);
-    });
-}
+impl SiweMessageMap {
+    pub fn new() -> SiweMessageMap {
+        SiweMessageMap {
+            map: HashMap::new(),
+        }
+    }
 
-/// Fetches the SIWE message associated with the provided address.
-pub(crate) fn get_siwe_message(address_bytes: &Vec<u8>) -> Result<SiweMessage, String> {
-    SIWE_MESSAGES.with_borrow(|siwe_message| {
-        siwe_message
+    /// Removes SIWE messages that have exceeded their time to live.
+    pub fn prune(&mut self) {
+        let current_time = get_current_time();
+        self.map
+            .retain(|_, message| message.expiration_time > current_time);
+    }
+
+    /// Adds a SIWE message to the map.
+    pub fn insert(&mut self, address_bytes: Vec<u8>, message: SiweMessage) {
+        self.map.insert(address_bytes, message);
+    }
+
+    /// Returns a cloned SIWE message associated with the provided address or an error if the message
+    /// does not exist.
+    pub fn get(&self, address_bytes: &Vec<u8>) -> Result<SiweMessage, SiweMessageError> {
+        self.map
             .get(address_bytes)
             .cloned()
-            .ok_or_else(|| String::from("Message not found for the given address"))
-    })
+            .ok_or(SiweMessageError::MessageNotFound)
+    }
+
+    /// Removes the SIWE message associated with the provided address.
+    pub fn remove(&mut self, address_bytes: &Vec<u8>) {
+        self.map.remove(address_bytes);
+    }
 }
 
-/// Removes the SIWE message associated with the provided address.
-pub(crate) fn remove_siwe_message(address_bytes: &Vec<u8>) {
-    SIWE_MESSAGES.with_borrow_mut(|siwe_message| {
-        siwe_message.remove(address_bytes);
-    });
+impl Default for SiweMessageMap {
+    fn default() -> Self {
+        Self::new()
+    }
 }
