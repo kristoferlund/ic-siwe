@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 use super::hash::{self, Value};
 use crate::{settings::Settings, signature_map::SignatureMap, with_settings};
@@ -8,6 +8,34 @@ use serde_bytes::ByteBuf;
 
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug)]
+pub enum DelegationError {
+    SignatureNotFound,
+    WitnessHashMismatch(Hash, Hash),
+    SerializationError(String),
+}
+
+impl fmt::Display for DelegationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DelegationError::SignatureNotFound => write!(f, "Signature not found"),
+            DelegationError::WitnessHashMismatch(witness_hash, root_hash) => write!(
+                f,
+                "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
+                hex::encode(witness_hash),
+                hex::encode(root_hash)
+            ),
+            DelegationError::SerializationError(e) => write!(f, "Serialization error: {}", e),
+        }
+    }
+}
+
+impl From<DelegationError> for String {
+    fn from(error: DelegationError) -> Self {
+        error.to_string()
+    }
+}
 
 #[derive(Clone, Debug, CandidType, Deserialize)]
 pub struct Delegation {
@@ -87,18 +115,17 @@ pub fn witness(
     signature_map: &SignatureMap,
     seed: Hash,
     delegation_hash: Hash,
-) -> Result<HashTree, String> {
+) -> Result<HashTree, DelegationError> {
     let witness = signature_map
         .witness(hash::hash_bytes(seed), delegation_hash)
-        .ok_or("Signature not found.")?;
+        .ok_or(DelegationError::SignatureNotFound)?;
 
     let witness_hash = witness.reconstruct();
     let root_hash = signature_map.root_hash();
     if witness_hash != root_hash {
-        return Err(format!(
-            "Internal error: signature map computed an invalid hash tree, witness hash is {}, root hash is {}",
-            hex::encode(witness_hash),
-            hex::encode(root_hash)
+        return Err(DelegationError::WitnessHashMismatch(
+            witness_hash,
+            root_hash,
         ));
     }
 
@@ -115,7 +142,10 @@ pub fn witness(
 /// # Returns
 ///
 /// A `Result` containing a vector of bytes of the certified signature, or an error string.
-pub fn create_certified_signature(certificate: Vec<u8>, tree: HashTree) -> Result<Vec<u8>, String> {
+pub fn create_certified_signature(
+    certificate: Vec<u8>,
+    tree: HashTree,
+) -> Result<Vec<u8>, DelegationError> {
     let certificate_signature = CertificateSignature {
         certificate: ByteBuf::from(certificate),
         tree,
@@ -187,11 +217,11 @@ pub(crate) fn create_user_canister_pubkey(seed: Vec<u8>) -> Vec<u8> {
 /// # Returns
 ///
 /// A `Result` containing the CBOR serialized data as a vector of bytes, or an error string.
-fn cbor_serialize<T: Serialize>(data: &T) -> Result<Vec<u8>, String> {
+fn cbor_serialize<T: Serialize>(data: &T) -> Result<Vec<u8>, DelegationError> {
     let mut cbor_serializer = serde_cbor::ser::Serializer::new(Vec::new());
-    cbor_serializer.self_describe().map_err(|e| e.to_string())?;
+    cbor_serializer.self_describe().unwrap();
     data.serialize(&mut cbor_serializer)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| DelegationError::SerializationError(e.to_string()))?;
 
     Ok(cbor_serializer.into_inner())
 }

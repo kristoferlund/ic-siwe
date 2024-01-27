@@ -2,10 +2,9 @@ use k256::ecdsa::{RecoveryId, Signature, VerifyingKey};
 use std::fmt;
 use tiny_keccak::{Hasher, Keccak};
 
-/// The SignatureRecoveryError is returned when an error occurs during signature recovery. It is
-/// used by the [`recover_eth_address`] and associated functions.
 #[derive(Debug)]
-pub enum SignatureRecoveryError {
+pub enum EthError {
+    AddressFormatError(String),
     DecodingError(hex::FromHexError),
     InvalidSignature,
     InvalidRecoveryId,
@@ -13,28 +12,29 @@ pub enum SignatureRecoveryError {
     Eip55Error(String),
 }
 
-impl From<hex::FromHexError> for SignatureRecoveryError {
+impl From<hex::FromHexError> for EthError {
     fn from(err: hex::FromHexError) -> Self {
-        SignatureRecoveryError::DecodingError(err)
+        EthError::DecodingError(err)
     }
 }
 
-impl fmt::Display for SignatureRecoveryError {
+impl fmt::Display for EthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SignatureRecoveryError::DecodingError(e) => write!(f, "Decoding error: {}", e),
-            SignatureRecoveryError::InvalidSignature => write!(f, "Invalid signature"),
-            SignatureRecoveryError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
-            SignatureRecoveryError::PublicKeyRecoveryFailure => {
+            EthError::AddressFormatError(e) => write!(f, "Format error: {}", e),
+            EthError::DecodingError(e) => write!(f, "Decoding error: {}", e),
+            EthError::InvalidSignature => write!(f, "Invalid signature"),
+            EthError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
+            EthError::PublicKeyRecoveryFailure => {
                 write!(f, "Public key recovery failure")
             }
-            SignatureRecoveryError::Eip55Error(e) => write!(f, "EIP-55 error: {}", e),
+            EthError::Eip55Error(e) => write!(f, "EIP-55 error: {}", e),
         }
     }
 }
 
-impl From<SignatureRecoveryError> for String {
-    fn from(error: SignatureRecoveryError) -> Self {
+impl From<EthError> for String {
+    fn from(error: EthError) -> Self {
         error.to_string()
     }
 }
@@ -48,21 +48,18 @@ impl From<SignatureRecoveryError> for String {
 /// # Returns
 ///
 /// The recovered Ethereum address if successful, or an error.
-pub fn recover_eth_address(
-    message: &str,
-    signature: &str,
-) -> Result<String, SignatureRecoveryError> {
+pub fn recover_eth_address(message: &str, signature: &str) -> Result<String, EthError> {
     let message_hash = eip191_hash(message);
     let signature_bytes = decode_signature(signature)?;
 
-    let recovery_id = RecoveryId::try_from(signature_bytes[64] % 27)
-        .map_err(|_| SignatureRecoveryError::InvalidRecoveryId)?;
+    let recovery_id =
+        RecoveryId::try_from(signature_bytes[64] % 27).map_err(|_| EthError::InvalidRecoveryId)?;
 
-    let signature = Signature::from_slice(&signature_bytes[..64])
-        .map_err(|_| SignatureRecoveryError::InvalidSignature)?;
+    let signature =
+        Signature::from_slice(&signature_bytes[..64]).map_err(|_| EthError::InvalidSignature)?;
 
     let verifying_key = VerifyingKey::recover_from_prehash(&message_hash, &signature, recovery_id)
-        .map_err(|_| SignatureRecoveryError::PublicKeyRecoveryFailure)?;
+        .map_err(|_| EthError::PublicKeyRecoveryFailure)?;
 
     let address = derive_eth_address_from_public_key(&verifying_key)?;
 
@@ -112,8 +109,8 @@ pub fn eip191_bytes(message: &str) -> Vec<u8> {
 /// # Returns
 ///
 /// A vector of bytes containing the decoded signature if successful, or an error.
-pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryError> {
-    validate_eth_signature(signature).map_err(|_| SignatureRecoveryError::InvalidSignature)?;
+pub fn decode_signature(signature: &str) -> Result<Vec<u8>, EthError> {
+    validate_eth_signature(signature).map_err(|_| EthError::InvalidSignature)?;
 
     let signature = if signature.starts_with("0x") {
         signature.strip_prefix("0x").unwrap()
@@ -121,7 +118,7 @@ pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryErr
         signature
     };
 
-    hex::decode(signature).map_err(SignatureRecoveryError::DecodingError)
+    hex::decode(signature).map_err(EthError::DecodingError)
 }
 
 /// Converts an Ethereum address to bytes by stripping the '0x' prefix and decoding the hexadecimal
@@ -134,7 +131,7 @@ pub fn decode_signature(signature: &str) -> Result<Vec<u8>, SignatureRecoveryErr
 /// # Returns
 ///
 /// A vector of bytes containing the decoded address if successful, or an error.
-pub fn eth_address_to_bytes(address: &str) -> Result<Vec<u8>, String> {
+pub fn eth_address_to_bytes(address: &str) -> Result<Vec<u8>, EthError> {
     // Strip the '0x' prefix if present
     let addr_trimmed = if address.starts_with("0x") {
         address.strip_prefix("0x").unwrap()
@@ -143,8 +140,7 @@ pub fn eth_address_to_bytes(address: &str) -> Result<Vec<u8>, String> {
     };
 
     // Decode the hexadecimal string to bytes
-    hex::decode(addr_trimmed)
-        .map_err(|_| String::from("Invalid Ethereum address: Hex decoding failed"))
+    hex::decode(addr_trimmed).map_err(EthError::DecodingError)
 }
 
 /// Converts a byte array to an Ethereum address by encoding the bytes to a hexadecimal string and
@@ -170,16 +166,14 @@ pub fn bytes_to_eth_address(bytes: &[u8; 20]) -> String {
 /// # Returns
 ///
 /// The derived Ethereum address if successful, or an error.
-pub fn derive_eth_address_from_public_key(
-    key: &VerifyingKey,
-) -> Result<String, SignatureRecoveryError> {
+pub fn derive_eth_address_from_public_key(key: &VerifyingKey) -> Result<String, EthError> {
     let mut keccak256 = [0; 32];
     let mut hasher = Keccak::v256();
     hasher.update(&key.to_encoded_point(false).as_bytes()[1..]);
     hasher.finalize(&mut keccak256);
 
     let keccak256_hex = hex::encode(keccak256);
-    convert_to_eip55(&keccak256_hex[24..]).map_err(SignatureRecoveryError::Eip55Error)
+    convert_to_eip55(&keccak256_hex[24..])
 }
 
 /// Converts an Ethereum address to EIP-55 format. See [EIP-55 spec](https://eips.ethereum.org/EIPS/eip-55) for
@@ -192,7 +186,7 @@ pub fn derive_eth_address_from_public_key(
 /// # Returns
 ///
 /// The EIP-55-compliant Ethereum address if successful, or an error.
-pub fn convert_to_eip55(address: &str) -> Result<String, String> {
+pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
     let address_trimmed = if address.starts_with("0x") {
         address.strip_prefix("0x").unwrap()
     } else {
@@ -237,24 +231,25 @@ pub fn convert_to_eip55(address: &str) -> Result<String, String> {
             };
             Ok(result)
         })
-        .collect::<Result<String, String>>()?;
+        .collect::<Result<String, String>>()
+        .map_err(EthError::Eip55Error)?; // Convert to error type
 
     Ok(format!("0x{}", checksummed_addr))
 }
 
 /// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding. A valid
 /// address must be prefixed with '0x', be 42 characters long, and be EIP-55 encoded.
-pub fn validate_eth_address(address: &str) -> Result<(), String> {
+pub fn validate_eth_address(address: &str) -> Result<(), EthError> {
     if !address.starts_with("0x") || address.len() != 42 {
-        return Err(String::from(
-            "Invalid Ethereum address: Must start with '0x' and be 42 characters long",
-        ));
+        return Err(EthError::AddressFormatError(String::from(
+            "Must start with '0x' and be 42 characters long",
+        )));
     }
 
-    hex::decode(&address[2..]).map_err(|_| "Invalid Ethereum address: Hex decoding failed")?;
+    hex::decode(&address[2..]).map_err(EthError::DecodingError)?;
 
     if address != convert_to_eip55(address).unwrap() {
-        return Err(String::from("Invalid Ethereum address: Not EIP-55 encoded"));
+        return Err(EthError::Eip55Error(String::from("Not EIP-55 encoded")));
     }
 
     Ok(())
@@ -262,14 +257,14 @@ pub fn validate_eth_address(address: &str) -> Result<(), String> {
 
 /// Validates an Ethereum signature by checking its length and hex encoding. A valid signature must
 /// be prefixed with '0x' and be 132 characters long.
-pub fn validate_eth_signature(signature: &str) -> Result<(), String> {
+pub fn validate_eth_signature(signature: &str) -> Result<(), EthError> {
     if !signature.starts_with("0x") || signature.len() != 132 {
-        return Err(String::from(
-            "Invalid signature: Must start with '0x' and be 132 characters long",
-        ));
+        return Err(EthError::AddressFormatError(String::from(
+            "Must start with '0x' and be 132 characters long",
+        )));
     }
 
-    hex::decode(&signature[2..]).map_err(|_| "Invalid signature: Hex decoding failed")?;
+    hex::decode(&signature[2..]).map_err(EthError::DecodingError)?;
     Ok(())
 }
 
@@ -282,10 +277,8 @@ mod tests {
         let invalid_address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed";
         let result = validate_eth_address(invalid_address);
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err(),
-            "Invalid Ethereum address: Not EIP-55 encoded"
-        );
+        let err_msg: String = result.unwrap_err().into();
+        assert_eq!(err_msg, "EIP-55 error: Not EIP-55 encoded");
     }
 
     #[test]
