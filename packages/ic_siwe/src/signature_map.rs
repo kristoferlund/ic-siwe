@@ -80,6 +80,9 @@ impl SignatureMap {
     pub fn prune_expired(&mut self, now: u64, max_to_prune: usize) -> usize {
         let mut num_pruned = 0;
 
+        // Never prune more than the size of the expiration queue.
+        let max_to_prune = std::cmp::min(max_to_prune, self.expiration_queue.len());
+
         for _step in 0..max_to_prune {
             if let Some(expiration) = self.expiration_queue.peek() {
                 if expiration.signature_expires_at > now {
@@ -107,5 +110,114 @@ impl SignatureMap {
             nested.witness(&delegation_hash[..])
         });
         Some(witness)
+    }
+}
+
+#[cfg(test)]
+mod signature_map_tests {
+    use super::*;
+
+    // Utility function to create a random hash for testing
+    fn random_hash() -> Hash {
+        let bytes = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
+        let mut arr = [0u8; 32];
+        arr.copy_from_slice(&bytes);
+        Hash::from(arr)
+    }
+
+    #[test]
+    fn test_put_signature() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        assert!(map.certified_map.get(&seed_hash[..]).is_some());
+    }
+
+    #[test]
+    fn test_delete_signature() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        map.delete(seed_hash, delegation_hash);
+        assert!(map.certified_map.get(&seed_hash[..]).is_none());
+    }
+
+    #[test]
+    fn test_prune_no_expired() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        let pruned = map.prune_expired(get_current_time(), 10);
+        assert_eq!(pruned, 0);
+    }
+
+    #[test]
+    fn test_prune_some_expired() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        let pruned =
+            map.prune_expired(get_current_time() + DELEGATION_SIGNATURE_EXPIRES_AT + 1, 10);
+        assert_eq!(pruned, 1);
+    }
+
+    #[test]
+    fn test_root_hash() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        let hash = map.root_hash();
+        assert_ne!(hash, Hash::default());
+    }
+
+    #[test]
+    fn test_witness_existing() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hash = random_hash();
+        map.put(seed_hash, delegation_hash);
+        let witness = map.witness(seed_hash, delegation_hash);
+        assert!(witness.is_some());
+    }
+
+    #[test]
+    fn test_witness_non_existing() {
+        let map = SignatureMap::default();
+        let witness = map.witness(random_hash(), random_hash());
+        assert!(witness.is_none());
+    }
+
+    #[test]
+    fn test_delete_all_signatures() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        let delegation_hashes: Vec<_> = (0..10).map(|_| random_hash()).collect();
+        for &delegation_hash in &delegation_hashes {
+            map.put(seed_hash, delegation_hash);
+        }
+        for &delegation_hash in &delegation_hashes {
+            map.delete(seed_hash, delegation_hash);
+        }
+        assert!(map.certified_map.get(&seed_hash[..]).is_none());
+    }
+
+    #[test]
+    fn test_prune_all_expired() {
+        let mut map = SignatureMap::default();
+        let seed_hash = random_hash();
+        for _ in 0..10 {
+            let delegation_hash = random_hash();
+            map.put(seed_hash, delegation_hash);
+        }
+        let pruned = map.prune_expired(
+            get_current_time() + DELEGATION_SIGNATURE_EXPIRES_AT + 1,
+            100,
+        );
+        assert_eq!(pruned, 10);
     }
 }
