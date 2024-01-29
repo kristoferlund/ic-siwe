@@ -348,4 +348,16 @@ mod tests {
             "Result should be a valid DER-encoded public key"
         );
     }
+
+    #[test]
+    fn test_cbor_serialize() {
+        let cbor = cbor_serialize(&vec![1, 2, 3]).unwrap();
+        assert!(!cbor.is_empty(), "CBOR should not be empty");
+        let deserialized = serde_cbor::from_slice::<Vec<u8>>(&cbor).unwrap();
+        assert_eq!(
+            deserialized,
+            vec![1, 2, 3],
+            "Deserialized CBOR should match"
+        );
+    }
 }
