@@ -6,6 +6,7 @@ use tiny_keccak::{Hasher, Keccak};
 pub enum EthError {
     AddressFormatError(String),
     DecodingError(hex::FromHexError),
+    SignatureFormatError(String),
     InvalidSignature,
     InvalidRecoveryId,
     PublicKeyRecoveryFailure,
@@ -21,8 +22,9 @@ impl From<hex::FromHexError> for EthError {
 impl fmt::Display for EthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EthError::AddressFormatError(e) => write!(f, "Format error: {}", e),
+            EthError::AddressFormatError(e) => write!(f, "Address format error: {}", e),
             EthError::DecodingError(e) => write!(f, "Decoding error: {}", e),
+            EthError::SignatureFormatError(e) => write!(f, "Signature format error: {}", e),
             EthError::InvalidSignature => write!(f, "Invalid signature"),
             EthError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
             EthError::PublicKeyRecoveryFailure => {
@@ -38,6 +40,104 @@ impl From<EthError> for String {
         error.to_string()
     }
 }
+
+/// Represents an Ethereum address with validation.
+///
+/// This struct ensures that the contained Ethereum address string is valid according to Ethereum standards.
+/// It checks for correct length, hex encoding, and EIP-55 encoding.
+#[derive(Debug)]
+pub struct EthAddress(String);
+
+impl EthAddress {
+    /// Creates a new `EthAddress` after validating the Ethereum address format and encoding.
+    ///
+    /// The address must start with '0x', be 42 characters long, and comply with EIP-55 encoding.
+    ///
+    /// # Arguments
+    /// * `address` - A string slice representing the Ethereum address.
+    pub fn new(address: &str) -> Result<EthAddress, EthError> {
+        if !address.starts_with("0x") || address.len() != 42 {
+            return Err(EthError::AddressFormatError(String::from(
+                "Must start with '0x' and be 42 characters long",
+            )));
+        }
+
+        hex::decode(&address[2..]).map_err(EthError::DecodingError)?;
+
+        if address != convert_to_eip55(address).unwrap() {
+            return Err(EthError::Eip55Error(String::from("Not EIP-55 encoded")));
+        }
+
+        Ok(EthAddress(address.to_owned()))
+    }
+
+    /// Returns a string slice of the Ethereum address.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Converts the Ethereum address into a byte vector.
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let address = self.0.strip_prefix("0x").unwrap();
+        hex::decode(address).unwrap()
+    }
+
+    /// Converts the Ethereum address into a byte array.
+    pub fn as_byte_array(&self) -> [u8; 20] {
+        let address = self.0.strip_prefix("0x").unwrap();
+        let bytes = hex::decode(address).unwrap();
+        let mut array = [0; 20];
+        array.copy_from_slice(&bytes);
+        array
+    }
+}
+
+/// Represents an Ethereum signature with validation.
+///
+/// This struct ensures that the contained Ethereum signature string is valid.
+/// It checks for correct length and hex encoding.
+#[derive(Debug)]
+pub struct EthSignature(String);
+
+impl EthSignature {
+    /// Creates a new `EthSignature` after validating the Ethereum signature format.
+    ///
+    /// The signature must start with '0x' and be 132 characters long.
+    ///
+    /// # Arguments
+    /// * `signature` - A string slice representing the Ethereum signature.
+    pub fn new(signature: &str) -> Result<EthSignature, EthError> {
+        if !signature.starts_with("0x") || signature.len() != 132 {
+            return Err(EthError::SignatureFormatError(String::from(
+                "Must start with '0x' and be 132 characters long",
+            )));
+        }
+
+        hex::decode(&signature[2..]).map_err(EthError::DecodingError)?;
+        Ok(EthSignature(signature.to_owned()))
+    }
+
+    /// Returns a string slice of the Ethereum signature.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Converts the Ethereum signature into a byte vector.
+    pub fn as_bytes(&self) -> Vec<u8> {
+        let signature = self.0.strip_prefix("0x").unwrap();
+        hex::decode(signature).unwrap()
+    }
+
+    /// Converts the Ethereum signature into a byte array.
+    pub fn as_byte_array(&self) -> [u8; 65] {
+        let signature = self.0.strip_prefix("0x").unwrap();
+        let bytes = hex::decode(signature).unwrap();
+        let mut array = [0; 65];
+        array.copy_from_slice(&bytes);
+        array
+    }
+}
+
 /// Recovers an Ethereum address from a given message and signature.
 ///
 /// # Parameters
@@ -48,9 +148,9 @@ impl From<EthError> for String {
 /// # Returns
 ///
 /// The recovered Ethereum address if successful, or an error.
-pub fn recover_eth_address(message: &str, signature: &str) -> Result<String, EthError> {
+pub fn recover_eth_address(message: &str, signature: &EthSignature) -> Result<String, EthError> {
     let message_hash = eip191_hash(message);
-    let signature_bytes = decode_signature(signature)?;
+    let signature_bytes = signature.as_bytes();
 
     let recovery_id =
         RecoveryId::try_from(signature_bytes[64] % 27).map_err(|_| EthError::InvalidRecoveryId)?;
@@ -97,50 +197,6 @@ pub fn eip191_hash(message: &str) -> [u8; 32] {
 /// A vector of bytes containing the formatted message.
 pub fn eip191_bytes(message: &str) -> Vec<u8> {
     format!("\x19Ethereum Signed Message:\n{}{}", message.len(), message).into_bytes()
-}
-
-/// Decodes a hex-encoded Ethereum signature.
-///
-/// # Parameters
-///
-/// * `signature` - The hex-encoded signature. The signature must be prefixed with '0x' and be 132
-///  characters long.
-///
-/// # Returns
-///
-/// A vector of bytes containing the decoded signature if successful, or an error.
-pub fn decode_signature(signature: &str) -> Result<Vec<u8>, EthError> {
-    validate_eth_signature(signature).map_err(|_| EthError::InvalidSignature)?;
-
-    let signature = if signature.starts_with("0x") {
-        signature.strip_prefix("0x").unwrap()
-    } else {
-        signature
-    };
-
-    hex::decode(signature).map_err(EthError::DecodingError)
-}
-
-/// Converts an Ethereum address to bytes by stripping the '0x' prefix and decoding the hexadecimal
-/// string.
-///
-/// # Parameters
-///
-/// * `address` - The Ethereum address to convert.
-///
-/// # Returns
-///
-/// A vector of bytes containing the decoded address if successful, or an error.
-pub fn eth_address_to_bytes(address: &str) -> Result<Vec<u8>, EthError> {
-    // Strip the '0x' prefix if present
-    let addr_trimmed = if address.starts_with("0x") {
-        address.strip_prefix("0x").unwrap()
-    } else {
-        address
-    };
-
-    // Decode the hexadecimal string to bytes
-    hex::decode(addr_trimmed).map_err(EthError::DecodingError)
 }
 
 /// Converts a byte array to an Ethereum address by encoding the bytes to a hexadecimal string and
@@ -237,52 +293,68 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
     Ok(format!("0x{}", checksummed_addr))
 }
 
-/// Validates an Ethereum address by checking its length, hex encoding, and EIP-55 encoding. A valid
-/// address must be prefixed with '0x', be 42 characters long, and be EIP-55 encoded.
-pub fn validate_eth_address(address: &str) -> Result<(), EthError> {
-    if !address.starts_with("0x") || address.len() != 42 {
-        return Err(EthError::AddressFormatError(String::from(
-            "Must start with '0x' and be 42 characters long",
-        )));
-    }
-
-    hex::decode(&address[2..]).map_err(EthError::DecodingError)?;
-
-    if address != convert_to_eip55(address).unwrap() {
-        return Err(EthError::Eip55Error(String::from("Not EIP-55 encoded")));
-    }
-
-    Ok(())
-}
-
-/// Validates an Ethereum signature by checking its length and hex encoding. A valid signature must
-/// be prefixed with '0x' and be 132 characters long.
-pub fn validate_eth_signature(signature: &str) -> Result<(), EthError> {
-    if !signature.starts_with("0x") || signature.len() != 132 {
-        return Err(EthError::AddressFormatError(String::from(
-            "Must start with '0x' and be 132 characters long",
-        )));
-    }
-
-    hex::decode(&signature[2..]).map_err(EthError::DecodingError)?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::eth::{convert_to_eip55, validate_eth_address};
+    use crate::eth::{convert_to_eip55, EthAddress};
 
     #[test]
-    fn test_eip55_invalid_address() {
+    fn test_eth_address_invalid_address() {
+        let invalid_address = "0xG".to_owned() + &"1".repeat(39); // A mock invalid Ethereum address
+        let result = EthAddress::new(invalid_address.as_str());
+        assert!(result.is_err());
+        let err_msg: String = result.unwrap_err().into();
+        assert_eq!(
+            err_msg,
+            "Decoding error: Invalid character 'G' at position 0"
+        );
+    }
+
+    #[test]
+    fn test_eth_address_invalid_hex_encoding() {
+        let invalid_address = "0x".to_owned() + &"G".repeat(40); // Invalid hex
+        let result = EthAddress::new(invalid_address.as_str());
+        assert!(result.is_err());
+        let err_msg: String = result.unwrap_err().into();
+        assert_eq!(
+            err_msg,
+            "Decoding error: Invalid character 'G' at position 0"
+        );
+    }
+
+    #[test]
+    fn test_eth_address_too_short() {
+        let invalid_address = "0x".to_owned() + &"1".repeat(39); // Too short
+        let result = EthAddress::new(invalid_address.as_str());
+        assert!(result.is_err());
+        let err_msg: String = result.unwrap_err().into();
+        assert_eq!(
+            err_msg,
+            "Address format error: Must start with '0x' and be 42 characters long"
+        );
+    }
+
+    #[test]
+    fn test_eth_address_too_long() {
+        let invalid_address = "0x".to_owned() + &"1".repeat(41); // Too long
+        let result = EthAddress::new(invalid_address.as_str());
+        assert!(result.is_err());
+        let err_msg: String = result.unwrap_err().into();
+        assert_eq!(
+            err_msg,
+            "Address format error: Must start with '0x' and be 42 characters long"
+        );
+    }
+    #[test]
+    fn test_eth_address_invalid_eip55() {
         let invalid_address = "0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed";
-        let result = validate_eth_address(invalid_address);
+        let result = EthAddress::new(invalid_address);
         assert!(result.is_err());
         let err_msg: String = result.unwrap_err().into();
         assert_eq!(err_msg, "EIP-55 error: Not EIP-55 encoded");
     }
 
     #[test]
-    fn test_eip55_valid_non_eip55_address() {
+    fn test_convert_to_eip55() {
         let valid_address = "0xfb6916095ca1df60bb79ce92ce3ea74c37c5d359";
         let valid_address_eip55 = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
         let result = convert_to_eip55(valid_address);
@@ -291,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eip55_valid_eip55_address() {
+    fn test_convert_to_eip55_already_valid() {
         let valid_address_eip55 = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
         let result = convert_to_eip55(valid_address_eip55);
         assert!(result.is_ok());

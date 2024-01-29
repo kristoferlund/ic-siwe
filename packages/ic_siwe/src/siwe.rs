@@ -1,3 +1,4 @@
+use crate::eth::EthAddress;
 use crate::settings::Settings;
 use crate::with_settings;
 use crate::{rand::generate_nonce, time::get_current_time};
@@ -75,14 +76,14 @@ impl SiweMessage {
     /// # Returns
     ///
     /// A `Result` that, on success, contains a new [`SiweMessage`] instance.
-    pub fn new(address: &str) -> SiweMessage {
+    pub fn new(address: &EthAddress) -> SiweMessage {
         let nonce = generate_nonce();
         let current_time = get_current_time();
         with_settings!(|settings: &Settings| {
             SiweMessage {
                 scheme: settings.scheme.clone(),
                 domain: settings.domain.clone(),
-                address: address.to_string(),
+                address: address.as_str().to_owned(),
                 statement: settings.statement.clone(),
                 uri: settings.uri.clone(),
                 version: 1,

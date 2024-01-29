@@ -1,6 +1,9 @@
 use candid::Principal;
 use ic_cdk::update;
-use ic_siwe::{eth::eth_address_to_bytes, login::LoginDetails};
+use ic_siwe::{
+    eth::{EthAddress, EthSignature},
+    login::LoginDetails,
+};
 use ic_stable_structures::storable::Blob;
 use serde_bytes::ByteBuf;
 
@@ -26,6 +29,12 @@ fn siwe_login(
     STATE.with(|state| {
         let signature_map = &mut *state.signature_map.borrow_mut();
 
+        // Create an EthAddress from the string. This validates the address.
+        let address = EthAddress::new(&address)?;
+
+        // Create an EthSignature from the string. This validates the signature.
+        let signature = EthSignature::new(&signature)?;
+
         // Attempt to log in with the provided signature, address, and session key.
         match ic_siwe::login::login(&signature, &address, session_key, signature_map) {
             Ok(login_response) => {
@@ -39,18 +48,12 @@ fn siwe_login(
                         .try_into()
                         .map_err(|_| format!("Invalid principal: {:?}", login_response))?;
 
-                // Convert the Ethereum address to a byte array.
-                let address_bytes: [u8; 20] = eth_address_to_bytes(&address)
-                    .map_err(|_| format!("Invalid Ethereum address: {}", address))?
-                    .try_into()
-                    .map_err(|_| format!("Invalid Ethereum address: {}", address))?;
-
                 // Store the mapping of principal to Ethereum address and vice versa.
                 PRINCIPAL_ADDRESS.with_borrow_mut(|pa| {
-                    pa.insert(principal, address_bytes);
+                    pa.insert(principal, address.as_byte_array());
                 });
                 ADDRESS_PRINCIPAL.with_borrow_mut(|ap| {
-                    ap.insert(address_bytes, principal);
+                    ap.insert(address.as_byte_array(), principal);
                 });
 
                 Ok(login_response)

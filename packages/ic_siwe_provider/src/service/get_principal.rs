@@ -1,5 +1,5 @@
 use ic_cdk::query;
-use ic_siwe::eth::eth_address_to_bytes;
+use ic_siwe::eth::EthAddress;
 use serde_bytes::ByteBuf;
 
 use crate::ADDRESS_PRINCIPAL;
@@ -14,13 +14,11 @@ use crate::ADDRESS_PRINCIPAL;
 /// * `Err(String)` - An error message if the address cannot be converted or no principal is found.
 #[query]
 fn get_principal(address: String) -> Result<ByteBuf, String> {
-    let address: [u8; 20] = eth_address_to_bytes(&address)
-        .map_err(|_| format!("Invalid Ethereum address: {}", address))?
-        .try_into()
-        .map_err(|_| format!("Invalid Ethereum address: {}", address))?;
+    // Create an EthAddress from the string. This validates the address.
+    let address = EthAddress::new(&address)?;
 
     ADDRESS_PRINCIPAL.with(|ap| {
-        ap.borrow().get(&address).map_or(
+        ap.borrow().get(&address.as_byte_array()).map_or(
             Err("No principal found for the given address".to_string()),
             |p| Ok(ByteBuf::from(p.as_ref().to_vec())),
         )

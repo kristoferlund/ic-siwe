@@ -8,10 +8,7 @@ use crate::{
     delegation::{
         create_delegation, create_delegation_hash, create_user_canister_pubkey, generate_seed,
     },
-    eth::{
-        eth_address_to_bytes, recover_eth_address, validate_eth_address, validate_eth_signature,
-        EthError,
-    },
+    eth::{recover_eth_address, EthAddress, EthError, EthSignature},
     hash,
     settings::Settings,
     signature_map::SignatureMap,
@@ -31,15 +28,12 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 ///
 /// # Returns
 /// A `Result` that, on success, contains the `SiweMessage` for the user, or an error string on failure.
-pub fn prepare_login(address: &str) -> Result<SiweMessage, EthError> {
-    validate_eth_address(address)?;
-
+pub fn prepare_login(address: &EthAddress) -> Result<SiweMessage, EthError> {
     let message = SiweMessage::new(address);
 
     // Save the SIWE message for use in the login call
-    let address = eth_address_to_bytes(address)?;
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
-        siwe_messages.insert(address, message.clone());
+        siwe_messages.insert(address.as_bytes(), message.clone());
     });
 
     Ok(message)
@@ -98,14 +92,11 @@ impl fmt::Display for LoginError {
 /// A `Result` that, on success, contains the [LoginDetails] with session expiration and user canister
 /// public key, or an error string on failure.
 pub fn login(
-    signature: &str,
-    address: &str,
+    signature: &EthSignature,
+    address: &EthAddress,
     session_key: ByteBuf,
     signature_map: &mut SignatureMap,
 ) -> Result<LoginDetails, LoginError> {
-    validate_eth_signature(signature)?;
-    validate_eth_address(address)?;
-
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
@@ -114,7 +105,7 @@ pub fn login(
 
         // Get the previously created SIWE message for current address. If it has expired or does not
         // exist, return an error.
-        let address_bytes = eth_address_to_bytes(address)?;
+        let address_bytes = address.as_bytes();
         let message = siwe_messages.get(&address_bytes)?;
 
         let message_string: String = message.clone().into();
@@ -122,7 +113,7 @@ pub fn login(
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
         // used to sign the message.
         let recovered_address = recover_eth_address(&message_string, signature)?;
-        if recovered_address != address {
+        if recovered_address != address.as_str() {
             return Err(LoginError::AddressMismatch);
         }
 
@@ -166,9 +157,9 @@ mod tests {
 
     use super::*;
 
-    const VALID_ADDRESS: &str = "0x1111111111111111111111111111111111111111";
+    fn init() -> EthAddress {
+        let valid_address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
 
-    fn init() {
         let settings = SettingsBuilder::new("localhost", "http://localhost:8080", "salt")
             .scheme("http")
             .statement("Login to the app")
@@ -178,80 +169,26 @@ mod tests {
         SETTINGS.with(|s| {
             *s.borrow_mut() = Some(settings);
         });
+
+        valid_address
     }
 
     #[test]
     fn test_create_message_success() {
-        init();
+        let valid_address = init();
 
-        let result = prepare_login(VALID_ADDRESS);
+        let result = prepare_login(&valid_address);
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_create_message_invalid_address() {
-        init();
-
-        let invalid_address = "0xG".to_owned() + &"1".repeat(39); // A mock invalid Ethereum address
-        let result = prepare_login(invalid_address.as_str());
-        assert!(result.is_err());
-        let err_msg: String = result.unwrap_err().into();
-        assert_eq!(
-            err_msg,
-            "Decoding error: Invalid character 'G' at position 0"
-        );
-    }
-
-    #[test]
-    fn test_create_message_invalid_hex_encoding() {
-        init();
-
-        let invalid_address = "0x".to_owned() + &"G".repeat(40); // Invalid hex
-        let result = prepare_login(invalid_address.as_str());
-        assert!(result.is_err());
-        let err_msg: String = result.unwrap_err().into();
-        assert_eq!(
-            err_msg,
-            "Decoding error: Invalid character 'G' at position 0"
-        );
-    }
-
-    #[test]
-    fn test_create_message_address_too_short() {
-        init();
-
-        let invalid_address = "0x".to_owned() + &"1".repeat(39); // Too short
-        let result = prepare_login(invalid_address.as_str());
-        assert!(result.is_err());
-        let err_msg: String = result.unwrap_err().into();
-        assert_eq!(
-            err_msg,
-            "Format error: Must start with '0x' and be 42 characters long"
-        );
-    }
-
-    #[test]
-    fn test_create_message_address_too_long() {
-        init();
-
-        let invalid_address = "0x".to_owned() + &"1".repeat(41); // Too long
-        let result = prepare_login(invalid_address.as_str());
-        assert!(result.is_err());
-        let err_msg: String = result.unwrap_err().into();
-        assert_eq!(
-            err_msg,
-            "Format error: Must start with '0x' and be 42 characters long"
-        );
-    }
-
-    #[test]
     fn test_create_message_expected_message() {
-        init();
+        let valid_address = init();
 
-        let result = prepare_login(VALID_ADDRESS).expect("Should succeed with valid address");
+        let result = prepare_login(&valid_address).expect("Should succeed with valid address");
 
         with_settings!(|settings: &Settings| {
-            assert_eq!(result.address, VALID_ADDRESS);
+            assert_eq!(result.address, valid_address.as_str());
             assert_eq!(result.scheme, settings.scheme);
             assert_eq!(result.domain, settings.domain);
             assert_eq!(result.statement, settings.statement);

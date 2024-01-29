@@ -1,8 +1,11 @@
 use ic_cdk::{api::data_certificate, query};
 use ic_certified_map::{fork, labeled_hash, AsHashTree, HashTree};
-use ic_siwe::delegation::{
-    create_certified_signature, create_delegation, create_delegation_hash, generate_seed, witness,
-    SignedDelegation,
+use ic_siwe::{
+    delegation::{
+        create_certified_signature, create_delegation, create_delegation_hash, generate_seed,
+        witness, SignedDelegation,
+    },
+    eth::EthAddress,
 };
 use serde_bytes::ByteBuf;
 
@@ -26,6 +29,9 @@ fn siwe_get_delegation(
 ) -> Result<SignedDelegation, String> {
     // Fetches the certificate for the current call, required for creating a certified signature.
     let certificate = data_certificate().expect("get_delegation must be called using a query call");
+
+    // Create an EthAddress from the string. This validates the address.
+    let address = EthAddress::new(&address)?;
 
     STATE.with(|s| {
         let signature_map = s.signature_map.borrow_mut();

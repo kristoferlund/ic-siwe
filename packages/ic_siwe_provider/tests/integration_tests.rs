@@ -131,7 +131,7 @@ fn test_siwe_prepare_login_invalid_address() {
     );
     assert_eq!(
         response.unwrap_err(),
-        "Format error: Must start with '0x' and be 42 characters long"
+        "Address format error: Must start with '0x' and be 42 characters long"
     );
 }
 
@@ -185,7 +185,7 @@ fn test_login_signature_too_short() {
     );
     assert_eq!(
         response.unwrap_err(),
-        "Format error: Must start with '0x' and be 132 characters long"
+        "Signature format error: Must start with '0x' and be 132 characters long"
     );
 }
 
@@ -204,7 +204,7 @@ fn test_login_signature_too_long() {
     );
     assert_eq!(
         response.unwrap_err(),
-        "Format error: Must start with '0x' and be 132 characters long"
+        "Signature format error: Must start with '0x' and be 132 characters long"
     );
 }
 
