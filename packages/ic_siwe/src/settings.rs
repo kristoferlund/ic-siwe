@@ -57,6 +57,8 @@ pub struct Settings {
 /// Basic usage:
 ///
 /// ```
+/// use ic_siwe::settings::{Settings, SettingsBuilder};
+///
 /// let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
 ///     .chain_id(1)  // Ethereum mainnet
 ///     .scheme("https")
@@ -181,6 +183,10 @@ fn validate_salt(salt: &str) -> Result<String, String> {
     if salt.is_empty() {
         return Err(String::from("Salt cannot be empty"));
     }
+    // Salt can only contain printable ASCII characters
+    if salt.chars().any(|c| !c.is_ascii() || !c.is_ascii_graphic()) {
+        return Err(String::from("Invalid salt"));
+    }
     Ok(salt.to_string())
 }
 
@@ -225,6 +231,11 @@ fn validate_targets(targets: &Option<Vec<Principal>>) -> Result<Option<Vec<Princ
             return Err(String::from("Targets cannot be empty"));
         }
 
+        // There is a limit of 1000 targets
+        if targets.len() > 1000 {
+            return Err(String::from("Too many targets"));
+        }
+
         // Duplicate targets are not allowed
         let mut targets_clone = targets.clone();
         targets_clone.sort();
@@ -236,32 +247,296 @@ fn validate_targets(targets: &Option<Vec<Principal>>) -> Result<Option<Vec<Princ
     Ok(targets.clone())
 }
 
-/// A macro to access global `Settings` conveniently within a closure.
-///
-/// This macro is designed to provide easy and safe access to the globally configured `Settings`.
-/// It ensures that the settings are initialized before access and provides them to a user-defined closure for further processing.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// with_settings!(|settings: &Settings| {
-///     // You can access the settings here
-///     println!("Current domain: {}", settings.domain);
-/// });
-/// ```
-///
-/// This macro will pass the global `Settings` instance to the closure, allowing you to use the settings without manually fetching them.
-#[macro_export]
-macro_rules! with_settings {
-    ($body:expr) => {
-        $crate::SETTINGS.with_borrow(|s| {
-            let settings = s
-                .as_ref()
-                .unwrap_or_else(|| ic_cdk::trap("Settings are not initialized."));
-            #[allow(clippy::redundant_closure_call)]
-            $body(settings)
-        })
-    };
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use candid::Principal;
+
+    // Test successful settings creation with default values
+    #[test]
+    fn test_successful_settings_creation_defaults() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt");
+        let settings = builder
+            .build()
+            .expect("Failed to create settings with defaults");
+        assert_eq!(settings.domain, "example.com");
+        assert_eq!(settings.uri, "http://example.com");
+        assert_eq!(settings.salt, "some_salt");
+        assert_eq!(settings.chain_id, DEFAULT_CHAIN_ID);
+        assert_eq!(settings.scheme, DEFAULT_SCHEME);
+        assert_eq!(settings.statement, DEFAULT_STATEMENT);
+        assert_eq!(settings.sign_in_expires_in, DEFAULT_SIGN_IN_EXPIRES_IN);
+        assert_eq!(settings.session_expires_in, DEFAULT_SESSION_EXPIRES_IN);
+        assert!(settings.targets.is_none());
+    }
+
+    // Test successful settings creation with custom values
+    #[test]
+    fn test_successful_settings_creation_custom() {
+        let targets = vec![Principal::anonymous()];
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .chain_id(3)
+            .scheme("http")
+            .statement("Custom statement")
+            .sign_in_expires_in(10_000_000_000)
+            .session_expires_in(20_000_000_000)
+            .targets(targets.clone());
+        let settings = builder
+            .build()
+            .expect("Failed to create settings with custom values");
+        assert_eq!(settings.chain_id, 3);
+        assert_eq!(settings.scheme, "http");
+        assert_eq!(settings.statement, "Custom statement");
+        assert_eq!(settings.sign_in_expires_in, 10_000_000_000);
+        assert_eq!(settings.session_expires_in, 20_000_000_000);
+        assert_eq!(settings.targets, Some(targets));
+    }
+
+    // Test empty salt
+    #[test]
+    fn test_empty_salt() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "");
+        assert!(builder.build().is_err());
+    }
+
+    // Test invalid chain ID
+    #[test]
+    fn test_invalid_chain_id() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").chain_id(0);
+        assert!(builder.build().is_err());
+    }
+
+    // Test invalid scheme
+    #[test]
+    fn test_invalid_scheme() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").scheme("ftp");
+        assert!(builder.build().is_err());
+    }
+
+    // Test invalid statement
+    #[test]
+    fn test_invalid_statement() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .statement("Invalid\nStatement");
+        assert!(builder.build().is_err());
+    }
+
+    // Test sign in expires in is zero
+    #[test]
+    fn test_sign_in_expires_in_zero() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .sign_in_expires_in(0);
+        assert!(builder.build().is_err());
+    }
+
+    // Test session expires in is zero
+    #[test]
+    fn test_session_expires_in_zero() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .session_expires_in(0);
+        assert!(builder.build().is_err());
+    }
+
+    // Test empty targets
+    #[test]
+    fn test_empty_targets() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").targets(vec![]);
+        assert!(builder.build().is_err());
+    }
+
+    // Test too many targets
+    #[test]
+    fn test_too_many_targets() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .targets(vec![Principal::anonymous(); 1001]);
+        assert!(builder.build().is_err());
+    }
+
+    // Test duplicate targets
+    #[test]
+    fn test_duplicate_targets() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .targets(vec![Principal::anonymous(), Principal::anonymous()]);
+        assert!(builder.build().is_err());
+    }
+
+    // Test various valid domain formats
+    #[test]
+    fn test_valid_domain_formats() {
+        let domains = vec!["example.com", "sub.domain.com", "example.co.uk"];
+        for domain in domains {
+            let builder = SettingsBuilder::new(domain, "http://example.com", "some_salt");
+            assert!(builder.build().is_ok(), "Failed with domain: {}", domain);
+        }
+    }
+
+    // Test invalid domain formats
+    #[test]
+    fn test_invalid_domain_formats() {
+        let domains = vec![""];
+        for domain in domains {
+            let builder = SettingsBuilder::new(domain, "http://example.com", "some_salt");
+            assert!(
+                builder.build().is_err(),
+                "Should fail with domain: {}",
+                domain
+            );
+        }
+    }
+
+    // Test URIs with different valid formats
+    #[test]
+    fn test_valid_uri_formats() {
+        let uris = vec!["http://example.com", "https://example.com:8080/path"];
+        for uri in uris {
+            let builder = SettingsBuilder::new("example.com", uri, "some_salt");
+            assert!(builder.build().is_ok(), "Failed with URI: {}", uri);
+        }
+    }
+
+    // Test invalid URIs
+    #[test]
+    fn test_invalid_uris() {
+        let uris = vec!["", "just_string"];
+        for uri in uris {
+            let builder = SettingsBuilder::new("example.com", uri, "some_salt");
+            assert!(builder.build().is_err(), "Should fail with URI: {}", uri);
+        }
+    }
+
+    #[test]
+    fn test_chain_id_zero() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").chain_id(0);
+        assert!(builder.build().is_err(), "Chain ID zero should fail");
+    }
+
+    // Test URI with Port Numbers
+    #[test]
+    fn test_uri_with_port_numbers() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com:8080", "some_salt");
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Valid Salt Lengths
+    #[test]
+    fn test_valid_salt_lengths() {
+        for len in [1, 10, 100].iter() {
+            let salt = "a".repeat(*len);
+            let builder = SettingsBuilder::new("example.com", "http://example.com", &salt);
+            assert!(builder.build().is_ok(), "Failed with salt length: {}", len);
+        }
+    }
+
+    // Test Chain ID Boundary Values
+    #[test]
+    fn test_chain_id_boundary_values() {
+        let max_value = u32::MAX;
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .chain_id(max_value);
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Scheme Case Sensitivity
+    #[test]
+    fn test_scheme_case_sensitivity() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").scheme("HTTP");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Statement Length and Content
+    #[test]
+    fn test_statement_length_and_content() {
+        let long_statement = "a".repeat(1000);
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .statement(long_statement);
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Extreme Expiration Values
+    #[test]
+    fn test_extreme_expiration_values() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .sign_in_expires_in(1)
+            .session_expires_in(u64::MAX);
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Targets with Various Principal Formats
+    #[test]
+    fn test_targets_with_various_principal_formats() {
+        let targets = vec![
+            Principal::anonymous(),
+            Principal::from_text("aaaaa-aa").unwrap(),
+        ];
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").targets(targets);
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Multiple Valid and Invalid Combinations
+    #[test]
+    fn test_multiple_valid_and_invalid_combinations() {
+        let builder = SettingsBuilder::new("", "invalid_uri", "")
+            .chain_id(0)
+            .scheme("ftp");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Partially Initialized Builder
+    #[test]
+    fn test_partially_initialized_builder() {
+        let builder =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").scheme("http");
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Overwriting Default Values
+    #[test]
+    fn test_overwriting_default_values() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .scheme(DEFAULT_SCHEME)
+            .chain_id(DEFAULT_CHAIN_ID);
+        assert!(builder.build().is_ok());
+    }
+
+    // Test Malformed URIs
+    #[test]
+    fn test_malformed_uris() {
+        let builder = SettingsBuilder::new("example.com", "://missing_protocol.com", "some_salt");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Invalid Salt Content
+    #[test]
+    fn test_invalid_salt_content() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "\0invalid_salt");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Invalid Statement Formats
+    #[test]
+    fn test_invalid_statement_formats() {
+        let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .statement("Invalid\nStatement");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Validating an Empty SettingsBuilder
+    #[test]
+    fn test_validating_an_empty_settingsbuilder() {
+        let builder = SettingsBuilder::new("", "", "");
+        assert!(builder.build().is_err());
+    }
+
+    // Test Domain with International Characters
+    #[test]
+    fn test_domain_with_international_characters() {
+        let builder = SettingsBuilder::new("xn--exmple-cua.com", "http://example.com", "some_salt");
+        assert!(builder.build().is_ok());
+    }
 }

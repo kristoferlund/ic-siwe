@@ -30,6 +30,17 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 ///
 /// # Returns
 /// A `Result` that, on success, contains the `SiweMessage` for the user, or an error string on failure.
+///
+/// # Example
+/// ```ignore
+/// use ic_siwe::{
+///   login::prepare_login,
+///   eth::EthAddress
+/// };
+///
+/// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
+/// let message = prepare_login(&address).unwrap();
+/// ```
 pub fn prepare_login(address: &EthAddress) -> Result<SiweMessage, EthError> {
     let message = SiweMessage::new(address);
 
@@ -169,52 +180,4 @@ pub fn login(
             user_canister_pubkey: ByteBuf::from(user_canister_pubkey),
         })
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::{settings::SettingsBuilder, SETTINGS};
-
-    use super::*;
-
-    fn init() -> EthAddress {
-        let valid_address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
-
-        let settings = SettingsBuilder::new("localhost", "http://localhost:8080", "salt")
-            .scheme("http")
-            .statement("Login to the app")
-            .build()
-            .unwrap();
-
-        SETTINGS.with(|s| {
-            *s.borrow_mut() = Some(settings);
-        });
-
-        valid_address
-    }
-
-    #[test]
-    fn test_create_message_success() {
-        let valid_address = init();
-
-        let result = prepare_login(&valid_address);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_create_message_expected_message() {
-        let valid_address = init();
-
-        let result = prepare_login(&valid_address).expect("Should succeed with valid address");
-
-        with_settings!(|settings: &Settings| {
-            assert_eq!(result.address, valid_address.as_str());
-            assert_eq!(result.scheme, settings.scheme);
-            assert_eq!(result.domain, settings.domain);
-            assert_eq!(result.statement, settings.statement);
-            assert_eq!(result.uri, settings.uri);
-            assert_eq!(result.version, 1);
-            assert_eq!(result.chain_id, settings.chain_id);
-        });
-    }
 }

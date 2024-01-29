@@ -192,6 +192,7 @@ pub mod eth;
 pub(crate) mod hash;
 pub(crate) mod init;
 pub mod login;
+mod macros;
 pub(crate) mod rand;
 pub mod settings;
 pub mod signature_map;
