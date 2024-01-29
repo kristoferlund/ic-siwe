@@ -40,7 +40,7 @@ fn siwe_get_delegation(
         let seed = generate_seed(&address);
 
         // Create a delegation object with the session key and expiration.
-        let delegation = create_delegation(session_key, expiration);
+        let delegation = create_delegation(session_key, expiration)?;
 
         // Hash the delegation for signing.
         let delegation_hash = create_delegation_hash(&delegation);

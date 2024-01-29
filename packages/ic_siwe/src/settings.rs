@@ -152,6 +152,7 @@ impl SettingsBuilder {
         validate_statement(&self.settings.statement)?;
         validate_sign_in_expires_in(self.settings.sign_in_expires_in)?;
         validate_session_expires_in(self.settings.session_expires_in)?;
+        validate_targets(&self.settings.targets)?;
 
         Ok(self.settings)
     }
@@ -216,6 +217,23 @@ fn validate_session_expires_in(expires_in: u64) -> Result<u64, String> {
         return Err(String::from("Session expires in must be greater than 0"));
     }
     Ok(expires_in)
+}
+
+fn validate_targets(targets: &Option<Vec<Principal>>) -> Result<Option<Vec<Principal>>, String> {
+    if let Some(targets) = targets {
+        if targets.is_empty() {
+            return Err(String::from("Targets cannot be empty"));
+        }
+
+        // Duplicate targets are not allowed
+        let mut targets_clone = targets.clone();
+        targets_clone.sort();
+        targets_clone.dedup();
+        if targets_clone.len() != targets.len() {
+            return Err(String::from("Duplicate targets are not allowed"));
+        }
+    }
+    Ok(targets.clone())
 }
 
 /// A macro to access global `Settings` conveniently within a closure.

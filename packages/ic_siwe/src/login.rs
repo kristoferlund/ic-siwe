@@ -7,6 +7,7 @@ use serde_bytes::ByteBuf;
 use crate::{
     delegation::{
         create_delegation, create_delegation_hash, create_user_canister_pubkey, generate_seed,
+        DelegationError,
     },
     eth::{recover_eth_address, EthAddress, EthError, EthSignature},
     hash,
@@ -54,6 +55,7 @@ pub enum LoginError {
     EthError(EthError),
     SiweMessageError(SiweMessageError),
     AddressMismatch,
+    DelegationError(DelegationError),
 }
 
 impl From<EthError> for LoginError {
@@ -68,12 +70,19 @@ impl From<SiweMessageError> for LoginError {
     }
 }
 
+impl From<DelegationError> for LoginError {
+    fn from(err: DelegationError) -> Self {
+        LoginError::DelegationError(err)
+    }
+}
+
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             LoginError::EthError(e) => write!(f, "{}", e),
             LoginError::SiweMessageError(e) => write!(f, "{}", e),
             LoginError::AddressMismatch => write!(f, "Recovered address does not match"),
+            LoginError::DelegationError(e) => write!(f, "{}", e),
         }
     }
 }
@@ -136,7 +145,7 @@ pub fn login(
         signature_map.prune_expired(get_current_time(), MAX_SIGS_TO_PRUNE);
 
         // Create the delegation and add its hash to the signature map. The seed is used as the map key.
-        let delegation = create_delegation(session_key, expiration);
+        let delegation = create_delegation(session_key, expiration)?;
         let delegation_hash = create_delegation_hash(&delegation);
         signature_map.put(hash::hash_bytes(seed), delegation_hash);
 
