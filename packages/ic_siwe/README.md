@@ -1,6 +1,6 @@
-![Sign in with Ethereum for the Internet Computer](/media/header.png)
+![Sign in with Ethereum for the Internet Computer](media/header.png)
 
-[![Crate][crate-image]][crate-link]
+[![Crate][crate-image]][crate-link] [![Docs][docs-image]][docs-link]
 
 `ic_siwe` is a Rust library that facilitates the integration of Ethereum wallet-based authentication with applications on the Internet Computer (ICP) platform. The library provides all necessary tools for integrating Sign-In with Ethereum (SIWE) into ICP canisters, from generating SIWE messages to creating delegate identities.
 
@@ -155,3 +155,8 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
+
+[crate-image]: https://buildstats.info/crate/ic_siwe
+[crate-link]: https://crates.io/crates/ic_siwe
+[docs-image]: https://docs.rs/ic_siwe/badge.svg
+[docs-link]: https://docs.rs/ic_siwe/
