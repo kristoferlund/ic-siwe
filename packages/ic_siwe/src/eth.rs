@@ -294,8 +294,8 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::eth::{convert_to_eip55, EthAddress};
+mod eth_address {
+    use crate::eth::EthAddress;
 
     #[test]
     fn test_eth_address_invalid_address() {
@@ -352,6 +352,117 @@ mod tests {
         let err_msg: String = result.unwrap_err().into();
         assert_eq!(err_msg, "EIP-55 error: Not EIP-55 encoded");
     }
+}
+
+#[cfg(test)]
+mod eth_signature {
+    use crate::eth::EthSignature;
+
+    // Utility function to generate a valid Ethereum signature for testing
+    fn generate_valid_signature() -> String {
+        "0x".to_owned() + &"1".repeat(130) // A mock valid Ethereum signature
+    }
+
+    #[test]
+    fn test_eth_signature_new_valid() {
+        let valid_signature = generate_valid_signature();
+        let result = EthSignature::new(&valid_signature);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_eth_signature_new_invalid_format() {
+        let invalid_signature = "0x1".to_owned(); // Incorrect format
+        let result = EthSignature::new(&invalid_signature);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eth_signature_new_invalid_length() {
+        let invalid_signature = "0x".to_owned() + &"1".repeat(131); // Incorrect length
+        let result = EthSignature::new(&invalid_signature);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_eth_signature_as_bytes() {
+        let valid_signature = generate_valid_signature();
+        let eth_signature = EthSignature::new(&valid_signature).unwrap();
+        let bytes = eth_signature.as_bytes();
+        assert_eq!(bytes.len(), 65);
+    }
+
+    #[test]
+    fn test_eth_signature_as_byte_array() {
+        let valid_signature = generate_valid_signature();
+        let eth_signature = EthSignature::new(&valid_signature).unwrap();
+        let byte_array = eth_signature.as_byte_array();
+        assert_eq!(byte_array.len(), 65);
+    }
+
+    // Add more tests to cover different scenarios and edge cases
+}
+
+#[cfg(test)]
+mod recover_eth_address {
+    use ethers::{
+        signers::{LocalWallet, Signer},
+        utils::{hash_message, to_checksum},
+    };
+
+    use crate::eth::{recover_eth_address, EthSignature};
+
+    pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
+        let wallet = LocalWallet::new(&mut rand::thread_rng());
+        let h160 = wallet.address();
+        let address = to_checksum(&h160, None);
+        (wallet, address)
+    }
+
+    #[test]
+    fn test_recover_eth_address() {
+        let (wallet, address) = create_wallet();
+        let message = "It's me, Marlene, do you miss me?!";
+        let hash = hash_message(message.as_bytes());
+        let signature = wallet.sign_hash(hash).unwrap().to_string();
+        let signature = format!("0x{}", signature.as_str());
+        let recovered_address =
+            recover_eth_address(message, &EthSignature::new(&signature).unwrap()).unwrap();
+        assert_eq!(address, recovered_address);
+    }
+
+    #[test]
+    fn test_recover_eth_address_with_invalid_signature() {
+        let (wallet, _) = create_wallet();
+        let message = "It's me, Marlene, do you miss me?!";
+        let hash = hash_message(message.as_bytes());
+        let mut signature = wallet.sign_hash(hash).unwrap().to_string();
+        // Manipulate the signature, replacing the last character with a '0'
+        signature.pop();
+        signature.push('0');
+        let signature = format!("0x{}", signature);
+        let result = recover_eth_address(message, &EthSignature::new(&signature).unwrap());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "Invalid recovery ID");
+    }
+
+    #[test]
+    fn test_recover_eth_address_with_wrong_message() {
+        let (wallet, address) = create_wallet();
+        let message = "Message 1";
+        let wrong_message = "Message 2";
+        let hash = hash_message(message.as_bytes());
+        let signature = wallet.sign_hash(hash).unwrap().to_string();
+        let signature = format!("0x{}", signature);
+        let recovered_address =
+            recover_eth_address(wrong_message, &EthSignature::new(&signature).unwrap()).unwrap();
+        assert_ne!(address, recovered_address);
+    }
+}
+
+#[cfg(test)]
+mod convert_to_eip55 {
+    use crate::eth::convert_to_eip55;
 
     #[test]
     fn test_convert_to_eip55() {
