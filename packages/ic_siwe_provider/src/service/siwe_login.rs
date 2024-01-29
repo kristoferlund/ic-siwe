@@ -36,7 +36,13 @@ fn siwe_login(
         let signature = EthSignature::new(&signature)?;
 
         // Attempt to log in with the provided signature, address, and session key.
-        match ic_siwe::login::login(&signature, &address, session_key, signature_map) {
+        match ic_siwe::login::login(
+            &signature,
+            &address,
+            session_key,
+            signature_map,
+            &ic_cdk::api::id(),
+        ) {
             Ok(login_response) => {
                 // Update the certified data of the canister due to changes in the signature map.
                 update_root_hash(&state.asset_hashes.borrow(), signature_map);

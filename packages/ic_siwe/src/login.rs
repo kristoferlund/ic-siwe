@@ -1,8 +1,9 @@
 use std::fmt;
 
-use candid::CandidType;
+use candid::{CandidType, Principal};
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
+use simple_asn1::ASN1EncodeErr;
 
 use crate::{
     delegation::{
@@ -56,6 +57,7 @@ pub enum LoginError {
     SiweMessageError(SiweMessageError),
     AddressMismatch,
     DelegationError(DelegationError),
+    ASN1EncodeErr(ASN1EncodeErr),
 }
 
 impl From<EthError> for LoginError {
@@ -76,6 +78,12 @@ impl From<DelegationError> for LoginError {
     }
 }
 
+impl From<ASN1EncodeErr> for LoginError {
+    fn from(err: ASN1EncodeErr) -> Self {
+        LoginError::ASN1EncodeErr(err)
+    }
+}
+
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -83,6 +91,7 @@ impl fmt::Display for LoginError {
             LoginError::SiweMessageError(e) => write!(f, "{}", e),
             LoginError::AddressMismatch => write!(f, "Recovered address does not match"),
             LoginError::DelegationError(e) => write!(f, "{}", e),
+            LoginError::ASN1EncodeErr(e) => write!(f, "{}", e),
         }
     }
 }
@@ -96,6 +105,7 @@ impl fmt::Display for LoginError {
 /// * `session_key`: A unique session key to be used for the delegation.
 /// * `signature_map`: A mutable reference to `SignatureMap` to which the delegation hash will be added
 ///   after successful validation.
+/// * `canister_id`: The principal of the canister performing the login.
 ///
 /// # Returns
 /// A `Result` that, on success, contains the [LoginDetails] with session expiration and user canister
@@ -105,6 +115,7 @@ pub fn login(
     address: &EthAddress,
     session_key: ByteBuf,
     signature_map: &mut SignatureMap,
+    canister_id: &Principal,
 ) -> Result<LoginDetails, LoginError> {
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
@@ -151,11 +162,11 @@ pub fn login(
 
         // Create the user canister public key from the seed. From this key, the client can derive the
         // user principal.
-        let user_canister_pubkey = ByteBuf::from(create_user_canister_pubkey(seed.to_vec()));
+        let user_canister_pubkey = create_user_canister_pubkey(canister_id, seed.to_vec())?;
 
         Ok(LoginDetails {
             expiration,
-            user_canister_pubkey,
+            user_canister_pubkey: ByteBuf::from(user_canister_pubkey),
         })
     })
 }
