@@ -8,7 +8,7 @@ use serde_bytes::ByteBuf;
 
 use candid::{CandidType, Principal};
 use serde::{Deserialize, Serialize};
-use simple_asn1::{oid, ASN1Block, ASN1EncodeErr};
+use simple_asn1::{from_der, oid, ASN1Block, ASN1EncodeErr};
 
 #[derive(Debug)]
 pub enum DelegationError {
@@ -98,12 +98,16 @@ pub fn create_delegation(
     expiration: u64,
 ) -> Result<Delegation, DelegationError> {
     // Validate the session key and expiration
-
     if session_key.is_empty() {
         return Err(DelegationError::InvalidSessionKey(
             "Session key is empty".to_string(),
         ));
     }
+
+    // Validate the session key is DER-encoded
+    from_der(&session_key).map_err(|e| {
+        DelegationError::InvalidSessionKey(format!("Session key should be DER-encoded: {}", e))
+    })?;
 
     if expiration == 0 {
         return Err(DelegationError::InvalidExpiration(
@@ -241,7 +245,12 @@ mod tests {
 
     use super::*;
 
-    // Mock Settings for testing purposes
+    pub const SESSION_KEY: &[u8] = &[
+        48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 220, 227, 2, 129, 72, 36, 43, 220, 96, 102,
+        225, 92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35,
+        181, 171, 196,
+    ]; // DER encoded session key
+
     fn init() -> EthAddress {
         let builder = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
             .targets(vec![Principal::from_text("aaaaa-aa").unwrap()]);
@@ -261,7 +270,7 @@ mod tests {
     #[test]
     fn test_create_delegation() {
         init();
-        let session_key = ByteBuf::from(vec![1, 2, 3]);
+        let session_key = ByteBuf::from(SESSION_KEY);
         let expiration = 123456789;
         let delegation = create_delegation(session_key.clone(), expiration).unwrap();
         assert_eq!(delegation.pubkey, session_key, "Session key should match");
@@ -290,7 +299,7 @@ mod tests {
     #[test]
     fn test_create_delegation_invalid_expiration() {
         init();
-        let session_key = ByteBuf::from(vec![1, 2, 3]);
+        let session_key = ByteBuf::from(SESSION_KEY);
         let expiration = 0; // Invalid expiration
         let result = create_delegation(session_key, expiration);
         assert!(result.is_err(), "Result should be an error");
@@ -302,26 +311,92 @@ mod tests {
     }
 
     #[test]
-    fn test_witness() {
+    fn test_witness_single_entry() {
         let address = init();
         let seed = generate_seed(&address);
-        let session_key = ByteBuf::from(vec![1, 2, 3]);
+        let session_key = ByteBuf::from(SESSION_KEY);
         let expiration = 123456789;
         let delegation = create_delegation(session_key.clone(), expiration).unwrap();
         let delegation_hash = create_delegation_hash(&delegation);
         let mut signature_map = SignatureMap::default();
         signature_map.put(hash::hash_bytes(seed), delegation_hash);
-        let witness = witness(&signature_map, seed, delegation_hash).unwrap();
-        let witness_hash = witness.reconstruct();
+        let tree = witness(&signature_map, seed, delegation_hash).unwrap();
+        let witness_hash = tree.reconstruct();
         let root_hash = signature_map.root_hash();
         assert_eq!(witness_hash, root_hash);
+    }
+
+    #[test]
+    fn test_witness_multiple_entries() {
+        let address = init();
+        let seed = generate_seed(&address);
+        let session_key = ByteBuf::from(SESSION_KEY);
+        let expiration = 123456789;
+        let delegation = create_delegation(session_key.clone(), expiration).unwrap();
+        let delegation_hash = create_delegation_hash(&delegation);
+        let mut signature_map = SignatureMap::default();
+        signature_map.put(hash::hash_bytes(seed), delegation_hash);
+        let tree = witness(&signature_map, seed, delegation_hash).unwrap();
+        let witness_hash = tree.reconstruct();
+        let root_hash = signature_map.root_hash();
+        assert_eq!(witness_hash, root_hash);
+
+        let session_key = ByteBuf::from([
+            48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 228, 25, 195, 240, 251, 10, 105, 44, 189,
+            126, 49, 187, 62, 205, 22, 150, 125, 41, 1, 32, 75, 200, 227, 140, 98, 246, 179, 10,
+            192, 228, 168, 111,
+        ]);
+        let delegation = create_delegation(session_key.clone(), expiration).unwrap();
+        let delegation_hash = create_delegation_hash(&delegation);
+        signature_map.put(hash::hash_bytes(seed), delegation_hash);
+        let tree = witness(&signature_map, seed, delegation_hash).unwrap();
+        let witness_hash = tree.reconstruct();
+        let root_hash = signature_map.root_hash();
+        assert_eq!(witness_hash, root_hash);
+    }
+
+    #[test]
+    fn test_witness_empty_signature_map() {
+        let address = init();
+        let seed = generate_seed(&address);
+        let session_key = ByteBuf::from(SESSION_KEY);
+        let expiration = 123456789;
+        let delegation = create_delegation(session_key.clone(), expiration).unwrap();
+        let delegation_hash = create_delegation_hash(&delegation);
+        let signature_map = SignatureMap::default();
+        let result = witness(&signature_map, seed, delegation_hash);
+        assert!(result.is_err(), "Result should be an error");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Signature not found",
+            "Error message should match"
+        );
+    }
+
+    #[test]
+    fn test_witness_hash_not_found() {
+        let address = init();
+        let seed = generate_seed(&address);
+        let session_key = ByteBuf::from(SESSION_KEY);
+        let expiration = 123456789;
+        let delegation = create_delegation(session_key.clone(), expiration).unwrap();
+        let delegation_hash = create_delegation_hash(&delegation);
+        let mut signature_map = SignatureMap::default();
+        signature_map.put(hash::hash_bytes(vec![1, 2, 3]), delegation_hash);
+        let result = witness(&signature_map, seed, delegation_hash);
+        assert!(result.is_err(), "Result should be an error");
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Signature not found",
+            "Error message should match"
+        );
     }
 
     #[test]
     fn test_create_certified_signature() {
         let address = init();
         let seed = generate_seed(&address);
-        let session_key = ByteBuf::from(vec![1, 2, 3]);
+        let session_key = ByteBuf::from(SESSION_KEY);
         let expiration = 123456789;
         let delegation = create_delegation(session_key.clone(), expiration).unwrap();
         let delegation_hash = create_delegation_hash(&delegation);
@@ -330,7 +405,9 @@ mod tests {
         let witness = witness(&signature_map, seed, delegation_hash).unwrap();
         let tree = HashTree::Pruned(labeled_hash(b"sig", &witness.reconstruct()));
         let certificate = vec![1, 2, 3];
-        let signature = create_certified_signature(certificate, tree).unwrap();
+        let result = create_certified_signature(certificate, tree);
+        assert!(result.is_ok(), "Result should be ok");
+        let signature = result.unwrap();
         assert!(!signature.is_empty(), "Signature should not be empty");
     }
 
