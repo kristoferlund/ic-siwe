@@ -56,7 +56,7 @@ export async function callLogin(
     throw new Error("Invalid actor, data or address");
   }
 
-  const loginReponse = await anonymousActor.login(
+  const loginReponse = await anonymousActor.siwe_login(
     data,
     address,
     new Uint8Array(sessionPublicKey)
@@ -82,7 +82,7 @@ export async function callGetDelegation(
     throw new Error("Invalid actor or address");
   }
 
-  const response = await anonymousActor.get_delegation(
+  const response = await anonymousActor.siwe_get_delegation(
     address,
     new Uint8Array(sessionPublicKey),
     expiration

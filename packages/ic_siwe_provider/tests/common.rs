@@ -53,7 +53,7 @@ pub fn valid_settings(canister_id: Principal, targets: Option<Vec<Principal>>) -
     SettingsInput {
         domain: "127.0.0.1".to_string(),
         uri: "http://127.0.0.1:5173".to_string(),
-        salt: "dummy salt".to_string(),
+        salt: "dummy-salt".to_string(),
         chain_id: Some(10),
         scheme: Some("http".to_string()),
         statement: Some("Login to the app".to_string()),

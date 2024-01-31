@@ -46,11 +46,11 @@ type GetPrincipalResponse = variant {
 };
 
 type LoginResponse = variant {
-  Ok : LoginOkResponse;
+  Ok : LoginDetails;
   Err : text;
 };
 
-type LoginOkResponse = record {
+type LoginDetails = record {
   expiration : Timestamp;
   user_canister_pubkey : CanisterPublicKey;
 };
@@ -63,8 +63,8 @@ type PrepareLoginResponse = variant {
 service : (settings_input : SettingsInput) -> {
   "get_address" : (Principal) -> (GetAddressResponse) query;
   "get_caller_address" : () -> (GetAddressResponse) query;
-  "get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
   "get_principal" : (Address) -> (GetPrincipalResponse) query;
-  "login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
-  "prepare_login" : (Address) -> (PrepareLoginResponse);
+  "siwe_prepare_login" : (Address) -> (PrepareLoginResponse);
+  "siwe_login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
+  "siwe_get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
 };

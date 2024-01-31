@@ -137,7 +137,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
     }));
 
     try {
-      const response = await state.anonymousActor.prepare_login(address);
+      const response = await state.anonymousActor.siwe_prepare_login(address);
       if ("Ok" in response) {
         const siweMessage = response.Ok;
         setState((prevState) => ({
@@ -291,7 +291,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
           return;
         }
 
-        // Call the backend's get_delegation method to get the delegation.
+        // Call the backend's siwe_get_delegation method to get the delegation.
         let signedDelegation: _SignedDelegation;
         try {
           signedDelegation = await callGetDelegation(

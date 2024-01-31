@@ -61,7 +61,7 @@ fn test_upgrade_with_changed_arguments() {
     let settings = SettingsInput {
         domain: "192.168.0.1".to_string(),
         uri: "http://192.168.0.1:666".to_string(),
-        salt: "another salt".to_string(),
+        salt: "another-salt".to_string(),
         chain_id: Some(666),
         scheme: Some("https".to_string()),
         statement: Some("Some login statement".to_string()),

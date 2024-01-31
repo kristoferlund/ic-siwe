@@ -13,7 +13,8 @@ pub struct SettingsInput {
     /// The full URI, potentially including port number of the frontend that uses SIWE.
     pub uri: String,
 
-    /// The salt is used when generating the seed that uniquely identifies each user principal.
+    /// The salt is used when generating the seed that uniquely identifies each user principal. The salt can only contain
+    /// printable ASCII characters.
     pub salt: String,
 
     /// The Ethereum chain ID for ic-siwe, defaults to 1 (Ethereum mainnet).

@@ -28,7 +28,8 @@ fn siwe_get_delegation(
     expiration: u64,
 ) -> Result<SignedDelegation, String> {
     // Fetches the certificate for the current call, required for creating a certified signature.
-    let certificate = data_certificate().expect("get_delegation must be called using a query call");
+    let certificate =
+        data_certificate().expect("siwe_get_delegation must be called using a query call");
 
     // Create an EthAddress from the string. This validates the address.
     let address = EthAddress::new(&address)?;
