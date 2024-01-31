@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.0.7] - 2021-10-31
+
+### Added
+- Added prepare login and login status flags to SiweIdentityContextType for convenience.
+```
+  isPreparingLogin: state.prepareLoginStatus === "preparing",
+  isPrepareLoginError: state.prepareLoginStatus === "error",
+  isPrepareLoginSuccess: state.prepareLoginStatus === "success",
+  isPrepareLoginIdle: state.prepareLoginStatus === "idle",
+  isLoggingIn: state.loginStatus === "logging-in",
+  isLoginError: state.loginStatus === "error",
+  isLoginSuccess: state.loginStatus === "success",
+  isLoginIdle: state.loginStatus === "idle",  
+```
+  
+### Changed
+- `prepareLoginStatus: "loading"` changed to `prepareLoginStatus: "preparing"` for consistency with `loginStatus: "logging-in"`.
+- 
+
 ## [0.0.6] - 2024-01-18
 
 ### Changed
