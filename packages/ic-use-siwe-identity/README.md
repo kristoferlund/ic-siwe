@@ -30,6 +30,7 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 - [SiweIdentityProvider props](#siweidentityprovider-props)
 - [useSiweIdentity interface](#usesiweidentity-interface)
 - [Contributing](#contributing)
+- [Author](#author)
 - [License](#license)
 
 ## Installation
@@ -215,6 +216,13 @@ export type SiweIdentityContextType = {
 ## Contributing
 
 Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
+
+## Author
+
+- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
+- Discord: kristoferkristofer
+- Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
 
 ## License
 

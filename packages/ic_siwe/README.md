@@ -22,12 +22,14 @@
 - [React demo application](#react-demo-application)
 - [The SIWE Standard](#the-siwe-standard)
 - [Login flow](#login-flow)
-  - [`prepare_login`](#prepare_login)
-  - [`login`](#login)
-  - [`get_delegation`](#get_delegation)
+  - [SIWE canister interface](#siwe-canister-interface)
+  - [`siwe_prepare_login`](#siwe_prepare_login)
+  - [`siwe_login`](#siwe_login)
+  - [`siwe_get_delegation`](#siwe_get_delegation)
 - [Crate features](#crate-features)
 - [Updates](#updates)
 - [Contributing](#contributing)
+- [Author](#author)
 - [License](#license)
 
 ## Prebuilt `ic_siwe_provider` canister
@@ -55,36 +57,89 @@ The SIWE standard defines a protocol for off-chain authentication of Ethereum ac
 
 ## Login flow
 
-Three canister methods need to be exposed to implement the login flow: `prepare_login`, `login`, and `get_delegation`.
+Creating a delegate identity using `ic_siwe` is a three-step process that consists of the following steps:
+1. Prepare login
+2. Login
+3. Get delegation
 
-### `prepare_login`
+An implementing canister is free to implement these steps in any way it sees fit. It is recommended though that implementing canisters follow the login flow described below and implement the SIWE canister interface. Doing ensures that the canister is compatible with the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity) React hook and context provider.
 
-- The `prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
-- See: [`login::prepare_login`]
+### SIWE canister interface
 
-### `login`
+```text
+type Address = text;
+type CanisterPublicKey = PublicKey;
+type PublicKey = blob;
+type SessionKey = PublicKey;
+type SiweMessage = text;
+type SiweSignature = text;
+type Timestamp = nat64;
 
-- The `login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, and session identity as parameters. The method verifies the signature and Ethereum address and returns a delegation.
-- See: [`login::login`]
+type GetDelegationResponse = variant {
+  Ok : SignedDelegation;
+  Err : text;
+};
 
-### `get_delegation`
+type SignedDelegation = record {
+  delegation : Delegation;
+  signature : blob;
+};
 
-- The `get_delegation` method is called by the frontend application after a successful login. The method takes the delegation expiration time as a parameter and returns a delegation.
-- The `get_delegation` method is not mirrored by one function in the `ic_siwe` library. The creation of delegate identities requires setting the certified data of the canister. This should not be done by the library, but by the implementing canister.
-- Creating a delegate identity involves interacting with the following `ic_siwe` functions: [`delegation::generate_seed`],[`delegation::create_delegation`], [`delegation::create_delegation_hash`], [`delegation::witness`], [`delegation::create_certified_signature`].
+type Delegation = record {
+  pubkey : PublicKey;
+  expiration : Timestamp;
+  targets : opt vec principal;
+};
+
+type LoginResponse = variant {
+  Ok : LoginDetails;
+  Err : text;
+};
+
+type LoginDetails = record {
+  expiration : Timestamp;
+  user_canister_pubkey : CanisterPublicKey;
+};
+
+type PrepareLoginResponse = variant {
+  Ok : SiweMessage;
+  Err : text;
+};
+
+service : (settings_input : SettingsInput) -> {
+  "siwe_prepare_login" : (Address) -> (PrepareLoginResponse);
+  "siwe_login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
+  "siwe_get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
+};
+```
+
+### `siwe_prepare_login`
+
+- The `siwe_prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
+- See: [`login::prepare_login`](src/login.rs)
+
+### `siwe_login`
+
+- The `siwe_login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, and session identity as parameters. The method verifies the signature and Ethereum address and returns a delegation.
+- See: [`login::login`](src/login.rs)
+
+### `siwe_get_delegation`
+
+- The `siwe_get_delegation` method is called by the frontend application after a successful login. The method takes the delegation expiration time as a parameter and returns a delegation.
+- The `siwe_get_delegation` method is not mirrored by one function in the `ic_siwe` library. The creation of delegate identities requires setting the certified data of the canister. This should not be done by the library, but by the implementing canister.
+- Creating a delegate identity involves interacting with the following `ic_siwe` functions: [`delegation::generate_seed`](src/delegation.rs),[`delegation::create_delegation`](src/delegation.rs), [`delegation::create_delegation_hash`](src/delegation.rs), [`delegation::witness`](src/delegation.rs), [`delegation::create_certified_signature`](src/delegation.rs).
 - For a full implementation example, see the [`ic_siwe_provider`](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 The login flow is illustrated in the following diagram:
 
 ```text
-
                                 ┌────────┐                                        ┌────────┐                              ┌─────────┐
                                 │Frontend│                                        │Canister│                              │EthWallet│
    User                         └───┬────┘                                        └───┬────┘                              └────┬────┘
     │      Push login button       ┌┴┐                                                │                                        │
     │ ────────────────────────────>│ │                                                │                                        │
     │                              │ │                                                │                                        │
-    │                              │ │          prepare_login(eth_address)           ┌┴┐                                       │
+    │                              │ │          siwe_prepare_login(eth_address)      ┌┴┐                                       │
     │                              │ │ ─────────────────────────────────────────────>│ │                                       │
     │                              │ │                                               └┬┘                                       │
     │                              │ │                OK, siwe_message                │                                        │
@@ -106,7 +161,8 @@ The login flow is illustrated in the following diagram:
     │                              │ │    │ Generate random session_identity          │                                        │
     │                              │ │<───┘                                           │                                        │
     │                              │ │                                                │                                        │
-    │                              │ │login(eth_address, signature, session_identity)┌┴┐                                       │
+    │                              │ │             siwe_login(eth_address,            │                                        │
+    │                              │ │          signature, session_identity)         ┌┴┐                                       │
     │                              │ │ ─────────────────────────────────────────────>│ │                                       │
     │                              │ │                                               │ │                                       │
     │                              │ │                                               │ │────┐                                  │
@@ -120,7 +176,7 @@ The login flow is illustrated in the following diagram:
     │                              │ │     OK, canister_pubkey, delegation_expires    │                                        │
     │                              │ │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─                                        │
     │                              │ │                                                │                                        │
-    │                              │ │      get_delegation(delegation_expires)       ┌┴┐                                       │
+    │                              │ │     siwe_get_delegation(delegation_expires)   ┌┴┐                                       │
     │                              │ │ ─────────────────────────────────────────────>│ │                                       │
     │                              │ │                                               └┬┘                                       │
     │                              │ │                 OK, delegation                 │                                        │
@@ -152,6 +208,13 @@ See the [CHANGELOG](CHANGELOG.md) for details on updates.
 
 Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
 
+## Author
+
+- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
+- Discord: kristoferkristofer
+- Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
+  
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.

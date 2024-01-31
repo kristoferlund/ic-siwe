@@ -47,6 +47,13 @@ See the respective package CHANGELOG for details on updates.
 
 Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
 
+## Author
+
+- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
+- Discord: kristoferkristofer
+- Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.

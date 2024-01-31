@@ -1,6 +1,6 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into your [Internet Computer](https://internetcomputer.org) (ICP) application.
+Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into an [Internet Computer](https://internetcomputer.org) (ICP) application.
 
 The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
 
@@ -113,7 +113,7 @@ function App() {
 
 ### 4. Use the `useSiweIdentity` hook
 
-Use the useSiweIdentity hook to initiate the login process:
+Use the `useSiweIdentity`` hook to initiate the login process:
 
 ```jsx
 // Component.tsx
@@ -128,7 +128,7 @@ function MyComponent() {
 
 ## Service Interface
 
-The `ic_siwe_provider` canister exposes the following endpoints:
+In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.  
 
 ### [get_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_address.rs)
 
@@ -143,14 +143,6 @@ The `ic_siwe_provider` canister exposes the following endpoints:
 - **Purpose**: Retrieves the Ethereum address associated with the caller. This is a convenience function that internally calls `get_address`.
 - **Output**: Same as `get_address`.
 
-### [get_delegation](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_delegation.rs)
-
-- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in.
-- **Input**: Ethereum address (`String`), session key (`ByteBuf`), and expiration timestamp (`u64`).
-- **Output**:
-  - `Ok(SignedDelegation)`: The delegation if the process is successful.
-  - `Err(String)`: An error message if there is a failure in fetching the delegation.
-
 ### [get_principal](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_principal.rs)
 
 - **Purpose**: Retrieves the principal associated with the given Ethereum address.
@@ -159,21 +151,30 @@ The `ic_siwe_provider` canister exposes the following endpoints:
   - `Ok(ByteBuf)`: The principal if found.
   - `Err(String)`: An error message if the address cannot be converted or no principal is found.
 
-### [login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/login.rs)
 
-- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
-- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
-- **Output**:
-  - `Ok(LoginOkResponse)`: The public key and other login response data if the login is successful.
-  - `Err(String)`: An error message if the login process fails.
-
-### [prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/prepare_login.rs)
+### [siwe_prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_prepare_login.rs)
 
 - **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process.
 - **Input**: Ethereum address (`String`).
 - **Output**:
   - `Ok(String)`: The SIWE message challenge.
   - `Err(String)`: An error message if there is an error in preparing the login.
+
+### [siwe_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_login.rs)
+
+- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
+- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
+- **Output**:
+  - `Ok(LoginDetails)`: The public key and other login response data if the login is successful.
+  - `Err(String)`: An error message if the login process fails.
+
+### [siwe_get_delegation](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_get_delegation.rs)
+
+- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in.
+- **Input**: Ethereum address (`String`), session key (`ByteBuf`), and expiration timestamp (`u64`).
+- **Output**:
+  - `Ok(SignedDelegation)`: The delegation if the process is successful.
+  - `Err(String)`: An error message if there is a failure in fetching the delegation.
 
 In addition to the key functionalities for Ethereum wallet authentication, the `ic_siwe_provider` canister includes initialization and upgrade endpoints essential for setting up and maintaining the canister.
 
@@ -191,9 +192,11 @@ In addition to the key functionalities for Ethereum wallet authentication, the `
 
 ## Data Structures
 
-The `ic_siwe_provider` canister uses several data structures to facilitate the Ethereum wallet authentication process. These data structures are defined in the `ic_siwe` library and are used by the `ic_siwe_provider` canister.
+
 
 ### SettingsInput
+
+Defines the settings that controls the behavior of the `ic_siwe_provider` canister. 
 
 ```rust
 pub struct SettingsInput {
@@ -203,7 +206,8 @@ pub struct SettingsInput {
     // The full URI, potentially including port number of the frontend that uses SIWE.
     pub uri: String,
 
-    // The salt is used when generating the seed that uniquely identifies each user principal.
+    // The salt is used when generating the seed that uniquely identifies each user principal. The salt can only contain
+    /// printable ASCII characters.
     pub salt: String,
 
     // Optional. The Ethereum chain ID for ic_siwe, defaults to 1 (Ethereum mainnet).
@@ -234,6 +238,13 @@ See the [CHANGELOG](CHANGELOG.md) for details on updates.
 ## Contributing
 
 Contributions are welcome. Please submit your pull requests or open issues to propose changes or report bugs.
+
+## Author
+
+- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
+- Discord: kristoferkristofer
+- Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
 
 ## License
 
