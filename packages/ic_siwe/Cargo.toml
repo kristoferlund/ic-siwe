@@ -1,6 +1,6 @@
 [package]
 name = "ic_siwe"
-version = "0.0.1"
+version = "0.0.4"
 edition = "2021"
 authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
 description = "Integrate Ethereum wallet-based authentication (SIWE) with applications on the Internet Computer (ICP) platform."

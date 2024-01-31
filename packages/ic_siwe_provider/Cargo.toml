@@ -1,7 +1,12 @@
 [package]
 name = "ic_siwe_provider"
-version = "0.0.3"
+version = "0.0.4"
 edition = "2021"
+authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
+description = "Using the pre built ic_siwe_provider canister is the easiest way to integrate Ethereum wallet authentication into an Internet Computer (ICP) application."
+license = "MIT"
+homepage = "https://github.com/kristoferlund/ic-siwe"
+repository = "https://github.com/kristoferlund/ic-siwe"
 
 [lib]
 crate-type = ["cdylib"]
@@ -24,5 +29,3 @@ pocket-ic = "2.0.1"
 siwe = "0.6"
 rand = "0.8.4"
 ring = "0.16.20"
-
-
