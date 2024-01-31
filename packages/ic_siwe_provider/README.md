@@ -54,12 +54,10 @@ The canister is pre built and ready to use. To add it to your project, simply ad
   "canisters": {
     "ic_siwe_provider": {
       "type": "custom",
-      "candid": "https://github.com/kristoferlund/ic_siwe/raw/64bd789446838bebb6cad49c5bc3b556da4acd02/packages/ic_siwe_provider/ic_siwe_provider.did",
-      "wasm": "https://github.com/kristoferlund/ic_siwe/raw/64bd789446838bebb6cad49c5bc3b556da4acd02/packages/ic_siwe_provider/ic_siwe_provider.wasm.gz"
+      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.0.4/ic_siwe_provider.did",
+      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.0.4/ic_siwe_provider.wasm.gz"
     },
-    ...
   },
-  ...
 }
 ```
 
