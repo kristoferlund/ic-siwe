@@ -1820,6 +1820,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "sha2 0.9.9",
+ "simple_asn1",
  "time",
  "tiny-keccak",
  "tokio",
