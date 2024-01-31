@@ -370,26 +370,19 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
   return (
     <SiweIdentityContext.Provider
       value={{
-        isInitializing: state.isInitializing,
+        ...state,
         prepareLogin,
-        prepareLoginStatus: state.prepareLoginStatus,
-        prepareLoginError: state.prepareLoginError,
         isPreparingLogin: state.prepareLoginStatus === "preparing",
         isPrepareLoginError: state.prepareLoginStatus === "error",
         isPrepareLoginSuccess: state.prepareLoginStatus === "success",
         isPrepareLoginIdle: state.prepareLoginStatus === "idle",
         login,
-        loginStatus: state.loginStatus,
-        loginError: state.loginError,
         isLoggingIn: state.loginStatus === "logging-in",
         isLoginError: state.loginStatus === "error",
         isLoginSuccess: state.loginStatus === "success",
         isLoginIdle: state.loginStatus === "idle",
         signMessageStatus,
         signMessageError,
-        delegationChain: state.delegationChain,
-        identity: state.identity,
-        identityAddress: state.identityAddress,
         clear,
       }}
     >
