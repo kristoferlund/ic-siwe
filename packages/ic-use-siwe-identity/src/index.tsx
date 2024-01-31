@@ -132,7 +132,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
 
     setState((prevState) => ({
       ...prevState,
-      prepareLoginStatus: "loading",
+      prepareLoginStatus: "preparing",
       prepareLoginError: undefined,
     }));
 
@@ -167,7 +167,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
    * the loginError property.
    */
   async function login() {
-    if (state.prepareLoginStatus === "loading") {
+    if (state.prepareLoginStatus === "preparing") {
       throw new Error("Don't call login while prepareLogin is running.");
     }
 
@@ -374,9 +374,17 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
         prepareLogin,
         prepareLoginStatus: state.prepareLoginStatus,
         prepareLoginError: state.prepareLoginError,
+        isPreparingLogin: state.prepareLoginStatus === "preparing",
+        isPrepareLoginError: state.prepareLoginStatus === "error",
+        isPrepareLoginSuccess: state.prepareLoginStatus === "success",
+        isPrepareLoginIdle: state.prepareLoginStatus === "idle",
         login,
         loginStatus: state.loginStatus,
         loginError: state.loginError,
+        isLoggingIn: state.loginStatus === "logging-in",
+        isLoginError: state.loginStatus === "error",
+        isLoginSuccess: state.loginStatus === "success",
+        isLoginIdle: state.loginStatus === "idle",
         signMessageStatus,
         signMessageError,
         delegationChain: state.delegationChain,

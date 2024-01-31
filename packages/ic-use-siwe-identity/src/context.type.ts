@@ -13,6 +13,18 @@ export type SiweIdentityContextType = {
   /** "error" | "loading" | "success" | "idle" - Reflects the current status of the prepareLogin process. */
   prepareLoginStatus: PrepareLoginStatus;
 
+  /** `prepareLoginStatus === "loading"` */
+  isPreparingLogin: boolean;
+
+  /** `prepareLoginStatus === "error"` */
+  isPrepareLoginError: boolean;
+
+  /** `prepareLoginStatus === "success"` */
+  isPrepareLoginSuccess: boolean;
+
+  /** `prepareLoginStatus === "idle"` */
+  isPrepareLoginIdle: boolean;
+
   /** Error that occurred during the prepareLogin process. */
   prepareLoginError?: Error;
 
@@ -21,6 +33,18 @@ export type SiweIdentityContextType = {
 
   /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
   loginStatus: LoginStatus;
+
+  /** `loginStatus === "logging-in"` */
+  isLoggingIn: boolean;
+
+  /** `loginStatus === "error"` */
+  isLoginError: boolean;
+
+  /** `loginStatus === "success"` */
+  isLoginSuccess: boolean;
+
+  /** `loginStatus === "idle"` */
+  isLoginIdle: boolean;
 
   /** Error that occurred during the login process. */
   loginError?: Error;
