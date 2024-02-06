@@ -6,8 +6,8 @@
 
 A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
 
-![npm](https://img.shields.io/npm/v/ic-use-siwe-identity)
-![npm](https://img.shields.io/npm/dw/ic-use-siwe-identity)
+[![version][version-image]][npm-link]
+[![downloads][dl-image]][npm-link]
 
 ## Features
 
@@ -227,3 +227,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
+
+[version-image]: https://img.shields.io/npm/v/ic-use-siwe-identity
+[dl-image]: https://img.shields.io/npm/dw/ic-use-siwe-identity
+[npm-link]: https://www.npmjs.com/package/ic-use-siwe-identity
