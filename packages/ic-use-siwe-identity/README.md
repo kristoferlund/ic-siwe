@@ -77,11 +77,11 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 // App.tsx
 
 import { SiweIdentityProvider } from 'ic-use-siwe-identity';
-import { _SERVICPE } from "path-to/siwe-enabled-canister.did";
+import { _SERVICE } from "path-to/siwe-enabled-canister.did";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICPE>
+    <SiweIdentityProvider<_SERVICE>
       idlFactory={/* IDL Interface Factory */}
       canisterId={/* Canister ID */}
       // ...other props
