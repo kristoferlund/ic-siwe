@@ -164,7 +164,7 @@ impl SiweMessageMap {
     }
 
     /// Removes SIWE messages that have exceeded their time to live.
-    pub fn prune(&mut self) {
+    pub fn prune_expired(&mut self) {
         let current_time = get_current_time();
         self.map
             .retain(|_, message| message.expiration_time > current_time);
