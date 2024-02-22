@@ -1802,7 +1802,7 @@ checksum = "1762deb6f7c8d8c2bdee4b6c5a47b60195b74e9b5280faa5ba29692f8e17429c"
 
 [[package]]
 name = "ic_siwe"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "candid",
  "ethers",
@@ -1829,7 +1829,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe_provider"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "candid",
  "ethers",
