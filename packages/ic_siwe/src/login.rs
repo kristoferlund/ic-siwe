@@ -131,14 +131,13 @@ pub fn login(
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
-        siwe_messages.prune();
-        // prune_expired_siwe_messages();
+        // Prune any expired SIWE messages from the state.
+        siwe_messages.prune_expired();
 
         // Get the previously created SIWE message for current address. If it has expired or does not
         // exist, return an error.
         let address_bytes = address.as_bytes();
         let message = siwe_messages.get(&address_bytes)?;
-
         let message_string: String = message.clone().into();
 
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
