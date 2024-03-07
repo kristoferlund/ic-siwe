@@ -1,6 +1,6 @@
 {
   "name": "ic-use-siwe-identity",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
@@ -32,9 +32,9 @@
     "dev:esbuild": "npm run build --watch"
   },
   "dependencies": {
-    "@dfinity/agent": "^=0.20.0",
-    "@dfinity/candid": "^=0.20.0",
-    "@dfinity/identity": "^=0.20.0"
+    "@dfinity/agent": "^1.0.1",
+    "@dfinity/candid": "^1.0.1",
+    "@dfinity/identity": "^1.0.1"
   },
   "peerDependencies": {
     "react": ">=18.0.0",

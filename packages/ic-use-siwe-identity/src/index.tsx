@@ -1,5 +1,11 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext } from "react";
+import {
+  createContext,
+  useContext,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import { type ActorConfig, type HttpAgentOptions } from "@dfinity/agent";
 import {
   Delegation,
@@ -8,7 +14,6 @@ import {
   Ed25519KeyIdentity,
   type SignedDelegation,
 } from "@dfinity/identity";
-import { type ReactNode, useEffect, useState } from "react";
 import type { SiweIdentityContextType } from "./context.type";
 import { useAccount, useSignMessage } from "wagmi";
 import { IDL } from "@dfinity/candid";
