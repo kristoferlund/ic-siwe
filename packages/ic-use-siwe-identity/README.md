@@ -35,13 +35,16 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 
 ## Installation
 
-In addition to `ic-use-siwe-identity`, the following packages are required:
+In addition to `ic-use-siwe-identity`, these peer dependencies are required:
 
 - `wagmi`
 - `viem`
+- `@dfinity/agent`
+- `@dfinity/candid`
+- `@dfinity/identity`
 
 ```bash
-npm install ic-use-siwe-identity wagmi viem
+npm install ic-use-siwe-identity wagmi viem @dfinity/agent @dfinity/candid @dfinity/identity 
 ```
 
 ## Usage

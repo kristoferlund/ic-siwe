@@ -6,6 +6,14 @@ esbuild.build({
   outdir: "dist",
   format: "esm",
   splitting: true,
-  external: ["react", "react-dom", "viem", "wagmi"],
+  external: [
+    "react",
+    "react-dom",
+    "viem",
+    "wagmi",
+    "@dfinity/agent",
+    "@dfinity/candid",
+    "@dfinity/identity",
+  ],
   plugins: [],
 });
