@@ -29,9 +29,9 @@ export type SiweIdentityContextType = {
   prepareLoginError?: Error;
 
   /** Initiates the login process by requesting a SIWE message from the backend. */
-  login: () => void;
+  login: () => Promise<DelegationIdentity | undefined>;
 
-  /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
+  /** "error" | "idle" | "pending" | "success" - Reflects the current status of the login process. */
   loginStatus: LoginStatus;
 
   /** `loginStatus === "logging-in"` */
@@ -51,7 +51,7 @@ export type SiweIdentityContextType = {
 
   /** Status of the SIWE message signing process. This is a re-export of the Wagmi
    * signMessage / status type. */
-  signMessageStatus: "error" | "loading" | "success" | "idle";
+  signMessageStatus: "error" | "idle" | "pending" | "success";
 
   /** Error that occurred during the SIWE message signing process. This is a re-export of the
    * Wagmi signMessage / error type. */

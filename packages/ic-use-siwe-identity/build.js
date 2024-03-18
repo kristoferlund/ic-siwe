@@ -14,6 +14,7 @@ esbuild.build({
     "@dfinity/agent",
     "@dfinity/candid",
     "@dfinity/identity",
+    "@tanstack/react-query",
   ],
   plugins: [],
 });

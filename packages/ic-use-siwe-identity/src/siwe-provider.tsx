@@ -43,6 +43,23 @@ export function createAnonymousActor({
   });
 }
 
+export async function callPrepareLogin(
+  anonymousActor: ActorSubclass<SIWE_IDENTITY_SERVICE>,
+  address: `0x${string}` | undefined
+) {
+  if (!anonymousActor || !address) {
+    throw new Error("Invalid actor or address");
+  }
+
+  const response = await anonymousActor.siwe_prepare_login(address);
+
+  if ("Err" in response) {
+    throw new Error(response.Err);
+  }
+
+  return response.Ok;
+}
+
 /**
  * Logs in the user by sending a signed SIWE message to the backend.
  */

@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.0.10] - 2024-03-18
+
+### Changed
+
+- The `login` function now returns a `Promise` that resolves to the `Identity` of the logged in user. New signature: `login: () => Promise<DelegationIdentity | undefined>`.
+- Upgraded wagmi to v2.5.7. 
+  - This introduces TanStack Query as an additional dependency.
+  - Also, this means the signture for `signMessageStatus` has changed slightly to `signMessageStatus: "error" | "idle" | "pending" | "success"`.
+- Upgraded viem to v2.8.4
+
 ## [0.0.9] - 2024-03-07
 
 ### Changed

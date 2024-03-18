@@ -42,6 +42,7 @@ In addition to `ic-use-siwe-identity`, these peer dependencies are required:
 - `@dfinity/agent`
 - `@dfinity/candid`
 - `@dfinity/identity`
+- `@tanstack/query`
 
 ```bash
 npm install ic-use-siwe-identity wagmi viem @dfinity/agent @dfinity/candid @dfinity/identity 
@@ -56,25 +57,35 @@ To use `ic-use-siwe-identity` in your React application, follow these steps:
 
 ### 1. Add an Ethereum wallet provider
 
-Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets, and is used internally by `ic-use-siwe-identity`. We also recommend adding [RainbowKit](https://www.rainbowkit.com/) to handle the wallet connection UI.
+Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets, and is used internally by `ic-use-siwe-identity`. In addition to the wallet provider, wagmi requires you to add TanStack `QueryClientProvider` to your application that handles the async requests that are made when interacting with the Ethereum wallet.
+
+We also recommend adding [RainbowKit](https://www.rainbowkit.com/) to handle the wallet connection UI.
 
 ```jsx
 // main.tsx
 
+const queryClient = new QueryClient();
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <WagmiConfig config={wagmiConfig}>
-      <RainbowKitProvider>
-        // ...your app
-      </RainbowKitProvider>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          // ...your app
+        </RainbowKitProvider>
+      </QueryClientProvider>
     </WagmiConfig>
   </React.StrictMode>
 );
 ```
 
+> [!TIP]
+> Check the [wagmi](https://wagmi.sh) and [RainbowKit](https://www.rainbowkit.com) documentation for the most up-to-date setup instructions.
+
+
 ### 2. Setup the `SiweIdentityProvider` component
 
-Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICPE` type argument, where `_SERVICPE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
+Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICE` type argument, where `_SERVICE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
 
 ```jsx
 // App.tsx
@@ -182,7 +193,7 @@ export type SiweIdentityContextType = {
   prepareLoginError?: Error;
 
   /** Initiates the login process by requesting a SIWE message from the backend. */
-  login: () => void;
+  login: () => Promise<DelegationIdentity | undefined>;
 
   /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
   loginStatus: LoginStatus;
@@ -192,7 +203,7 @@ export type SiweIdentityContextType = {
 
   /** Status of the SIWE message signing process. This is a re-export of the Wagmi
    * signMessage / status type. */
-  signMessageStatus: "error" | "loading" | "success" | "idle";
+  signMessageStatus: "error" | "idle" | "pending" | "success"
 
   /** Error that occurred during the SIWE message signing process. This is a re-export of the
    * Wagmi signMessage / error type. */
