@@ -10,7 +10,7 @@ export type SiweIdentityContextType = {
    * is optional, as it will be called automatically on login if not called manually. */
   prepareLogin: () => void;
 
-  /** "error" | "loading" | "success" | "idle" - Reflects the current status of the prepareLogin process. */
+  /** Reflects the current status of the prepareLogin process. */
   prepareLoginStatus: PrepareLoginStatus;
 
   /** `prepareLoginStatus === "loading"` */
@@ -31,7 +31,7 @@ export type SiweIdentityContextType = {
   /** Initiates the login process by requesting a SIWE message from the backend. */
   login: () => Promise<DelegationIdentity | undefined>;
 
-  /** "error" | "idle" | "pending" | "success" - Reflects the current status of the login process. */
+  /** Reflects the current status of the login process. */
   loginStatus: LoginStatus;
 
   /** `loginStatus === "logging-in"` */
