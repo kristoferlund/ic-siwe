@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useEffect,
   useState,
+  useRef,
 } from "react";
 import { type ActorConfig, type HttpAgentOptions } from "@dfinity/agent";
 import { DelegationIdentity, Ed25519KeyIdentity } from "@dfinity/identity";
@@ -130,7 +131,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
   }
 
   // Keep track of the promise handlers for the login method during the async login process.
-  const [loginPromiseHandlers, setLoginPromiseHandlers] = useState<{
+  const loginPromiseHandlers = useRef<{
     resolve: (
       value: DelegationIdentity | PromiseLike<DelegationIdentity>
     ) => void;
@@ -193,7 +194,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
       loginError: new Error(errorMessage),
     });
 
-    loginPromiseHandlers?.reject(new Error(errorMessage));
+    loginPromiseHandlers.current?.reject(new Error(errorMessage));
   }
 
   /**
@@ -279,7 +280,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
       delegationChain,
     });
 
-    loginPromiseHandlers?.resolve(identity);
+    loginPromiseHandlers.current?.resolve(identity);
 
     // The signMessage hook is reset so that it can be used again.
     reset();
@@ -294,18 +295,32 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
    */
 
   async function login() {
+    const promise = new Promise<DelegationIdentity>((resolve, reject) => {
+      loginPromiseHandlers.current = { resolve, reject };
+    });
+    // Set the promise handlers immediately to ensure they are available for error handling.
+
     if (!state.anonymousActor) {
-      throw new Error(
-        "Hook not initialized properly. Make sure to supply all required props to the SiweIdentityProvider."
+      rejectLoginWithError(
+        new Error(
+          "Hook not initialized properly. Make sure to supply all required props to the SiweIdentityProvider."
+        )
       );
+      return promise;
     }
     if (!connectedEthAddress) {
-      throw new Error(
-        "No Ethereum address available. Call login after the user has connected their wallet."
+      rejectLoginWithError(
+        new Error(
+          "No Ethereum address available. Call login after the user has connected their wallet."
+        )
       );
+      return promise;
     }
     if (state.prepareLoginStatus === "preparing") {
-      throw new Error("Don't call login while prepareLogin is running.");
+      rejectLoginWithError(
+        new Error("Don't call login while prepareLogin is running.")
+      );
+      return promise;
     }
 
     updateState({
@@ -315,7 +330,6 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
 
     try {
       // The SIWE message can be prepared in advance, or it can be generated as part of the login process.
-      // Preparing in advance saves the user ca 2 seconds of waiting time.
       let siweMessage = state.siweMessage;
       if (!siweMessage) {
         siweMessage = await prepareLogin();
@@ -332,13 +346,11 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
           onSettled: onLoginSignatureSettled,
         }
       );
-
-      return new Promise<DelegationIdentity>((resolve, reject) => {
-        setLoginPromiseHandlers({ resolve, reject });
-      });
     } catch (e) {
       rejectLoginWithError(e);
     }
+
+    return promise;
   }
 
   /**
