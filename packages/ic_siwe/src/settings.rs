@@ -7,6 +7,12 @@ const DEFAULT_CHAIN_ID: u32 = 1; // Ethereum mainnet
 const DEFAULT_SIGN_IN_EXPIRES_IN: u64 = 60 * 5 * 1_000_000_000; // 5 minutes
 const DEFAULT_SESSION_EXPIRES_IN: u64 = 30 * 60 * 1_000_000_000; // 30 minutes
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum RuntimeFeature {
+    // Enabling this feature will include the app frontend URI as part of the identity seed.
+    IncludeUriInSeed,
+}
+
 /// Represents the settings for initializing SIWE.
 ///
 /// This struct is used to configure SIWE (Sign-In With Ethereum) functionality.
@@ -46,6 +52,9 @@ pub struct Settings {
     /// The list of canisters for which the identity delegation is allowed. Defaults to None, which means
     /// that the delegation is allowed for all canisters.
     pub targets: Option<Vec<Principal>>,
+
+    // Optional runtime features that can be enabled for SIWE.
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
 }
 
 /// A builder for creating `Settings` instances.
@@ -100,6 +109,7 @@ impl SettingsBuilder {
                 sign_in_expires_in: DEFAULT_SIGN_IN_EXPIRES_IN,
                 session_expires_in: DEFAULT_SESSION_EXPIRES_IN,
                 targets: None,
+                runtime_features: None,
             },
         }
     }
@@ -143,6 +153,12 @@ impl SettingsBuilder {
     /// authenticate the user. Defaults to None, which means that the delegation is allowed for any canister.
     pub fn targets(mut self, targets: Vec<Principal>) -> Self {
         self.settings.targets = Some(targets);
+        self
+    }
+
+    /// Optional runtime features customize the behavior of ic-siwe.
+    pub fn runtime_features(mut self, features: Vec<RuntimeFeature>) -> Self {
+        self.settings.runtime_features = Some(features);
         self
     }
 

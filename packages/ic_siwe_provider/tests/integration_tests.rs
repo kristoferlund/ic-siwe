@@ -68,6 +68,7 @@ fn test_upgrade_with_changed_arguments() {
         sign_in_expires_in: Some(Duration::from_secs(300).as_nanos() as u64), // 5 minutes
         session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 14).as_nanos() as u64), // 2 weeks
         targets: targets.clone(),
+        runtime_features: None,
     };
     let arg = encode_one(settings).unwrap();
     let sender = None;

@@ -1,7 +1,12 @@
 use std::{collections::HashMap, fmt};
 
 use super::hash::{self, Value};
-use crate::{eth::EthAddress, settings::Settings, signature_map::SignatureMap, with_settings};
+use crate::{
+    eth::EthAddress,
+    settings::{RuntimeFeature, Settings},
+    signature_map::SignatureMap,
+    with_settings,
+};
 
 use ic_certified_map::{Hash, HashTree};
 use serde_bytes::ByteBuf;
@@ -80,9 +85,15 @@ pub fn generate_seed(address: &EthAddress) -> Hash {
         seed.push(address_bytes.len() as u8);
         seed.extend(address_bytes);
 
-        let uri = settings.uri.as_bytes();
-        seed.push(uri.len() as u8);
-        seed.extend(uri);
+        // Only include the URI in the seed if the runtime feature is enabled
+        match settings.runtime_features {
+            Some(ref features) if features.contains(&RuntimeFeature::IncludeUriInSeed) => {
+                let uri = settings.uri.as_bytes();
+                seed.push(uri.len() as u8);
+                seed.extend_from_slice(uri);
+            }
+            _ => (),
+        }
 
         hash::hash_bytes(seed)
     })
