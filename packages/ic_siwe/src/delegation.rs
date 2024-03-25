@@ -88,14 +88,11 @@ pub fn generate_seed(address: &EthAddress) -> Hash {
         // Only include the URI in the seed if the runtime feature is enabled
         match settings.runtime_features {
             Some(ref features) if features.contains(&RuntimeFeature::IncludeUriInSeed) => {
-                ic_cdk::println!("INCLUDING URI: {:?}", settings.uri);
                 let uri = settings.uri.as_bytes();
                 seed.push(uri.len() as u8);
                 seed.extend_from_slice(uri);
             }
-            _ => {
-                ic_cdk::println!("NOT INCLUDING URI");
-            }
+            _ => (),
         }
 
         hash::hash_bytes(seed)
