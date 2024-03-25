@@ -21,6 +21,7 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 
 - [Integration overview](#integration-overview)
 - [Installation](#installation)
+- [Runtime Features](#runtime-features)
 - [Service Interface](#service-interface)
 - [Data Structures](#data-structures)
 - [Updates](#updates)
@@ -124,6 +125,23 @@ function MyComponent() {
 }
 ```
 
+## Runtime Features
+
+The runtime behaviour of the `ic_siwe_provider` canister can be customized using the following settings:
+
+### `IncludeUriInSeed`
+
+Default: `Not enabled`
+
+
+When enabled, the URI is included in the seed used to generate the principal. Defaults to `Not enabled`. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagates identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
+
+```bash
+  runtime_features = opt vec { \
+    variant { IncludeUriInSeed } \
+  }; 
+```
+
 ## Service Interface
 
 In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.  
@@ -190,7 +208,14 @@ In addition to the key functionalities for Ethereum wallet authentication, the `
 
 ## Data Structures
 
+### RuntimeFeatures
 
+```rust
+pub enum RuntimeFeatures {
+    // Enabling this feature will include the app frontend URI as part of the identity seed.
+    IncludeUriInSeed,
+}
+```
 
 ### SettingsInput
 
@@ -226,6 +251,9 @@ pub struct SettingsInput {
     // Optional. The list of canisters for which the identity delegation is allowed. Defaults to None, which means
     // that the delegation is allowed for all canisters.
     pub targets: Option<Vec<String>>,
+
+    // Optional. The runtime features that control the behavior of the SIWE library.
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
 }
 ```
 
@@ -247,3 +275,4 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
+
