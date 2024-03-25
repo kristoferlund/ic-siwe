@@ -7,7 +7,7 @@ use ic_siwe::{
 use ic_stable_structures::storable::Blob;
 use serde_bytes::ByteBuf;
 
-use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, STATE};
+use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, SETTINGS, STATE};
 
 /// Authenticates the user by verifying the signature of the SIWE message. This function also
 /// prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
@@ -36,35 +36,43 @@ fn siwe_login(
         let signature = EthSignature::new(&signature)?;
 
         // Attempt to log in with the provided signature, address, and session key.
-        match ic_siwe::login::login(
+
+        let login_response = ic_siwe::login::login(
             &signature,
             &address,
             session_key,
-            signature_map,
+            &mut *signature_map,
             &ic_cdk::api::id(),
-        ) {
-            Ok(login_response) => {
-                // Update the certified data of the canister due to changes in the signature map.
-                update_root_hash(&state.asset_hashes.borrow(), signature_map);
+        )
+        .map_err(|e| e.to_string())?;
 
-                // Convert the user canister public key to a principal.
-                let principal: Blob<29> =
-                    Principal::self_authenticating(&login_response.user_canister_pubkey).as_slice()
-                        [..29]
-                        .try_into()
-                        .map_err(|_| format!("Invalid principal: {:?}", login_response))?;
+        // Update the certified data of the canister due to changes in the signature map.
+        update_root_hash(&state.asset_hashes.borrow(), signature_map);
 
-                // Store the mapping of principal to Ethereum address and vice versa.
-                PRINCIPAL_ADDRESS.with_borrow_mut(|pa| {
-                    pa.insert(principal, address.as_byte_array());
-                });
-                ADDRESS_PRINCIPAL.with_borrow_mut(|ap| {
-                    ap.insert(address.as_byte_array(), principal);
-                });
+        // Convert the user canister public key to a principal.
+        let principal: Blob<29> =
+            Principal::self_authenticating(&login_response.user_canister_pubkey).as_slice()[..29]
+                .try_into()
+                .map_err(|_| format!("Invalid principal: {:?}", login_response))?;
 
-                Ok(login_response)
-            }
-            Err(e) => Err(e.to_string()),
-        }
+        // Store the mapping of principal to Ethereum address and vice versa if the settings allow it.
+        manage_principal_address_mappings(&principal, &address);
+
+        Ok(login_response)
     })
+}
+
+fn manage_principal_address_mappings(principal: &Blob<29>, address: &EthAddress) {
+    SETTINGS.with(|s| {
+        if !s.borrow().disable_principal_to_eth_mapping {
+            PRINCIPAL_ADDRESS.with(|pa| {
+                pa.borrow_mut().insert(*principal, address.as_byte_array());
+            });
+        }
+        if !s.borrow().disable_eth_to_principal_mapping {
+            ADDRESS_PRINCIPAL.with(|ap| {
+                ap.borrow_mut().insert(address.as_byte_array(), *principal);
+            });
+        }
+    });
 }
