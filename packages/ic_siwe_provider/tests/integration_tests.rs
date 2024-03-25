@@ -2,8 +2,8 @@ mod common;
 
 use candid::{encode_args, encode_one, Principal};
 use common::{
-    create_session_identity, create_wallet, full_login, init, query, update, valid_settings,
-    SESSION_KEY, VALID_ADDRESS,
+    create_canister, create_session_identity, create_wallet, full_login, init, query, update,
+    valid_settings, RuntimeFeature, SESSION_KEY, VALID_ADDRESS,
 };
 use ic_agent::Identity;
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
@@ -512,6 +512,94 @@ fn test_get_principal_not_found() {
     assert_eq!(
         response.unwrap_err(),
         "No principal found for the given address"
+    );
+}
+
+pub fn settings_disable_eth_and_principal_mapping(
+    canister_id: Principal,
+    targets: Option<Vec<Principal>>,
+) -> SettingsInput {
+    // If specific targets have been listed, add the canister id of this canister to the list of targets.
+    let targets: Option<Vec<Principal>> = match targets {
+        Some(targets) => {
+            let mut targets = targets;
+            targets.push(canister_id);
+            Some(targets)
+        }
+        None => None,
+    };
+
+    SettingsInput {
+        domain: "127.0.0.1".to_string(),
+        uri: "http://127.0.0.1:5173".to_string(),
+        salt: "dummy-salt".to_string(),
+        chain_id: Some(10),
+        scheme: Some("http".to_string()),
+        statement: Some("Login to the app".to_string()),
+        sign_in_expires_in: Some(Duration::from_secs(3).as_nanos() as u64), // 3 seconds
+        session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64), // 1 week
+        targets: targets.clone(),
+        runtime_features: Some(vec![
+            RuntimeFeature::DisableEthToPrincipalMapping,
+            RuntimeFeature::DisablePrincipalToEthMapping,
+        ]),
+    }
+}
+
+pub fn init_disable_eth_and_principal_mapping(
+    ic: &PocketIc,
+    targets: Option<Vec<Principal>>,
+) -> (Principal, Option<Vec<Principal>>) {
+    let (canister_id, wasm_module) = create_canister(ic);
+    let settings = settings_disable_eth_and_principal_mapping(canister_id, targets.clone());
+    let arg = encode_one(settings).unwrap();
+    let sender = None;
+
+    ic.install_canister(canister_id, wasm_module, arg.clone(), sender);
+
+    // Fast forward in time to allow the ic_siwe_provider_canister to be fully installed.
+    for _ in 0..5 {
+        ic.tick();
+    }
+
+    (canister_id, targets)
+}
+
+#[test]
+fn test_eth_to_principal_mapping_disabled() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, targets) = init_disable_eth_and_principal_mapping(&ic, None);
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister, targets);
+    let response: Result<ByteBuf, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "get_principal",
+        encode_one(VALID_ADDRESS).unwrap(),
+    );
+    assert!(response.is_err());
+    assert_eq!(
+        response.unwrap_err(),
+        "Ethereum address to principal mapping is disabled"
+    );
+}
+
+#[test]
+fn test_principal_to_eth_mapping_disabled() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, targets) = init_disable_eth_and_principal_mapping(&ic, None);
+    let (_, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
+    let response: Result<String, String> = query(
+        &ic,
+        delegated_identity.sender().unwrap(),
+        ic_siwe_provider_canister,
+        "get_address",
+        encode_one(delegated_identity.sender().unwrap().as_slice()).unwrap(),
+    );
+    assert!(response.is_err());
+    assert_eq!(
+        response.unwrap_err(),
+        "Principal to Ethereum address mapping is disabled"
     );
 }
 
