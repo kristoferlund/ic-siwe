@@ -134,7 +134,7 @@ The runtime behaviour of the `ic_siwe_provider` canister can be customized using
 Default: `Not enabled`
 
 
-When enabled, the URI is included in the seed used to generate the principal. Defaults to `Not enabled`. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagates identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
+When enabled, the URI is included in the seed used to generate the principal. Defaults to `Not enabled`. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
 
 ```bash
   runtime_features = opt vec { \
