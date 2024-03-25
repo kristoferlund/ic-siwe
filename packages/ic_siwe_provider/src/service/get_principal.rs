@@ -2,7 +2,7 @@ use ic_cdk::query;
 use ic_siwe::eth::EthAddress;
 use serde_bytes::ByteBuf;
 
-use crate::ADDRESS_PRINCIPAL;
+use crate::{ADDRESS_PRINCIPAL, SETTINGS};
 
 /// Retrieves the principal associated with the given Ethereum address.
 ///
@@ -14,6 +14,13 @@ use crate::ADDRESS_PRINCIPAL;
 /// * `Err(String)` - An error message if the address cannot be converted or no principal is found.
 #[query]
 fn get_principal(address: String) -> Result<ByteBuf, String> {
+    SETTINGS.with_borrow(|s| {
+        if s.disable_eth_to_principal_mapping {
+            return Err("Ethereum address to principal mapping is disabled".to_string());
+        }
+        Ok(())
+    })?;
+
     // Create an EthAddress from the string. This validates the address.
     let address = EthAddress::new(&address)?;
 

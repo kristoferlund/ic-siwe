@@ -7,7 +7,11 @@ type SiweMessage = text;
 type SiweSignature = text;
 type Timestamp = nat64;
 
-type RuntimeFeatures = variant { IncludeUriInSeed };
+type RuntimeFeature = variant { 
+  IncludeUriInSeed; 
+  DisableEthToPrincipalMapping; 
+  DisablePrincipalToEthMapping 
+};
 
 type SettingsInput = record {
   domain : text;
@@ -19,7 +23,7 @@ type SettingsInput = record {
   sign_in_expires_in : opt nat64;
   session_expires_in : opt nat64;
   targets : opt vec text;
-  runtime_features: opt vec RuntimeFeatures;
+  runtime_features: opt vec RuntimeFeature;
 };
 
 type GetAddressResponse = variant {

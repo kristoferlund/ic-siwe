@@ -20,9 +20,13 @@ use serde::Deserialize;
 use std::time::Duration;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
-pub enum RuntimeFeatures {
+pub enum RuntimeFeature {
     // Enabling this feature will include the app frontend URI as part of the identity seed.
     IncludeUriInSeed,
+    // Disabling this feature will disable the mapping and permanent storage of the Ethereum address to the principal.
+    DisableEthToPrincipalMapping,
+    // Disabling this feature will disable the mapping and permanent storage of the principal to the Ethereum address.
+    DisablePrincipalToEthMapping,
 }
 
 #[derive(CandidType)]
@@ -36,7 +40,7 @@ pub struct SettingsInput {
     pub sign_in_expires_in: Option<u64>,
     pub session_expires_in: Option<u64>,
     pub targets: Option<Vec<Principal>>,
-    pub runtime_features: Option<Vec<RuntimeFeatures>>,
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
 }
 
 pub const VALID_ADDRESS: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
@@ -67,7 +71,7 @@ pub fn valid_settings(canister_id: Principal, targets: Option<Vec<Principal>>) -
         sign_in_expires_in: Some(Duration::from_secs(3).as_nanos() as u64), // 3 seconds
         session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64), // 1 week
         targets: targets.clone(),
-        runtime_features: Some(vec![RuntimeFeatures::IncludeUriInSeed]),
+        runtime_features: Some(vec![RuntimeFeature::IncludeUriInSeed]),
     }
 }
 

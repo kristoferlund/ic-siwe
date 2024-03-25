@@ -3,10 +3,18 @@ use ic_cdk::{init, post_upgrade};
 use ic_siwe::settings::SettingsBuilder;
 use serde::Deserialize;
 
+use crate::SETTINGS;
+
 #[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
 pub enum RuntimeFeature {
-    // Enabling this feature will include the app frontend URI as part of the identity seed.
+    // Include the app frontend URI as part of the identity seed.
     IncludeUriInSeed,
+
+    // Disable the mapping of Ethereum address to principal. This also disables canister endpoints `get_principal`.
+    DisableEthToPrincipalMapping,
+
+    // Disable the mapping of principal to Ethereum address. This also disables canister endpoints `get_address` and `get_caller_address`.
+    DisablePrincipalToEthMapping,
 }
 
 /// Represents the settings that determine the behavior of the SIWE library. It includes settings such as domain, scheme, statement,
@@ -52,26 +60,30 @@ pub struct SettingsInput {
 /// ## 🛑 Important: Changing the `salt` or `uri` setting affects how user seeds are generated.
 /// This means that existing users will get a new principal id when they sign in. Tip: Don't change the `salt` or `uri`
 /// settings after users have started using the service!
-fn siwe_init(settings: SettingsInput) {
-    let mut builder = SettingsBuilder::new(&settings.domain, &settings.uri, &settings.salt);
+fn siwe_init(settings_input: SettingsInput) {
+    let mut ic_siwe_settings = SettingsBuilder::new(
+        &settings_input.domain,
+        &settings_input.uri,
+        &settings_input.salt,
+    );
 
     // Optional fields
-    if let Some(chain_id) = settings.chain_id {
-        builder = builder.chain_id(chain_id);
+    if let Some(chain_id) = settings_input.chain_id {
+        ic_siwe_settings = ic_siwe_settings.chain_id(chain_id);
     }
-    if let Some(scheme) = settings.scheme {
-        builder = builder.scheme(scheme);
+    if let Some(scheme) = settings_input.scheme {
+        ic_siwe_settings = ic_siwe_settings.scheme(scheme);
     }
-    if let Some(statement) = settings.statement {
-        builder = builder.statement(statement);
+    if let Some(statement) = settings_input.statement {
+        ic_siwe_settings = ic_siwe_settings.statement(statement);
     }
-    if let Some(expire_in) = settings.sign_in_expires_in {
-        builder = builder.sign_in_expires_in(expire_in);
+    if let Some(expire_in) = settings_input.sign_in_expires_in {
+        ic_siwe_settings = ic_siwe_settings.sign_in_expires_in(expire_in);
     }
-    if let Some(session_expire_in) = settings.session_expires_in {
-        builder = builder.session_expires_in(session_expire_in);
+    if let Some(session_expire_in) = settings_input.session_expires_in {
+        ic_siwe_settings = ic_siwe_settings.session_expires_in(session_expire_in);
     }
-    if let Some(targets) = settings.targets {
+    if let Some(targets) = settings_input.targets {
         let targets: Vec<Principal> = targets
             .into_iter()
             .map(|t| Principal::from_text(t).unwrap())
@@ -84,23 +96,31 @@ fn siwe_init(settings: SettingsInput) {
                 canister_id
             );
         }
-        builder = builder.targets(targets);
+        ic_siwe_settings = ic_siwe_settings.targets(targets);
     }
 
-    if let Some(runtime_features) = settings.runtime_features {
-        for feature in runtime_features {
-            match feature {
-                RuntimeFeature::IncludeUriInSeed => {
-                    builder = builder.runtime_features(vec![
-                        ic_siwe::settings::RuntimeFeature::IncludeUriInSeed,
-                    ]);
+    SETTINGS.with_borrow_mut(|provider_settings| {
+        if let Some(runtime_features) = settings_input.runtime_features {
+            for feature in runtime_features {
+                match feature {
+                    RuntimeFeature::IncludeUriInSeed => {
+                        ic_siwe_settings = ic_siwe_settings.runtime_features(vec![
+                            ic_siwe::settings::RuntimeFeature::IncludeUriInSeed,
+                        ]);
+                    }
+                    RuntimeFeature::DisableEthToPrincipalMapping => {
+                        provider_settings.disable_eth_to_principal_mapping = true;
+                    }
+                    RuntimeFeature::DisablePrincipalToEthMapping => {
+                        provider_settings.disable_principal_to_eth_mapping = true;
+                    }
                 }
             }
         }
-    }
 
-    // Build and initialize SIWE
-    ic_siwe::init(builder.build().unwrap()).unwrap();
+        // Build and initialize SIWE
+        ic_siwe::init(ic_siwe_settings.build().unwrap()).unwrap();
+    });
 }
 
 /// `init` is called when the canister is created. It initializes the SIWE library with the given settings.

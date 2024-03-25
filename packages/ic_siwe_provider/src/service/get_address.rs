@@ -3,7 +3,7 @@ use ic_siwe::eth::{bytes_to_eth_address, convert_to_eip55};
 use ic_stable_structures::storable::Blob;
 use serde_bytes::ByteBuf;
 
-use crate::PRINCIPAL_ADDRESS;
+use crate::{PRINCIPAL_ADDRESS, SETTINGS};
 
 /// Retrieves the Ethereum address associated with a given IC principal.
 ///
@@ -15,6 +15,13 @@ use crate::PRINCIPAL_ADDRESS;
 /// * `Err(String)` - An error message if the principal cannot be converted or no address is found.
 #[query]
 pub(crate) fn get_address(principal: ByteBuf) -> Result<String, String> {
+    SETTINGS.with_borrow(|s| {
+        if s.disable_principal_to_eth_mapping {
+            return Err("Principal to Ethereum address mapping is disabled".to_string());
+        }
+        Ok(())
+    })?;
+
     let principal: Blob<29> = principal
         .as_ref()
         .try_into()
