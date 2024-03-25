@@ -1,6 +1,6 @@
 [package]
 name = "ic_siwe_provider"
-version = "0.0.5"
+version = "0.0.6"
 edition = "2021"
 authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
 description = "Using the pre built ic_siwe_provider canister is the easiest way to integrate Ethereum wallet authentication into an Internet Computer (ICP) application."
