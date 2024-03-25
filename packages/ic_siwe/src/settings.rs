@@ -8,7 +8,7 @@ const DEFAULT_SIGN_IN_EXPIRES_IN: u64 = 60 * 5 * 1_000_000_000; // 5 minutes
 const DEFAULT_SESSION_EXPIRES_IN: u64 = 30 * 60 * 1_000_000_000; // 30 minutes
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum RuntimeFeatures {
+pub enum RuntimeFeature {
     // Enabling this feature will include the app frontend URI as part of the identity seed.
     IncludeUriInSeed,
 }
@@ -54,7 +54,7 @@ pub struct Settings {
     pub targets: Option<Vec<Principal>>,
 
     // Optional runtime features that can be enabled for SIWE.
-    pub runtime_features: Option<Vec<RuntimeFeatures>>,
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
 }
 
 /// A builder for creating `Settings` instances.
@@ -157,7 +157,7 @@ impl SettingsBuilder {
     }
 
     /// Optional runtime features customize the behavior of ic-siwe.
-    pub fn runtime_features(mut self, features: Vec<RuntimeFeatures>) -> Self {
+    pub fn runtime_features(mut self, features: Vec<RuntimeFeature>) -> Self {
         self.settings.runtime_features = Some(features);
         self
     }

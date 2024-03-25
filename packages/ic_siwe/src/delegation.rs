@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt};
 use super::hash::{self, Value};
 use crate::{
     eth::EthAddress,
-    settings::{RuntimeFeatures, Settings},
+    settings::{RuntimeFeature, Settings},
     signature_map::SignatureMap,
     with_settings,
 };
@@ -87,7 +87,7 @@ pub fn generate_seed(address: &EthAddress) -> Hash {
 
         // Only include the URI in the seed if the runtime feature is enabled
         match settings.runtime_features {
-            Some(ref features) if features.contains(&RuntimeFeatures::IncludeUriInSeed) => {
+            Some(ref features) if features.contains(&RuntimeFeature::IncludeUriInSeed) => {
                 ic_cdk::println!("INCLUDING URI: {:?}", settings.uri);
                 let uri = settings.uri.as_bytes();
                 seed.push(uri.len() as u8);

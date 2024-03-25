@@ -4,7 +4,7 @@ use ic_siwe::settings::SettingsBuilder;
 use serde::Deserialize;
 
 #[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
-pub enum RuntimeFeatures {
+pub enum RuntimeFeature {
     // Enabling this feature will include the app frontend URI as part of the identity seed.
     IncludeUriInSeed,
 }
@@ -42,7 +42,7 @@ pub struct SettingsInput {
     /// that the delegation is allowed for all canisters. If specified, the canister id of this canister must be in the list.
     pub targets: Option<Vec<String>>,
 
-    pub runtime_features: Option<Vec<RuntimeFeatures>>,
+    pub runtime_features: Option<Vec<RuntimeFeature>>,
 }
 
 /// Initialize the SIWE library with the given settings.
@@ -90,9 +90,9 @@ fn siwe_init(settings: SettingsInput) {
     if let Some(runtime_features) = settings.runtime_features {
         for feature in runtime_features {
             match feature {
-                RuntimeFeatures::IncludeUriInSeed => {
+                RuntimeFeature::IncludeUriInSeed => {
                     builder = builder.runtime_features(vec![
-                        ic_siwe::settings::RuntimeFeatures::IncludeUriInSeed,
+                        ic_siwe::settings::RuntimeFeature::IncludeUriInSeed,
                     ]);
                 }
             }
