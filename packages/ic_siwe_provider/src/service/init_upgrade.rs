@@ -3,6 +3,12 @@ use ic_cdk::{init, post_upgrade};
 use ic_siwe::settings::SettingsBuilder;
 use serde::Deserialize;
 
+#[derive(CandidType, Debug, Clone, PartialEq, Deserialize)]
+pub enum RuntimeFeatures {
+    // Enabling this feature will include the app frontend URI as part of the identity seed.
+    IncludeUriInSeed,
+}
+
 /// Represents the settings that determine the behavior of the SIWE library. It includes settings such as domain, scheme, statement,
 /// and expiration times for sessions and sign-ins.
 #[derive(CandidType, Deserialize, Debug, Clone)]
@@ -35,6 +41,8 @@ pub struct SettingsInput {
     /// The list of canisters for which the identity delegation is allowed. Defaults to None, which means
     /// that the delegation is allowed for all canisters. If specified, the canister id of this canister must be in the list.
     pub targets: Option<Vec<String>>,
+
+    pub runtime_features: Option<Vec<RuntimeFeatures>>,
 }
 
 /// Initialize the SIWE library with the given settings.
@@ -77,6 +85,18 @@ fn siwe_init(settings: SettingsInput) {
             );
         }
         builder = builder.targets(targets);
+    }
+
+    if let Some(runtime_features) = settings.runtime_features {
+        for feature in runtime_features {
+            match feature {
+                RuntimeFeatures::IncludeUriInSeed => {
+                    builder = builder.runtime_features(vec![
+                        ic_siwe::settings::RuntimeFeatures::IncludeUriInSeed,
+                    ]);
+                }
+            }
+        }
     }
 
     // Build and initialize SIWE
