@@ -72,11 +72,22 @@ impl Default for State {
     }
 }
 
+#[derive(Default, Debug, Clone)]
+pub(crate) struct Settings {
+    pub disable_eth_to_principal_mapping: bool,
+    pub disable_principal_to_eth_mapping: bool,
+}
+
 thread_local! {
     static STATE: State = State::default();
 
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
         RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
+
+    static SETTINGS: RefCell<Settings> = RefCell::new(Settings {
+        disable_eth_to_principal_mapping: false,
+        disable_principal_to_eth_mapping: false,
+    });
 
     static PRINCIPAL_ADDRESS: RefCell<StableBTreeMap<Blob<29>, [u8;20], VirtualMemory<DefaultMemoryImpl>>> = RefCell::new(
         StableBTreeMap::init(
