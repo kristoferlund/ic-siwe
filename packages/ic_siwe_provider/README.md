@@ -85,6 +85,8 @@ dfx deploy ic_siwe_provider --argument $'(
 )'
 ```
 
+See also additional [runtime features](#runtime-features) that can be configured.
+
 ### 3. Integrate the `ic_siwe_provider` into your frontend application
 
 Below example uses the [ic-use-siwe-identity](https://github.com/kristoferlund/ic_siwe/tree/main/packages/ic-use-siwe-identity) React hook to integrate the `ic_siwe_provider` into a React application.
@@ -95,11 +97,11 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 // App.tsx
 
 import { SiweIdentityProvider } from 'ic-use-siwe-identity';
-import { _SERVICPE } from "path-to/ic_siwe_provider.did";
+import { _SERVICE } from "path-to/ic_siwe_provider.did";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICPE>
+    <SiweIdentityProvider<_SERVICE>
       idlFactory={/* IDL Interface Factory */}
       canisterId={/* Canister ID */}
       // ...other props
@@ -127,18 +129,42 @@ function MyComponent() {
 
 ## Runtime Features
 
-The runtime behaviour of the `ic_siwe_provider` canister can be customized using the following settings:
+The runtime behaviour of the `ic_siwe_provider` canister and the `ic_siwe` library can be customized using the following settings:
 
 ### `IncludeUriInSeed`
 
-Default: `Not enabled`
+Default: URI is not included in the seed
 
 
-When enabled, the URI is included in the seed used to generate the principal. Defaults to `Not enabled`. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
+When set, the URI is included in the seed used to generate the principal. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
 
 ```bash
   runtime_features = opt vec { \
     variant { IncludeUriInSeed } \
+  }; 
+```
+
+### `DisableEthToPrincipalMapping`
+
+Default: Mapping is enabled
+
+When set, the mapping of Ethereum addresses to Principals is disabled. This also disables the canister endpoints `get_principal`.
+
+```bash
+  runtime_features = opt vec { \
+    variant { DisableEthToPrincipalMapping } \
+  }; 
+```
+
+### `DisablePrincipalToEthMapping`
+
+Default: Mapping is enabled
+
+When set, the mapping of Principals to Ethereum addresses is disabled. This also disables the canister endpoints `get_address` and `get_caller_address`.
+
+```bash
+  runtime_features = opt vec { \
+    variant { DisablePrincipalToEthMapping } \
   }; 
 ```
 
@@ -208,12 +234,18 @@ In addition to the key functionalities for Ethereum wallet authentication, the `
 
 ## Data Structures
 
-### RuntimeFeatures
+### RuntimeFeature
 
 ```rust
-pub enum RuntimeFeatures {
+pub enum RuntimeFeature {
     // Enabling this feature will include the app frontend URI as part of the identity seed.
     IncludeUriInSeed,
+
+    // Disable the mapping of Ethereum address to principal. This also disables canister endpoints `get_principal`.
+    DisableEthToPrincipalMapping,
+
+    // Disable the mapping of principal to Ethereum address. This also disables canister endpoints `get_address` and `get_caller_address`.
+    DisablePrincipalToEthMapping,
 }
 ```
 
