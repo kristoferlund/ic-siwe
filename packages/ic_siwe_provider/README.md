@@ -84,6 +84,12 @@ dfx deploy ic_siwe_provider --argument $'(
     }
 )'
 ```
+> [!IMPORTANT]
+> `domain` should be set to the full domain, including subdomains, from where the frontend that uses SIWS is served. 
+> Example: `myapp.example.com`
+> 
+> `uri` should be set to the full URI, potentially including the port number, of the frontend that uses SIWS.
+> Example: `https://myapp.example.com:8080`
 
 See also additional [runtime features](#runtime-features) that can be configured.
 
@@ -255,10 +261,12 @@ Defines the settings that controls the behavior of the `ic_siwe_provider` canist
 
 ```rust
 pub struct SettingsInput {
-    // The domain from where the frontend that uses SIWE is served.
+    // The full domain, including subdomains, from where the frontend that uses SIWE is served.
+    // Example: "example.com" or "sub.example.com".
     pub domain: String,
 
     // The full URI, potentially including port number of the frontend that uses SIWE.
+    // Example: "https://example.com" or "https://sub.example.com:8080".
     pub uri: String,
 
     // The salt is used when generating the seed that uniquely identifies each user principal. The salt can only contain

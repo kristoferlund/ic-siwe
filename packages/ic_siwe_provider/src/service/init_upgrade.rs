@@ -21,10 +21,12 @@ pub enum RuntimeFeature {
 /// and expiration times for sessions and sign-ins.
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub struct SettingsInput {
-    /// The domain from where the frontend that uses SIWE is served.
+    /// The full domain, including subdomains, from where the frontend that uses SIWE is served.
+    /// Example: "example.com" or "sub.example.com".
     pub domain: String,
 
     /// The full URI, potentially including port number of the frontend that uses SIWE.
+    /// Example: "https://example.com" or "https://sub.example.com:8080".
     pub uri: String,
 
     /// The salt is used when generating the seed that uniquely identifies each user principal. The salt can only contain
