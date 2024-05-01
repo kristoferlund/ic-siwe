@@ -9,26 +9,12 @@
 .DS_Store
 **/.DS_Store
 
-# DFX temporary files
-.dfx/
-canister_ids.json
-
-# Generated files for declarations
-src/declarations/
-
-# Rust build folder
-target/
-
 # Node modules and build directories
 node_modules/
 dist/
 
 # Environment variables
 .env
-
-# General log files
-logs/
-*.log
 
 # Specific debug logs for various package managers
 npm-debug.log*
