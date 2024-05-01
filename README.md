@@ -1,80 +1,229 @@
-![Sign in with Ethereum for the Internet Computer](/media/header.png)
+`ic-use-siwe-identity` is a React hook and context provider for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters.
 
-`ic-siwe` is a project that enables Ethereum wallet-based authentication for applications on the [Internet Computer](https://internetcomputer.org) (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic-use-siwe-identity` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+
+A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
+
+[![version][version-image]][npm-link]
+[![downloads][dl-image]][npm-link]
 
 ## Features
 
-- **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for IC applications. Sign in with any eth wallet to generate an IC identity and session.
+- **Cached Identity**: The identity is cached in local storage and restored on page load. This allows the user to stay logged in even if the page is refreshed.
+- **Login progress**: State varibles are provided to indicate whether the user is logged in, logging in, or logged out.
+- **Wagmi Integration**: Uses [wagmi](https://wagmi.sh) for Ethereum wallet integration.
+- **Works with ic-use-actor**: Plays nicely with [ic-use-actor](https://www.npmjs.com/package/ic-use-actor) for hassle free frontend integration.
+- **Works with ic_siwe_provider**: An easy alternative to integrating with `ic_siwe` directly is using the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. The provider canister can be added to your project as a dependency and used as a login provider for you project.
 
-- **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
+## Table of Contents
 
-- **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal, irrespective of the client used.
+- [Features](#features)
+- [Table of Contents](#table-of-contents)
+- [Installation](#installation)
+- [Usage](#usage)
+    - [1. Add an Ethereum wallet provider](#1-add-an-ethereum-wallet-provider)
+    - [2. Setup the `SiweIdentityProvider` component](#2-setup-the-siweidentityprovider-component)
+    - [3. Prepare the login](#3-prepare-the-login)
+    - [4. Initiate the login process](#4-initiate-the-login-process)
+- [SiweIdentityProvider props](#siweidentityprovider-props)
+- [useSiweIdentity interface](#usesiweidentity-interface)
+- [Contributing](#contributing)
+- [Author](#author)
+- [License](#license)
 
-- **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
+## Installation
 
-- **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
+In addition to `ic-use-siwe-identity`, these peer dependencies are required:
 
-- **Prebuilt Identity Provider**: Provides a prebuilt canister that can be integrated into any Internet Computer application, independent of the application's programming language.
+- `wagmi`
+- `viem`
+- `@dfinity/agent`
+- `@dfinity/candid`
+- `@dfinity/identity`
+- `@tanstack/query`
+
+```bash
+npm install ic-use-siwe-identity wagmi viem @dfinity/agent @dfinity/candid @dfinity/identity 
+```
 
 ## Usage
 
-Developers have two options to use SIWE in their IC applications:
+> [!TIP]
+> For a complete example, see the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) demo project.
 
-1. **Use the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister**: This is the easiest way to integrate SIWE into an Internet Computer application. The pre-built canister is added to the project `dfx.json` and then configured to meet the needs of the application. `ic_siwe_provider` can be added to any Internet Computer application, independent of the application's programming language.
+To use `ic-use-siwe-identity` in your React application, follow these steps:
 
-2. **Use the [ic_siwe](https://crates.io/crates/ic_siwe) library**: This allows developers full control over the SIWE integration. The `ic_siwe` Rust library provides all the necessary tools for integrating SIWE into IC canisters.
+### 1. Add an Ethereum wallet provider
 
-### SIWE login flow
+Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets, and is used internally by `ic-use-siwe-identity`. In addition to the wallet provider, wagmi requires you to add TanStack `QueryClientProvider` to your application that handles the async requests that are made when interacting with the Ethereum wallet.
 
-The below diagram illustrates the high-level login flow when using the `ic_siwe_provider` canister.
+We also recommend adding [RainbowKit](https://www.rainbowkit.com/) to handle the wallet connection UI.
 
-1. An ICP application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
+```jsx
+// main.tsx
 
-2. The application displays the SIWE message to the user who signs it with their Ethereum wallet.
+const queryClient = new QueryClient();
 
-3. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user. The canister verifies the signature and creates an identity for the user.
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <WagmiConfig config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          // ...your app
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiConfig>
+  </React.StrictMode>
+);
+```
 
-4. The application retrieves the identity from the `ic_siwe_provider` canister.
+> [!TIP]
+> Check the [wagmi](https://wagmi.sh) and [RainbowKit](https://www.rainbowkit.com) documentation for the most up-to-date setup instructions.
 
-5. The application can now use the identity to make authenticated calls to canisters.
 
-![Sign in with Ethereum - Login flow](/media/flow.png)
+### 2. Setup the `SiweIdentityProvider` component
 
-## Resources
+Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the `_SERVICE` type argument, where `_SERVICE` represents the canister service definition of a canister that implements the [SIWE login interface](src/service.interface.ts). This could be a canister that you have created yourself, using the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library, or the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister. Adding the provider canister to your project as a dependency is the easiest way to get started.
 
-`ic-siwe` consists of two main packages: the Rust support library and the prebuilt identity provider canister. The project also includes React demo applications and React hooks for easy frontend integration with SIWE enabled Internet Computer canisters.
+```jsx
+// App.tsx
 
-### [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe)
+import { SiweIdentityProvider } from 'ic-use-siwe-identity';
+import { _SERVICE } from "path-to/siwe-enabled-canister.did";
 
-Rust library that provides the necessary tools for integrating Sign-In with Ethereum (SIWE) into IC canisters, allowing users to sign in using their Ethereum wallets.
+function App() {
+  return (
+    <SiweIdentityProvider<_SERVICE>
+      idlFactory={/* IDL Interface Factory */}
+      canisterId={/* Canister ID */}
+      // ...other props
+    >
+      // ...your app components
+    </App>
+  );
+}
+```
 
-### [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider)
+### 3. Prepare the login
 
-Prebuilt canister serving as a SIWE identity provider for Internet Computer canisters. `ic_siwe-provider` packages the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and makes it available as a canister that can easily be integrated into any Internet Computer application, independent of the application's programming language.
+This is an optional step, as the login process will automatically call `prepareLogin` if it has not been called manually. However, calling `prepareLogin` before initiating the login process improves the user experience by reducing the time it takes to complete the login process. The `prepareLogin` function requests a SIWE message from the backend. This is an update call that usually takes two to three seconds to complete.
 
-### [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
+The `prepareLoginStatus` state variable can be used to indicate the status of the prepare login process. Errors that occur during the prepare login process are stored in the `prepareLoginError` state variable.
 
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+> [!IMPORTANT]
+> Be sure to call `prepareLogin` again on wallet change, as the SIWE message is unique to the Ethereum address of the user. If the user changes their wallet, the SIWE message will be invalid and a new one must be requested.
 
-Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
+```jsx
+const { isConnected, address } = useAccount(); // Wagmi hook
+const { prepareLogin, prepareLoginStatus, prepareLoginError, loginError } =
+  useSiweIdentity();
 
-### [ic-siwe-react-demo-ts](https://github.com/kristoferlund/ic-siwe-react-demo-ts)
+/**
+ * Preload a Siwe message on every address change.
+ */
+useEffect(() => {
+  if (prepareLoginStatus !== "idle" || !isConnected || !address) return;
+  prepareLogin();
+}, [isConnected, address, prepareLogin, prepareLoginStatus]);
+```
 
-Same demo as above but this time the backend canister is written in TypeScript using [Azle](https://github.com/demergent-labs/azle).
+### 4. Initiate the login process
 
-Try the deployed demo here: https://zwsg3-myaaa-aaaal-qdf7q-cai.icp0.io/
+The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
 
-### [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity)
+The `loginStatus` state variable can be used to indicate the status of the login process. Errors that occur during the login process are stored in the `loginError` state variable.
 
-React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+```jsx
+const { isConnected } = useAccount(); // Wagmi hook
+const { login, loginStatus, prepareLoginStatus } = useSiweIdentity();
 
-### [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
+const text = loginStatus === "logging-in" ? "Signing in …" : "Sign in";
 
-React hook and context provider for managing Internet Computer (IC) actors with features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
+const disabled =
+  loginStatus === "logging-in" ||
+  !isConnected ||
+  prepareLoginStatus !== "success";
 
-## Updates
+return (
+  <Button disabled={disabled} onClick={login}>
+    {text}
+  </Button>
+);
+```
 
-See the respective package CHANGELOG for details on updates.
+## SiweIdentityProvider props
+
+```ts
+{
+  /** Configuration options for the HTTP agent used to communicate with the Internet Computer network. */
+  httpAgentOptions?: HttpAgentOptions;
+
+  /** Configuration options for the actor. These options are passed to the actor upon its creation. */
+  actorOptions?: ActorConfig;
+
+  /** The Interface Description Language (IDL) factory for the canister. This factory is used to create an actor interface for the canister. */
+  idlFactory: IDL.InterfaceFactory;
+
+  /** The unique identifier of the canister on the Internet Computer network. This ID is used to establish a connection to the canister. */
+  canisterId: string;
+
+  /** The child components that the SiweIdentityProvider will wrap. This allows any child component to access the authentication context provided by the SiweIdentityProvider. */
+  children: ReactNode;
+}
+```
+
+## useSiweIdentity interface
+
+```ts
+export type SiweIdentityContextType = {
+  /** Is set to `true` on mount until a stored identity is loaded from local storage or
+   * none is found. */
+  isInitializing: boolean;
+
+  /** Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
+   * is optional, as it will be called automatically on login if not called manually. */
+  prepareLogin: () => void;
+
+  /** "error" | "loading" | "success" | "idle" - Reflects the current status of the prepareLogin process. */
+  prepareLoginStatus: PrepareLoginStatus;
+
+  /** Error that occurred during the prepareLogin process. */
+  prepareLoginError?: Error;
+
+  /** Initiates the login process by requesting a SIWE message from the backend. */
+  login: () => Promise<DelegationIdentity | undefined>;
+
+  /** "error" | "success" | "idle" | "logging-in" - Reflects the current status of the login process. */
+  loginStatus: LoginStatus;
+
+  /** Error that occurred during the login process. */
+  loginError?: Error;
+
+  /** Status of the SIWE message signing process. This is a re-export of the Wagmi
+   * signMessage / status type. */
+  signMessageStatus: "error" | "idle" | "pending" | "success"
+
+  /** Error that occurred during the SIWE message signing process. This is a re-export of the
+   * Wagmi signMessage / error type. */
+  signMessageError: Error | null;
+
+  /** The delegation chain is available after successfully loading the identity from local
+   * storage or completing the login process. */
+  delegationChain?: DelegationChain;
+
+  /** The identity is available after successfully loading the identity from local storage
+   * or completing the login process. */
+  identity?: DelegationIdentity;
+
+  /** The Ethereum address associated with current identity. This address is not necessarily
+   * the same as the address of the currently connected wallet - on wallet change, the addresses
+   * will differ. */
+  identityAddress?: string;
+
+  /** Clears the identity from the state and local storage. Effectively "logs the user out". */
+  clear: () => void;
+};
+```
 
 ## Contributing
 
@@ -82,7 +231,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 ## Author
 
-- [kristofer@kristoferlund.se](mailto:kristofer@kristoferlund.se)
+- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
 - Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
 - Discord: kristoferkristofer
 - Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
@@ -91,10 +240,6 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
 
-## Future Plans
-
-The project is still in active development. Before using `ic-siwe` in production, I would like to do a more formal security audit.
-
-Also, I want to integrate SIWE into more demo applications, ideally some wallet application.
-
-Most likely, there are features missing in the current implementation. If you have any ideas or requests for features, please let me know by [opening an issue](https://github.com/kristoferlund/ic-siwe/issues).
+[version-image]: https://img.shields.io/npm/v/ic-use-siwe-identity
+[dl-image]: https://img.shields.io/npm/dw/ic-use-siwe-identity
+[npm-link]: https://www.npmjs.com/package/ic-use-siwe-identity
