@@ -177,7 +177,6 @@ pub fn create_delegated_identity(
             pubkey: identity.public_key().unwrap(),
             expiration: login_response.expiration,
             targets,
-            senders: None,
         },
         signature,
     };
