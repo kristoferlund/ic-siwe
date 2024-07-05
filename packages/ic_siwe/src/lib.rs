@@ -277,7 +277,7 @@ thread_local! {
 
     // The settings control the behavior of the SIWE library. The settings must be initialized
     // before any other library functions are called.
-    static SETTINGS: RefCell<Option<Settings>> = RefCell::new(None);
+    static SETTINGS: RefCell<Option<Settings>> = const { RefCell::new(None) };
 
     // SIWE messages are stored in global state during the login process. The key is the
     // Ethereum address as a byte array and the value is the SIWE message. After a successful

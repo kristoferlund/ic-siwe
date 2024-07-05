@@ -6,7 +6,7 @@ use ic_cdk::{init, query};
 type GetAddressResponse = Result<String, String>;
 
 thread_local! {
-    static SIWE_PROVIDER_CANISTER: RefCell<Option<Principal>>  = RefCell::new(None);
+    static SIWE_PROVIDER_CANISTER: RefCell<Option<Principal>>  = const { RefCell::new(None) };
 }
 
 /// The whoami method returns the calling principal and the eth address of the caller. A prerequisite
