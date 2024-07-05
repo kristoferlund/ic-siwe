@@ -1,6 +1,6 @@
 [package]
 name = "ic_siwe"
-version = "0.0.6"
+version = "0.0.7"
 edition = "2021"
 authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
 description = "Integrate Ethereum wallet-based authentication (SIWE) with applications on the Internet Computer (ICP) platform."
@@ -15,10 +15,10 @@ serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.66"
 serde_bytes = "0.11"
 serde_cbor = "0.11"
-candid = "0.9.11"
+candid = "0.10.9"
 hex = "0.4.3"
-ic-cdk = "0.11.3"
-ic-cdk-timers = { version = "0.5.1", optional = true }
+ic-cdk = "0.15.0"
+ic-cdk-timers = { version = "0.9.0", optional = true }
 ic-certified-map = "0.4.0"
 url = "2.4.1"
 time = { version = "0.3.30", features = ["formatting"] }
