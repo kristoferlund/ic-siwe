@@ -36,7 +36,6 @@ fn siwe_login(
         let signature = EthSignature::new(&signature)?;
 
         // Attempt to log in with the provided signature, address, and session key.
-
         let login_response = ic_siwe::login::login(
             &signature,
             &address,
