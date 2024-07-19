@@ -146,14 +146,22 @@ pub fn login(
 
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
         // used to sign the message.
-        let recovered_address = recover_eth_address(&message_string, signature)?;
-        if recovered_address != address.as_str() {
-            return Err(LoginError::AddressMismatch);
-        }
+        let result = match recover_eth_address(&message_string, signature) {
+            Ok(recovered_address) => {
+                if recovered_address != address.as_str() {
+                    Err(LoginError::AddressMismatch)
+                } else {
+                    Ok(())
+                }
+            }
+            Err(e) => Err(LoginError::EthError(e)),
+        };
 
-        // At this point, the signature has been verified and the SIWE message has been used. Remove
-        // the SIWE message from the state.
+        // Ensure the SIWE message is removed from the state both on success and on failure.
         siwe_messages.remove(address, nonce);
+
+        // Handle the result of the signature verification.
+        result?;
 
         // The delegation is valid for the duration of the session as defined in the settings.
         let expiration = with_settings!(|settings: &Settings| {
