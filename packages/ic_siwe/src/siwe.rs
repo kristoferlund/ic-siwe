@@ -1,9 +1,9 @@
 use crate::eth::EthAddress;
 use crate::settings::Settings;
-use crate::with_settings;
-use crate::{rand::generate_nonce, time::get_current_time};
-
+use crate::time::get_current_time;
+use crate::{hash, with_settings};
 use candid::{CandidType, Deserialize};
+use ic_certified_map::Hash;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fmt;
@@ -72,23 +72,19 @@ impl SiweMessage {
     /// # Arguments
     ///
     /// * `address`: The Ethereum address of the user.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` that, on success, contains a new [`SiweMessage`] instance.
-    pub fn new(address: &EthAddress) -> SiweMessage {
-        let nonce = generate_nonce();
+    /// * `nonce`: The nonce generated during the [`crate::login::prepare_login`] call.
+    pub fn new(address: &EthAddress, nonce: &str) -> SiweMessage {
         let current_time = get_current_time();
         with_settings!(|settings: &Settings| {
             SiweMessage {
                 scheme: settings.scheme.clone(),
                 domain: settings.domain.clone(),
-                address: address.as_str().to_owned(),
+                address: address.as_str().to_string(),
                 statement: settings.statement.clone(),
                 uri: settings.uri.clone(),
                 version: 1,
                 chain_id: settings.chain_id,
-                nonce,
+                nonce: nonce.to_string(),
                 issued_at: get_current_time(),
                 expiration_time: current_time.saturating_add(settings.sign_in_expires_in),
             }
@@ -149,11 +145,27 @@ impl From<SiweMessage> for String {
     }
 }
 
+/// The SiweMessageMap map key is the hash of the caller address and the message nonce.
+/// This ensures every call to `siwe_prepare_login` leads to one new copy of the SIWE message being stored.
+pub fn siwe_message_map_hash(address: &EthAddress, nonce: &str) -> Hash {
+    let mut bytes: Vec<u8> = vec![];
+
+    let address_bytes = address.as_bytes();
+    bytes.push(address_bytes.len() as u8);
+    bytes.extend(address_bytes);
+
+    let nonce_bytes = nonce.as_bytes();
+    bytes.push(nonce_bytes.len() as u8);
+    bytes.extend(nonce_bytes);
+
+    hash::hash_bytes(bytes)
+}
+
 /// The SiweMessageMap is a map of SIWE messages keyed by the Ethereum address of the user. SIWE messages
 /// are stored in the map during the course of the login process and are removed once the login process
 /// is complete. The map is also pruned periodically to remove expired SIWE messages.
 pub struct SiweMessageMap {
-    map: HashMap<Vec<u8>, SiweMessage>,
+    map: HashMap<[u8; 32], SiweMessage>,
 }
 
 impl SiweMessageMap {
@@ -171,22 +183,25 @@ impl SiweMessageMap {
     }
 
     /// Adds a SIWE message to the map.
-    pub fn insert(&mut self, address_bytes: Vec<u8>, message: SiweMessage) {
-        self.map.insert(address_bytes, message);
+    pub fn insert(&mut self, message: SiweMessage, address: &EthAddress, nonce: &str) {
+        let hash = siwe_message_map_hash(address, nonce);
+        self.map.insert(hash, message);
     }
 
     /// Returns a cloned SIWE message associated with the provided address or an error if the message
     /// does not exist.
-    pub fn get(&self, address_bytes: &Vec<u8>) -> Result<SiweMessage, SiweMessageError> {
+    pub fn get(&self, address: &EthAddress, nonce: &str) -> Result<SiweMessage, SiweMessageError> {
+        let hash = siwe_message_map_hash(address, nonce);
         self.map
-            .get(address_bytes)
+            .get(&hash)
             .cloned()
             .ok_or(SiweMessageError::MessageNotFound)
     }
 
     /// Removes the SIWE message associated with the provided address.
-    pub fn remove(&mut self, address_bytes: &Vec<u8>) {
-        self.map.remove(address_bytes);
+    pub fn remove(&mut self, address: &EthAddress, nonce: &str) {
+        let hash = siwe_message_map_hash(address, nonce);
+        self.map.remove(&hash);
     }
 }
 

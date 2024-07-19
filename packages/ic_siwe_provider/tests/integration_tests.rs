@@ -3,7 +3,7 @@ mod common;
 use candid::{encode_args, encode_one, Principal};
 use common::{
     create_canister, create_session_identity, create_wallet, full_login, init, query, update,
-    valid_settings, RuntimeFeature, SESSION_KEY, VALID_ADDRESS,
+    valid_settings, PrepareLoginOkResponse, RuntimeFeature, NONCE, SESSION_KEY, VALID_ADDRESS,
 };
 use ic_agent::Identity;
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
@@ -83,7 +83,7 @@ fn test_upgrade_with_changed_arguments() {
 
     // Call siwe_prepare_login, check that new settings are reflected in returned siwe_message
     let address = encode_one(VALID_ADDRESS).unwrap();
-    let response: Result<String, String> = update(
+    let response: Result<PrepareLoginOkResponse, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
@@ -91,7 +91,8 @@ fn test_upgrade_with_changed_arguments() {
         address,
     );
     assert!(response.is_ok());
-    let siwe_message: Message = response.unwrap().parse().unwrap();
+    let prepare_login_ok_response: PrepareLoginOkResponse = response.unwrap();
+    let siwe_message: Message = prepare_login_ok_response.siwe_message.parse().unwrap();
     assert_eq!(siwe_message.domain, "192.168.0.1");
     assert_eq!(siwe_message.uri, "http://192.168.0.1:666");
     assert_eq!(siwe_message.chain_id, 666);
@@ -156,7 +157,7 @@ fn test_siwe_prepare_login_ok() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one(VALID_ADDRESS).unwrap();
-    let response: Result<String, String> = update(
+    let response: Result<PrepareLoginOkResponse, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
@@ -164,11 +165,13 @@ fn test_siwe_prepare_login_ok() {
         address,
     );
     assert!(response.is_ok());
-    let siwe_message: Message = response.unwrap().parse().unwrap();
+    let prepare_login_ok_response: PrepareLoginOkResponse = response.unwrap();
+    let siwe_message: Message = prepare_login_ok_response.siwe_message.parse().unwrap();
     assert_eq!(
         siwe_message.address,
         hex::decode(&VALID_ADDRESS[2..]).unwrap().as_slice()
     );
+    assert!(!prepare_login_ok_response.nonce.is_empty());
 }
 
 #[test]
@@ -176,7 +179,7 @@ fn test_login_signature_too_short() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xTOO-SHORT";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
+    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -195,7 +198,7 @@ fn test_login_signature_too_long() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
+    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -214,7 +217,7 @@ fn test_incorrect_signature_format() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap();
+    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -239,7 +242,7 @@ fn test_sign_in_message_expired() {
 
     ic.advance_time(Duration::from_secs(10));
 
-    let args = encode_args((signature, address, SESSION_KEY)).unwrap();
+    let args = encode_args((signature, address, SESSION_KEY, NONCE)).unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -258,7 +261,7 @@ fn test_sign_in_address_mismatch() {
     let (wallet, address) = create_wallet();
     let (signature, _) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY)).unwrap(); // Wrong address
+    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap(); // Wrong address
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -275,10 +278,16 @@ fn test_sign_in_signature_manipulated() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, _) =
+    let (signature, prepare_login_ok_response) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
-    let args = encode_args((manipulated_signature, address, SESSION_KEY)).unwrap();
+    let args = encode_args((
+        manipulated_signature,
+        address,
+        SESSION_KEY,
+        prepare_login_ok_response.nonce,
+    ))
+    .unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -294,9 +303,15 @@ fn test_sign_in_ok() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, _) =
+    let (signature, prepare_login_ok_response) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((signature, address, SESSION_KEY)).unwrap();
+    let args = encode_args((
+        signature,
+        address,
+        SESSION_KEY,
+        prepare_login_ok_response.nonce,
+    ))
+    .unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -314,9 +329,15 @@ fn test_sign_in_replay_attack() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, _) =
+    let (signature, prepare_login_ok_response) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((signature, address, SESSION_KEY)).unwrap();
+    let args = encode_args((
+        signature,
+        address,
+        SESSION_KEY,
+        prepare_login_ok_response.nonce,
+    ))
+    .unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
         Principal::anonymous(),
@@ -351,13 +372,19 @@ fn test_sign_in_siwe_get_delegation_timeout() {
 
     // Create wallet and session identity
     let (wallet1, address1) = create_wallet();
-    let (signature, _) =
+    let (signature, prepare_login_ok_response) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet1, &address1);
     let session_identity = create_session_identity();
     let session_pubkey = session_identity.public_key().unwrap();
 
     // Login
-    let login_args = encode_args((signature, address1.clone(), session_pubkey.clone())).unwrap();
+    let login_args = encode_args((
+        signature,
+        address1.clone(),
+        session_pubkey.clone(),
+        prepare_login_ok_response.nonce.clone(),
+    ))
+    .unwrap();
     let login_response: LoginDetails = update(
         &ic,
         Principal::anonymous(),
@@ -373,13 +400,19 @@ fn test_sign_in_siwe_get_delegation_timeout() {
 
     // Create another wallet and session identity
     let (wallet2, address2) = create_wallet();
-    let (signature2, _) =
+    let (signature2, prepare_login_ok_response) =
         prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet2, &address2);
     let session_identity2 = create_session_identity();
     let session_pubkey2 = session_identity2.public_key().unwrap();
 
     // Login address 2, this should cause the delegation signature for address 1 to be pruned
-    let login_args2 = encode_args((signature2, address2.clone(), session_pubkey2.clone())).unwrap();
+    let login_args2 = encode_args((
+        signature2,
+        address2.clone(),
+        session_pubkey2.clone(),
+        prepare_login_ok_response.nonce.clone(),
+    ))
+    .unwrap();
     let _: LoginDetails = update(
         &ic,
         Principal::anonymous(),

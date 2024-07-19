@@ -98,6 +98,17 @@ impl SignatureMap {
         num_pruned
     }
 
+    pub fn is_expired(&self, now: u64, seed_hash: Hash, delegation_hash: Hash) -> bool {
+        let expiration = self
+            .expiration_queue
+            .iter()
+            .find(|e| e.seed_hash == seed_hash && e.delegation_hash == delegation_hash);
+        if let Some(expiration) = expiration {
+            return now > expiration.signature_expires_at;
+        }
+        false
+    }
+
     pub fn root_hash(&self) -> Hash {
         self.certified_map.root_hash()
     }

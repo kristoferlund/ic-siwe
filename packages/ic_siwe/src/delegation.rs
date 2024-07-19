@@ -5,6 +5,7 @@ use crate::{
     eth::EthAddress,
     settings::{RuntimeFeature, Settings},
     signature_map::SignatureMap,
+    time::get_current_time,
     with_settings,
 };
 
@@ -22,6 +23,7 @@ pub enum DelegationError {
     SerializationError(String),
     InvalidSessionKey(String),
     InvalidExpiration(String),
+    SignatureExpired,
 }
 
 impl fmt::Display for DelegationError {
@@ -37,6 +39,7 @@ impl fmt::Display for DelegationError {
             DelegationError::SerializationError(e) => write!(f, "Serialization error: {}", e),
             DelegationError::InvalidSessionKey(e) => write!(f, "Invalid session key: {}", e),
             DelegationError::InvalidExpiration(e) => write!(f, "Invalid expiration: {}", e),
+            DelegationError::SignatureExpired => write!(f, "Signature expired"),
         }
     }
 }
@@ -145,8 +148,14 @@ pub fn witness(
     seed: Hash,
     delegation_hash: Hash,
 ) -> Result<HashTree, DelegationError> {
+    let seed_hash = hash::hash_bytes(seed);
+
+    if signature_map.is_expired(get_current_time(), seed_hash, delegation_hash) {
+        return Err(DelegationError::SignatureExpired);
+    }
+
     let witness = signature_map
-        .witness(hash::hash_bytes(seed), delegation_hash)
+        .witness(seed_hash, delegation_hash)
         .ok_or(DelegationError::SignatureNotFound)?;
 
     let witness_hash = witness.reconstruct();
