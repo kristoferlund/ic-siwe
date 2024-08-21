@@ -67,7 +67,8 @@ export async function callLogin(
   anonymousActor: ActorSubclass<SIWE_IDENTITY_SERVICE>,
   data: `0x${string}` | undefined,
   address: `0x${string}` | undefined,
-  sessionPublicKey: DerEncodedPublicKey
+  sessionPublicKey: DerEncodedPublicKey,
+  nonce: string
 ) {
   if (!anonymousActor || !data || !address) {
     throw new Error("Invalid actor, data or address");
@@ -76,7 +77,8 @@ export async function callLogin(
   const loginReponse = await anonymousActor.siwe_login(
     data,
     address,
-    new Uint8Array(sessionPublicKey)
+    new Uint8Array(sessionPublicKey),
+    nonce
   );
 
   if ("Err" in loginReponse) {

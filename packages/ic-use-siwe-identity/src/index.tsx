@@ -14,6 +14,7 @@ import { useAccount, useSignMessage } from "wagmi";
 import { IDL } from "@dfinity/candid";
 import type {
   LoginOkResponse,
+  PrepareLoginOkResponse,
   SIWE_IDENTITY_SERVICE,
   SignedDelegation as ServiceSignedDelegation,
 } from "./service.interface";
@@ -142,7 +143,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
    * Load a SIWE message from the provider, to be used for login. Calling prepareLogin
    * is optional, as it will be called automatically on login if not called manually.
    */
-  async function prepareLogin(): Promise<string | undefined> {
+  async function prepareLogin(): Promise<PrepareLoginOkResponse | undefined> {
     if (!state.anonymousActor) {
       throw new Error(
         "Hook not initialized properly. Make sure to supply all required props to the SiweIdentityProvider."
@@ -160,15 +161,15 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
     });
 
     try {
-      const siweMessage = await callPrepareLogin(
+      const prepareLoginOkResponse = await callPrepareLogin(
         state.anonymousActor,
         connectedEthAddress
       );
       updateState({
-        siweMessage,
+        prepareLoginOkResponse,
         prepareLoginStatus: "success",
       });
-      return siweMessage;
+      return prepareLoginOkResponse;
     } catch (e) {
       const error = normalizeError(e);
       console.error(error);
@@ -189,7 +190,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
     console.error(e);
 
     updateState({
-      siweMessage: undefined,
+      prepareLoginOkResponse: undefined,
       loginStatus: "error",
       loginError: new Error(errorMessage),
     });
@@ -226,6 +227,11 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
       return;
     }
 
+    if (!state.prepareLoginOkResponse) {
+      rejectLoginWithError(new Error("Prepare login not called."));
+      return;
+    }
+
     // Logging in is a two-step process. First, the signed SIWE message is sent to the backend.
     // Then, the backend's siwe_get_delegation method is called to get the delegation.
 
@@ -235,7 +241,8 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
         state.anonymousActor,
         loginSignature,
         connectedEthAddress,
-        sessionPublicKey
+        sessionPublicKey,
+        state.prepareLoginOkResponse.nonce
       );
     } catch (e) {
       rejectLoginWithError(e, "Unable to login.");
@@ -330,10 +337,10 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
 
     try {
       // The SIWE message can be prepared in advance, or it can be generated as part of the login process.
-      let siweMessage = state.siweMessage;
-      if (!siweMessage) {
-        siweMessage = await prepareLogin();
-        if (!siweMessage) {
+      let prepareLoginOkResponse = state.prepareLoginOkResponse;
+      if (!prepareLoginOkResponse) {
+        prepareLoginOkResponse = await prepareLogin();
+        if (!prepareLoginOkResponse) {
           throw new Error(
             "Prepare login failed did not return a SIWE message."
           );
@@ -341,7 +348,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
       }
 
       signMessage(
-        { message: siweMessage },
+        { message: prepareLoginOkResponse.siwe_message },
         {
           onSettled: onLoginSignatureSettled,
         }
@@ -361,7 +368,7 @@ export function SiweIdentityProvider<T extends SIWE_IDENTITY_SERVICE>({
       isInitializing: false,
       prepareLoginStatus: "idle",
       prepareLoginError: undefined,
-      siweMessage: undefined,
+      prepareLoginOkResponse: undefined,
       loginStatus: "idle",
       loginError: undefined,
       identity: undefined,
