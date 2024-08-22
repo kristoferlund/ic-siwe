@@ -54,7 +54,7 @@ Prebuilt canister serving as a SIWE identity provider for Internet Computer cani
 
 ### [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
 
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
 
@@ -64,7 +64,7 @@ Same demo as above but this time the backend canister is written in TypeScript u
 
 Try the deployed demo here: https://zwsg3-myaaa-aaaal-qdf7q-cai.icp0.io/
 
-### [ic-use-siwe-identity](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity)
+### [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity)
 
 React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
 

@@ -12,6 +12,7 @@ use crate::{
     },
     eth::{recover_eth_address, EthAddress, EthError, EthSignature},
     hash,
+    rand::generate_nonce,
     settings::Settings,
     signature_map::SignatureMap,
     siwe::{SiweMessage, SiweMessageError},
@@ -25,11 +26,12 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// creates a SIWE message, saves it for future use, and returns it.
 ///
 /// # Parameters
-/// * `address`: A string slice (`&str`) representing the user's Ethereum address. This address is
+/// * `address`: A [`crate::eth::EthAddress`] representing the user's Ethereum address. This address is
 ///   validated and used to create the SIWE message.
 ///
 /// # Returns
-/// A `Result` that, on success, contains the `SiweMessage` for the user, or an error string on failure.
+/// A `Result` that, on success, contains a [`crate::siwe::SiweMessage`] and its `nonce`. The `nonce` is used in
+/// the login function to prevent replay and ddos attacks.
 ///
 /// # Example
 /// ```ignore
@@ -39,17 +41,18 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// };
 ///
 /// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
-/// let message = prepare_login(&address).unwrap();
+/// let (message, nonce) = prepare_login(&address).unwrap();
 /// ```
-pub fn prepare_login(address: &EthAddress) -> Result<SiweMessage, EthError> {
-    let message = SiweMessage::new(address);
+pub fn prepare_login(address: &EthAddress) -> Result<(SiweMessage, String), EthError> {
+    let nonce = generate_nonce();
+    let message = SiweMessage::new(address, &nonce);
 
     // Save the SIWE message for use in the login call
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
-        siwe_messages.insert(address.as_bytes(), message.clone());
+        siwe_messages.insert(message.clone(), address, &nonce);
     });
 
-    Ok(message)
+    Ok((message, nonce))
 }
 /// Login details are returned after a successful login. They contain the expiration time of the
 /// delegation and the user canister public key.
@@ -117,6 +120,7 @@ impl fmt::Display for LoginError {
 /// * `signature_map`: A mutable reference to `SignatureMap` to which the delegation hash will be added
 ///   after successful validation.
 /// * `canister_id`: The principal of the canister performing the login.
+/// * `nonce`: The nonce generated during the `prepare_login` call.
 ///
 /// # Returns
 /// A `Result` that, on success, contains the [LoginDetails] with session expiration and user canister
@@ -127,6 +131,7 @@ pub fn login(
     session_key: ByteBuf,
     signature_map: &mut SignatureMap,
     canister_id: &Principal,
+    nonce: &str,
 ) -> Result<LoginDetails, LoginError> {
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
@@ -136,20 +141,27 @@ pub fn login(
 
         // Get the previously created SIWE message for current address. If it has expired or does not
         // exist, return an error.
-        let address_bytes = address.as_bytes();
-        let message = siwe_messages.get(&address_bytes)?;
+        let message = siwe_messages.get(address, nonce)?;
         let message_string: String = message.clone().into();
 
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
         // used to sign the message.
-        let recovered_address = recover_eth_address(&message_string, signature)?;
-        if recovered_address != address.as_str() {
-            return Err(LoginError::AddressMismatch);
-        }
+        let result = match recover_eth_address(&message_string, signature) {
+            Ok(recovered_address) => {
+                if recovered_address != address.as_str() {
+                    Err(LoginError::AddressMismatch)
+                } else {
+                    Ok(())
+                }
+            }
+            Err(e) => Err(LoginError::EthError(e)),
+        };
 
-        // At this point, the signature has been verified and the SIWE message has been used. Remove
-        // the SIWE message from the state.
-        siwe_messages.remove(&address_bytes);
+        // Ensure the SIWE message is removed from the state both on success and on failure.
+        siwe_messages.remove(address, nonce);
+
+        // Handle the result of the signature verification.
+        result?;
 
         // The delegation is valid for the duration of the session as defined in the settings.
         let expiration = with_settings!(|settings: &Settings| {

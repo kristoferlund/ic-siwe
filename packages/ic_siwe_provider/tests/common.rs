@@ -49,6 +49,7 @@ pub const SESSION_KEY: &[u8] = &[
     92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35, 181, 171,
     196,
 ]; // DER encoded session key
+pub const NONCE: &str = "nonce123";
 
 pub fn valid_settings(canister_id: Principal, targets: Option<Vec<Principal>>) -> SettingsInput {
     // If specific targets have been listed, add the canister id of this canister to the list of targets.
@@ -137,14 +138,20 @@ pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
     (wallet, address)
 }
 
+#[derive(CandidType, Deserialize)]
+pub struct PrepareLoginOkResponse {
+    pub siwe_message: String,
+    pub nonce: String,
+}
+
 pub fn prepare_login_and_sign_message(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
     wallet: Wallet<SigningKey>,
     address: &str,
-) -> (String, String) {
+) -> (String, PrepareLoginOkResponse) {
     let args = encode_one(address).unwrap();
-    let siwe_message: String = update(
+    let prepare_login_ok_response: PrepareLoginOkResponse = update(
         ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,
@@ -152,9 +159,12 @@ pub fn prepare_login_and_sign_message(
         args,
     )
     .unwrap();
-    let hash = hash_message(siwe_message.as_bytes());
+    let hash = hash_message(prepare_login_ok_response.siwe_message.as_bytes());
     let signature = wallet.sign_hash(hash).unwrap().to_string();
-    (format!("0x{}", signature.as_str()), siwe_message)
+    (
+        format!("0x{}", signature.as_str()),
+        prepare_login_ok_response,
+    )
 }
 
 pub fn create_session_identity() -> BasicIdentity {
@@ -193,7 +203,7 @@ pub fn full_login(
     targets: Option<Vec<Principal>>,
 ) -> (String, DelegatedIdentity) {
     let (wallet, address) = create_wallet();
-    let (signature, _) =
+    let (signature, prepare_login_ok_response) =
         prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
 
     // Create a session identity
@@ -201,7 +211,13 @@ pub fn full_login(
     let session_pubkey = session_identity.public_key().unwrap();
 
     // Login
-    let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
+    let login_args = encode_args((
+        signature,
+        address.clone(),
+        session_pubkey.clone(),
+        prepare_login_ok_response.nonce.clone(),
+    ))
+    .unwrap();
     let login_response: LoginDetails = update(
         ic,
         Principal::anonymous(),

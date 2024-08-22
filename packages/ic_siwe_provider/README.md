@@ -95,7 +95,7 @@ See also additional [runtime features](#runtime-features) that can be configured
 
 ### 3. Integrate the `ic_siwe_provider` into your frontend application
 
-Below example uses the [ic-use-siwe-identity](https://github.com/kristoferlund/ic_siwe/tree/main/packages/ic-use-siwe-identity) React hook to integrate the `ic_siwe_provider` into a React application.
+Below example uses the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) React hook to integrate the `ic_siwe_provider` into a React application.
 
 Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context.
 
@@ -205,13 +205,13 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
 - **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process.
 - **Input**: Ethereum address (`String`).
 - **Output**:
-  - `Ok(String)`: The SIWE message challenge.
+  - `Ok(PrepareLoginOkResponse)`: The prepared SIWE message and nonce.
   - `Err(String)`: An error message if there is an error in preparing the login.
 
 ### [siwe_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_login.rs)
 
 - **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
-- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
+- **Input**: Signature (`String`), Ethereum address (`String`), session key (`ByteBuf`), and nonce (`String`).
 - **Output**:
   - `Ok(LoginDetails)`: The public key and other login response data if the login is successful.
   - `Err(String)`: An error message if the login process fails.
@@ -298,8 +298,6 @@ pub struct SettingsInput {
 ```
 
 ## Updates
-
-See the [CHANGELOG](CHANGELOG.md) for details on updates.
 
 ## Contributing
 

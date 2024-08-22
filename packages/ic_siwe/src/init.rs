@@ -25,13 +25,11 @@ use crate::{settings::Settings, SETTINGS};
 pub fn init(settings: Settings) -> Result<(), String> {
     SETTINGS.set(Some(settings));
 
-    #[cfg(feature = "nonce")]
     init_rng();
 
     Ok(())
 }
 
-#[cfg(feature = "nonce")]
 fn init_rng() {
     use crate::RNG;
     use candid::Principal;

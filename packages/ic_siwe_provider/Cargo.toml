@@ -1,6 +1,6 @@
 [package]
 name = "ic_siwe_provider"
-version = "0.0.7"
+version = "0.1.0"
 edition = "2021"
 authors = ["Kristofer Lund <kristofer@kristoferlund.se>"]
 description = "Using the pre built ic_siwe_provider canister is the easiest way to integrate Ethereum wallet authentication into an Internet Computer (ICP) application."
@@ -18,14 +18,14 @@ ic_siwe = { path = "../ic_siwe" }
 ic-stable-structures = "0.6.5"
 ic-certified-map = "0.4.0"
 serde = "1.0.193"
-serde_json = "1.0.108"
-serde_bytes = "0.11"
+serde_json = "1.0.125"
+serde_bytes = "0.11.15"
 
 [dev-dependencies]
-ethers = "2.0.10"
+ethers = "2.0.14"
 hex = "0.4.3"
 ic-agent = "0.36.0"
 pocket-ic = "3.1.0"
-siwe = "0.6"
-rand = "0.8.4"
+siwe = "0.6.1"
+rand = "0.8.5"
 ring = "0.17.7"
