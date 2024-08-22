@@ -16,6 +16,9 @@
 
 - **Prebuilt Identity Provider**: Provides a prebuilt canister that can be integrated into any Internet Computer application, independent of the application's programming language.
 
+See this video from the ICP Chain Fusion Hackathon for an overview as well as a deep dive how the SIWE flow works:
+[![Integrating with SIWE & SIWS](https://img.youtube.com/vi/lQV4Otp6Y_s/0.jpg)](https://www.youtube.com/watch?v=lQV4Otp6Y_s)
+
 ## Usage
 
 Developers have two options to use SIWE in their IC applications:
