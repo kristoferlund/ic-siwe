@@ -6,7 +6,9 @@
 
 `ic_siwe` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
-https://youtu.be/lQV4Otp6Y_s?si=pcDgTenV98JabV9r&t=95
+See this video from the ICP Chain Fusion Hackathon for an overview as well as a deep dive how the SIWE flow works:
+
+[![Integrating with SIWE & SIWS](https://img.youtube.com/vi/lQV4Otp6Y_s/0.jpg)](https://www.youtube.com/watch?v=lQV4Otp6Y_s)
 
 ## Key Features
 
