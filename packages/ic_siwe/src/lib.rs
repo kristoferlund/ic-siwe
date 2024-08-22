@@ -8,14 +8,10 @@ the interoperability between Ethereum and the Internet Computer platform, enabli
 the strengths of both platforms.
 
 ## Key Features
-- **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for ICP applications. Sign in with any eth wallet to generate an
-ICP identity and session.
-- **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app
-identity misuse.
-- **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal,
-irrespective of the client used.
-- **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals
-within the scope of the current application.
+- **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for ICP applications. Sign in with any eth wallet to generate an ICP identity and session.
+- **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
+- **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal, irrespective of the client used.
+- **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 - **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
 ## Table of Contents
@@ -87,11 +83,37 @@ An implementing canister is free to implement these steps in any way it sees fit
 ```text
 type Address = text;
 type CanisterPublicKey = PublicKey;
+type Principal = blob;
 type PublicKey = blob;
 type SessionKey = PublicKey;
 type SiweMessage = text;
 type SiweSignature = text;
 type Timestamp = nat64;
+type Nonce = text;
+
+type RuntimeFeature = variant {
+  IncludeUriInSeed;
+  DisableEthToPrincipalMapping;
+  DisablePrincipalToEthMapping
+};
+
+type SettingsInput = record {
+  domain : text;
+  uri : text;
+  salt : text;
+  chain_id : opt nat;
+  scheme : opt text;
+  statement : opt text;
+  sign_in_expires_in : opt nat64;
+  session_expires_in : opt nat64;
+  targets : opt vec text;
+  runtime_features: opt vec RuntimeFeature;
+};
+
+type GetAddressResponse = variant {
+  Ok : Address;
+  Err : text;
+};
 
 type GetDelegationResponse = variant {
   Ok : SignedDelegation;
@@ -109,6 +131,11 @@ type Delegation = record {
   targets : opt vec principal;
 };
 
+type GetPrincipalResponse = variant {
+  Ok : Principal;
+  Err : text;
+};
+
 type LoginResponse = variant {
   Ok : LoginDetails;
   Err : text;
@@ -119,14 +146,22 @@ type LoginDetails = record {
   user_canister_pubkey : CanisterPublicKey;
 };
 
+type PrepareLoginOkResponse = record {
+  siwe_message: SiweMessage;
+  nonce : text;
+};
+
 type PrepareLoginResponse = variant {
-  Ok : SiweMessage;
+  Ok : PrepareLoginOkResponse;
   Err : text;
 };
 
 service : (settings_input : SettingsInput) -> {
+  "get_address" : (Principal) -> (GetAddressResponse) query;
+  "get_caller_address" : () -> (GetAddressResponse) query;
+  "get_principal" : (Address) -> (GetPrincipalResponse) query;
   "siwe_prepare_login" : (Address) -> (PrepareLoginResponse);
-  "siwe_login" : (SiweSignature, Address, SessionKey) -> (LoginResponse);
+  "siwe_login" : (SiweSignature, Address, SessionKey, Nonce) -> (LoginResponse);
   "siwe_get_delegation" : (Address, SessionKey, Timestamp) -> (GetDelegationResponse) query;
 };
 ```
@@ -223,11 +258,7 @@ The login flow is illustrated in the following diagram:
 
 The library has one optional feature that is disabled by default.
 
-* `nonce` - Enables the generation of nonces for SIWE messages. This feature initializes a random number
-generator with a seed from the management canister. The random number generator then is used to generate
-unique nonces for each generated SIWE message. Nonces don't add any additional security to the SIWE login
-flow but are required by the SIWE standard. When this feature is disabled, the nonce is always set to the
-hex encoded string `Not in use`.
+* `nonce` - Enables the generation of nonces for SIWE messages. This feature initializes a random number generator with a seed from the management canister. The random number generator then is used to generate unique nonces for each generated SIWE message. Nonces don't add any additional security to the SIWE login flow but are required by the SIWE standard. When this feature is disabled, the nonce is always set to the hex encoded string `Not in use`.
 
 ## Updates
 
@@ -266,14 +297,11 @@ use settings::Settings;
 use siwe::SiweMessageMap;
 use std::cell::RefCell;
 
-#[cfg(feature = "nonce")]
 use rand_chacha::ChaCha20Rng;
 
 thread_local! {
-    // The random number generator is used to generate nonces for SIWE messages. This feature is
-    // optional and can be enabled by setting the `nonce` feature flag.
-    #[cfg(feature = "nonce")]
-    static RNG: RefCell<Option<ChaCha20Rng>> = RefCell::new(None);
+    // The random number generator is used to generate nonces for SIWE messages.
+    static RNG: RefCell<Option<ChaCha20Rng>> = const { RefCell::new(None) };
 
     // The settings control the behavior of the SIWE library. The settings must be initialized
     // before any other library functions are called.

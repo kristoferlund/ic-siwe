@@ -1,5 +1,4 @@
 #[cfg(not(test))]
-#[cfg(feature = "nonce")]
 pub(crate) fn generate_nonce() -> String {
     use crate::RNG;
     use rand_chacha::rand_core::RngCore;
@@ -8,12 +7,6 @@ pub(crate) fn generate_nonce() -> String {
     RNG.with_borrow_mut(|rng| rng.as_mut().unwrap().fill_bytes(&mut buf));
 
     hex::encode(buf)
-}
-
-#[cfg(not(test))]
-#[cfg(not(feature = "nonce"))]
-pub(crate) fn generate_nonce() -> String {
-    hex::encode("Not in use")
 }
 
 #[cfg(test)]
