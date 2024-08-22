@@ -41,7 +41,7 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// };
 ///
 /// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
-/// let message = prepare_login(&address).unwrap();
+/// let (message, nonce) = prepare_login(&address).unwrap();
 /// ```
 pub fn prepare_login(address: &EthAddress) -> Result<(SiweMessage, String), EthError> {
     let nonce = generate_nonce();

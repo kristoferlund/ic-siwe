@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2024-08-22
+
+This is a breaking change release that makes the nonce feature standard. The nonce feature is now enabled by default and the `nonce` feature flag is deprecated. This version also includes fixes to increase login flow security.
+
+### Added
+- [Secure generated SIWE messages using nonce](https://github.com/kristoferlund/ic-siwe/commit/0b1118b822201b5bb124cfc0bd505a3c9550e29a)
+
+### Changed
+- [Make the nonce feature standard](https://github.com/kristoferlund/ic-siwe/commit/3e298fa757ad98b1be4a088358420e2e77cdb128)
+
+### Fixed
+- [Return error if signature has expired](https://github.com/kristoferlund/ic-siwe/commit/c4cd84dc3125408100e3f37a1138e4a4cd3b5c2d)
+- [Remove stored SIWE message](https://github.com/kristoferlund/ic-siwe/commit/6daf4563f95f4dc653cb717f053e45e2fed578b9)
+
 ## [0.0.7] - 2024-07-05
 
 ### Changed

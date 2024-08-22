@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2024-08-22
+
+This is a breaking change release that changes the call signatures and results of the `siwe_prepare_login` and `siwe_login` methods. The `nonce` feature flag has been deprecated in the `ic_siwe` library. Nonces are now generated for all SIWE messages by default. This change increases the security of the login flow.
+
+### Added
+- [Secure generated SIWE messages using nonce](https://github.com/kristoferlund/ic-siwe/commit/0b1118b822201b5bb124cfc0bd505a3c9550e29a)
+
 ## [0.0.7] - 2024-07-05
 
 ### Changed

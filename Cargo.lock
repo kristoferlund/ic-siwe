@@ -2018,7 +2018,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe"
-version = "0.0.8"
+version = "0.1.0"
 dependencies = [
  "candid",
  "ethers",
@@ -2045,7 +2045,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe_provider"
-version = "0.0.8"
+version = "0.1.0"
 dependencies = [
  "candid",
  "ethers",
