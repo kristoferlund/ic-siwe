@@ -55,10 +55,10 @@ The canister is pre built and ready to use. To add it to your project, simply ad
   "canisters": {
     "ic_siwe_provider": {
       "type": "custom",
-      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.0.6/ic_siwe_provider.did",
-      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.0.6/ic_siwe_provider.wasm.gz"
-    },
-  },
+      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.did",
+      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.wasm.gz"
+    }
+  }
 }
 ```
 
@@ -84,10 +84,10 @@ dfx deploy ic_siwe_provider --argument $'(
     }
 )'
 ```
-> [!IMPORTANT]
-> `domain` should be set to the full domain, including subdomains, from where the frontend that uses SIWS is served. 
+
+> [!IMPORTANT] > `domain` should be set to the full domain, including subdomains, from where the frontend that uses SIWS is served.
 > Example: `myapp.example.com`
-> 
+>
 > `uri` should be set to the full URI, potentially including the port number, of the frontend that uses SIWS.
 > Example: `https://myapp.example.com:8080`
 
@@ -141,13 +141,12 @@ The runtime behaviour of the `ic_siwe_provider` canister and the `ic_siwe` libra
 
 Default: URI is not included in the seed
 
-
-When set, the URI is included in the seed used to generate the principal. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if  the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
+When set, the URI is included in the seed used to generate the principal. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
 
 ```bash
   runtime_features = opt vec { \
     variant { IncludeUriInSeed } \
-  }; 
+  };
 ```
 
 ### `DisableEthToPrincipalMapping`
@@ -159,7 +158,7 @@ When set, the mapping of Ethereum addresses to Principals is disabled. This also
 ```bash
   runtime_features = opt vec { \
     variant { DisableEthToPrincipalMapping } \
-  }; 
+  };
 ```
 
 ### `DisablePrincipalToEthMapping`
@@ -171,12 +170,12 @@ When set, the mapping of Principals to Ethereum addresses is disabled. This also
 ```bash
   runtime_features = opt vec { \
     variant { DisablePrincipalToEthMapping } \
-  }; 
+  };
 ```
 
 ## Service Interface
 
-In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.  
+In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.
 
 ### [get_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_address.rs)
 
@@ -198,7 +197,6 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
 - **Output**:
   - `Ok(ByteBuf)`: The principal if found.
   - `Err(String)`: An error message if the address cannot be converted or no principal is found.
-
 
 ### [siwe_prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_prepare_login.rs)
 
@@ -257,7 +255,7 @@ pub enum RuntimeFeature {
 
 ### SettingsInput
 
-Defines the settings that controls the behavior of the `ic_siwe_provider` canister. 
+Defines the settings that controls the behavior of the `ic_siwe_provider` canister.
 
 ```rust
 pub struct SettingsInput {
@@ -313,4 +311,3 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
-
