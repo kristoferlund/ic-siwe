@@ -85,7 +85,8 @@ dfx deploy ic_siwe_provider --argument $'(
 )'
 ```
 
-> [!IMPORTANT] > `domain` should be set to the full domain, including subdomains, from where the frontend that uses SIWS is served.
+> [!IMPORTANT]
+> `domain` should be set to the full domain, including subdomains, from where the frontend that uses SIWS is served.
 > Example: `myapp.example.com`
 >
 > `uri` should be set to the full URI, potentially including the port number, of the frontend that uses SIWS.
