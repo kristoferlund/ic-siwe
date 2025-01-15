@@ -1,8 +1,8 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic-use-siwe-identity` is a React hook and context provider for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters.
+`ic-siwe-js` is a JS/TS support library for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters. In addition to the plain JS/TS library, `ic-siwe-js` provides a **React hook and context provider** and components.
 
-`ic-use-siwe-identity` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+This library is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
 A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
 
@@ -35,9 +35,8 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 
 ## Installation
 
-In addition to `ic-use-siwe-identity`, these peer dependencies are required:
+In addition to `ic-siwe-js`, these peer dependencies are required:
 
-- `wagmi`
 - `viem`
 - `@dfinity/agent`
 - `@dfinity/candid`
@@ -45,19 +44,19 @@ In addition to `ic-use-siwe-identity`, these peer dependencies are required:
 - `@tanstack/query`
 
 ```bash
-npm install ic-use-siwe-identity wagmi viem @dfinity/agent @dfinity/candid @dfinity/identity 
+npm install ic-siwe-js viem @dfinity/agent @dfinity/candid @dfinity/identity 
 ```
 
-## Usage
+## Usage with React
 
 > [!TIP]
 > For a complete example, see the [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust) demo project.
 
-To use `ic-use-siwe-identity` in your React application, follow these steps:
+To use `ic-siwe-js` in your React application, follow these steps:
 
 ### 1. Add an Ethereum wallet provider
 
-Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets, and is used internally by `ic-use-siwe-identity`. In addition to the wallet provider, wagmi requires you to add TanStack `QueryClientProvider` to your application that handles the async requests that are made when interacting with the Ethereum wallet.
+Before interacting with the useSiweIdentity hook, you need to add an Ethereum wallet provider to your application. The easiest way to do this is by using the [wagmi](https://wagmi.sh) library. Wagmi provides a React hook for connecting to Ethereum wallets. In addition to the wallet provider, wagmi requires you to add TanStack `QueryClientProvider` to your application that handles the async requests that are made when interacting with the Ethereum wallet.
 
 We also recommend adding [RainbowKit](https://www.rainbowkit.com/) to handle the wallet connection UI.
 
@@ -90,7 +89,7 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 ```jsx
 // App.tsx
 
-import { SiweIdentityProvider } from 'ic-use-siwe-identity';
+import { SiweIdentityProvider } from 'ic-siwe-js';
 import { _SERVICE } from "path-to/siwe-enabled-canister.did";
 
 function App() {
@@ -242,6 +241,6 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
 
-[version-image]: https://img.shields.io/npm/v/ic-use-siwe-identity
-[dl-image]: https://img.shields.io/npm/dw/ic-use-siwe-identity
-[npm-link]: https://www.npmjs.com/package/ic-use-siwe-identity
+[version-image]: https://img.shields.io/npm/v/ic-siwe-js
+[dl-image]: https://img.shields.io/npm/dw/ic-siwe-js
+[npm-link]: https://www.npmjs.com/package/ic-siwe-js

@@ -1,5 +1,5 @@
 {
-  "name": "ic-siwe",
+  "name": "ic-siwe-js",
   "version": "0.2.0",
   "description": "JS/TS/React/Svelte/Vue support library for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",

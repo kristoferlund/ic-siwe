@@ -46,10 +46,10 @@ export function SiweIdentityProvider({
   );
 }
 
-export function useSiweIdentity() {
+export function useSiwe() {
   const context = useContext(SiweContext);
   if (!context) {
-    throw new Error("useSiwe must be used within a SiweProvider");
+    throw new Error("useSiwe must be used within a SiweIdentityProvider");
   }
   return context;
 }
