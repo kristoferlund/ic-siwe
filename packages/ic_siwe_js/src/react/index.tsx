@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 import { SiweManager, siweStateStore, type SiweIdentityContextType } from "..";
 import type { ActorConfig, HttpAgentOptions } from "@dfinity/agent";
 import { useSelector } from "@xstate/store/react";
+import { useAccount, useWalletClient } from "wagmi";
 
 const SiweContext = createContext<SiweIdentityContextType | undefined>(
   undefined,
@@ -18,11 +19,19 @@ export function SiweIdentityProvider({
   actorOptions?: ActorConfig;
   children: React.ReactNode;
 }) {
+  const { address } = useAccount();
+  const { data: walletClient } = useWalletClient({ account: address });
   const siweManager = useMemo(
     () => new SiweManager(canisterId, httpAgentOptions, actorOptions),
     [canisterId, httpAgentOptions, actorOptions],
   );
+
   const state = useSelector(siweStateStore, (state) => state.context);
+
+  useEffect(() => {
+    if (!siweManager || !address || !walletClient) return;
+    siweManager.setWalletClient(walletClient);
+  }, [siweManager, address, walletClient]);
 
   return (
     <SiweContext.Provider

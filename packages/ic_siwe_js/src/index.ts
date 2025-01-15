@@ -62,7 +62,6 @@ export const siweStateStore = createStore({
 
 export class SiweManager {
   walletClient?: WalletClient;
-
   /**
    * The IdentityManager is the starting point for using the SIWE identity service. It manages the identity state and provides authentication-related functionalities.
    *
@@ -90,12 +89,12 @@ export class SiweManager {
   }
 
   async setupWalletClient() {
-    if (!window.ethereum) {
-      throw new Error("No Ethereum provider found");
-    }
-
     if (this.walletClient) {
       return;
+    }
+
+    if (!window.ethereum) {
+      throw new Error("No Ethereum provider found");
     }
 
     this.walletClient = createWalletClient({
@@ -106,6 +105,10 @@ export class SiweManager {
 
   updateState(updates: PartialContext) {
     siweStateStore.send({ type: "updateState", ...updates });
+  }
+
+  public setWalletClient(walletClient: WalletClient) {
+    this.walletClient = walletClient;
   }
 
   /**

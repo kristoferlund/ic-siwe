@@ -67,7 +67,7 @@ Same demo as above but this time the backend canister is written in TypeScript u
 
 Try the deployed demo here: https://zwsg3-myaaa-aaaal-qdf7q-cai.icp0.io/
 
-### [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js)
+### [ic-siwe-js](https://www.npmjs.com/package/ic-siwe-js)
 
 JS/TS support library. Includes a React hook and context provider for easy frontend integration.
 

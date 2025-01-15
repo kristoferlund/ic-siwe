@@ -26,6 +26,7 @@ esbuild.build({
     "react",
     "react-dom",
     "viem",
+    "wagmi",
     "@dfinity/agent",
     "@dfinity/candid",
     "@dfinity/identity",
