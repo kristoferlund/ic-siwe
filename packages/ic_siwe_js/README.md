@@ -1,6 +1,6 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic-siwe-js` is a JS/TS support library for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters. In addition to the plain JS/TS library, `ic-siwe-js` provides a **React hook and context provider** and components.
+`ic-siwe-js` is a JS/TS support library for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters. In addition to the plain JS/TS library, `ic-siwe-js` provides a **React hook and context provider**.
 
 This library is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
@@ -28,7 +28,7 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
   - [3. Prepare the login](#3-prepare-the-login)
   - [4. Initiate the login process](#4-initiate-the-login-process)
 - [SiweIdentityProvider props](#siweidentityprovider-props)
-- [useSiweIdentity interface](#usesiweidentity-interface)
+- [useSiwe interface](#usesiwe-interface)
 - [Contributing](#contributing)
 - [Author](#author)
 - [License](#license)
@@ -46,6 +46,10 @@ In addition to `ic-siwe-js`, these peer dependencies are required:
 ```bash
 npm install ic-siwe-js viem @dfinity/agent @dfinity/candid @dfinity/identity 
 ```
+
+## Usage in a plain TS project
+
+[To be written]
 
 ## Usage with React
 
@@ -90,13 +94,12 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 // App.tsx
 
 import { SiweIdentityProvider } from 'ic-siwe-js';
-import { _SERVICE } from "path-to/siwe-enabled-canister.did";
+import { canisterId } from "../../ic_siwe_provider/declarations/index";
 
 function App() {
   return (
     <SiweIdentityProvider<_SERVICE>
-      idlFactory={/* IDL Interface Factory */}
-      canisterId={/* Canister ID */}
+      canisterId={canisterId}
       // ...other props
     >
       // ...your app components
@@ -117,7 +120,7 @@ The `prepareLoginStatus` state variable can be used to indicate the status of th
 ```jsx
 const { isConnected, address } = useAccount(); // Wagmi hook
 const { prepareLogin, prepareLoginStatus, prepareLoginError, loginError } =
-  useSiweIdentity();
+  useSiwe();
 
 /**
  * Preload a Siwe message on every address change.
@@ -136,7 +139,7 @@ The `loginStatus` state variable can be used to indicate the status of the login
 
 ```jsx
 const { isConnected } = useAccount(); // Wagmi hook
-const { login, loginStatus, prepareLoginStatus } = useSiweIdentity();
+const { login, loginStatus, prepareLoginStatus } = useSiwe();
 
 const text = loginStatus === "logging-in" ? "Signing in …" : "Sign in";
 
@@ -173,7 +176,7 @@ return (
 }
 ```
 
-## useSiweIdentity interface
+## useSiwe interface
 
 ```ts
 export type SiweIdentityContextType = {
