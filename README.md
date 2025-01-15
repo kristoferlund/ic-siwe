@@ -45,7 +45,7 @@ The below diagram illustrates the high-level login flow when using the `ic_siwe_
 
 ## Resources
 
-`ic-siwe` consists of two main packages: the Rust support library and the prebuilt identity provider canister. The project also includes React demo applications and React hooks for easy frontend integration with SIWE enabled Internet Computer canisters.
+`ic-siwe` consists of two main packages: the Rust support library and the prebuilt identity provider canister. The project also includes React demo applications and a JS/TS/React support library for easy frontend integration.
 
 ### [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe)
 
@@ -57,7 +57,7 @@ Prebuilt canister serving as a SIWE identity provider for Internet Computer cani
 
 ### [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
 
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
 
@@ -67,9 +67,9 @@ Same demo as above but this time the backend canister is written in TypeScript u
 
 Try the deployed demo here: https://zwsg3-myaaa-aaaal-qdf7q-cai.icp0.io/
 
-### [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity)
+### [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js)
 
-React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+JS/TS support library. Includes a React hook and context provider for easy frontend integration.
 
 ### [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
 

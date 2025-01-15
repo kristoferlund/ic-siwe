@@ -93,12 +93,12 @@ Wrap your application's root component with `SiweIdentityProvider` to provide al
 ```jsx
 // App.tsx
 
-import { SiweIdentityProvider } from 'ic-siwe-js';
+import { SiweIdentityProvider } from 'ic-siwe-js/react';
 import { canisterId } from "../../ic_siwe_provider/declarations/index";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICE>
+    <SiweIdentityProvider>
       canisterId={canisterId}
       // ...other props
     >
@@ -118,6 +118,8 @@ The `prepareLoginStatus` state variable can be used to indicate the status of th
 > Be sure to call `prepareLogin` again on wallet change, as the SIWE message is unique to the Ethereum address of the user. If the user changes their wallet, the SIWE message will be invalid and a new one must be requested.
 
 ```jsx
+import { useSiwe } from 'ic-siwe-js/react';
+
 const { isConnected, address } = useAccount(); // Wagmi hook
 const { prepareLogin, prepareLoginStatus, prepareLoginError, loginError } =
   useSiwe();

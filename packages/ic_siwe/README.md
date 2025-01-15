@@ -44,7 +44,7 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 
 ## React demo application
 
-A demo application that uses the `ic_siwe_provider` canister to demonstrate the full login flow is available at [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust). The demo uses another package from the `ic-siwe` project, [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity), a React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+A demo application that uses the `ic_siwe_provider` canister to demonstrate the full login flow is available at [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust). The demo uses another package from the `ic-siwe` project, [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js), a React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
 
 ## The SIWE Standard
 
@@ -64,7 +64,7 @@ Creating a delegate identity using `ic_siwe` is a three-step process that consis
 2. Login
 3. Get delegation
 
-An implementing canister is free to implement these steps in any way it sees fit. It is recommended though that implementing canisters follow the login flow described below and implement the SIWE canister interface. Doing so ensures that the canister is compatible with the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) React hook and context provider.
+An implementing canister is free to implement these steps in any way it sees fit. It is recommended though that implementing canisters follow the login flow described below and implement the SIWE canister interface. Doing so ensures that the canister is compatible with the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js) React hook and context provider.
 
 The login flow is illustrated in the following diagram:
 

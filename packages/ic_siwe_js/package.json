@@ -5,7 +5,7 @@
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-use-siwe-identity"
+    "url": "https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic-siwe-js"
   },
   "bugs": "https://github.com/kristoferlund/ic-siwe/issues",
   "homepage": "https://github.com/kristoferlund/ic-siwe",
