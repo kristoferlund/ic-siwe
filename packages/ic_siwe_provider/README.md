@@ -96,20 +96,19 @@ See also additional [runtime features](#runtime-features) that can be configured
 
 ### 3. Integrate the `ic_siwe_provider` into your frontend application
 
-Below example uses the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) React hook to integrate the `ic_siwe_provider` into a React application.
+Below example uses the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js) React hook to integrate the `ic_siwe_provider` into a React application.
 
 Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context.
 
 ```jsx
 // App.tsx
 
-import { SiweIdentityProvider } from 'ic-use-siwe-identity';
-import { _SERVICE } from "path-to/ic_siwe_provider.did";
+import { SiweIdentityProvider } from 'ic-siwe-js/react';
+import { canisterId } from "../../ic_siwe_provider/declarations/index";
 
 function App() {
   return (
-    <SiweIdentityProvider<_SERVICE>
-      idlFactory={/* IDL Interface Factory */}
+    <SiweIdentityProvider
       canisterId={/* Canister ID */}
       // ...other props
     >
@@ -119,14 +118,14 @@ function App() {
 }
 ```
 
-### 4. Use the `useSiweIdentity` hook
+### 4. Use the `useSiwe` hook
 
-Use the `useSiweIdentity`` hook to initiate the login process:
+Use the `useSiwe` hook to initiate the login process:
 
 ```jsx
 // Component.tsx
 
-import { useSiweIdentity } from "ic-use-siwe-identity";
+import { useSiwe } from "ic-siwe-js/react";
 
 function MyComponent() {
   const { login, clear, identity, ... } = useSiweIdentity();

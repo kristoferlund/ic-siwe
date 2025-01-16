@@ -1,10 +1,10 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic-siwe` is a project that enables Ethereum wallet-based authentication for applications on the [Internet Computer](https://internetcomputer.org) (IC) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
+`ic-siwe` is a project that enables Ethereum wallet-based authentication for applications on the [Internet Computer](https://internetcomputer.org) (ICP). The goal of the project is to enhance the interoperability between Ethereum and ICP, enabling developers to build applications that leverage the strengths of both platforms.
 
 ## Features
 
-- **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for IC applications. Sign in with any eth wallet to generate an IC identity and session.
+- **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for ICP applications. Sign in with any eth wallet to generate an ICP identity and session.
 
 - **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
 
@@ -17,15 +17,16 @@
 - **Prebuilt Identity Provider**: Provides a prebuilt canister that can be integrated into any Internet Computer application, independent of the application's programming language.
 
 See this video from the ICP Chain Fusion Hackathon for an overview as well as a deep dive how the SIWE flow works:
+
 [![Integrating with SIWE & SIWS](https://img.youtube.com/vi/lQV4Otp6Y_s/0.jpg)](https://www.youtube.com/watch?v=lQV4Otp6Y_s)
 
 ## Usage
 
-Developers have two options to use SIWE in their IC applications:
+Developers have two options to use SIWE in their ICP applications:
 
-1. **Use the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister**: This is the easiest way to integrate SIWE into an Internet Computer application. The pre-built canister is added to the project `dfx.json` and then configured to meet the needs of the application. `ic_siwe_provider` can be added to any Internet Computer application, independent of the application's programming language.
+1. **Use the prebuilt [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister**: This is the easiest way to integrate SIWE into an Internet Computer application. The pre-built canister is added to the project `dfx.json` and then configured to meet the needs of the application. `ic_siwe_provider` can be added to any ICP application, independent of the application's programming language.
 
-2. **Use the [ic_siwe](https://crates.io/crates/ic_siwe) library**: This allows developers full control over the SIWE integration. The `ic_siwe` Rust library provides all the necessary tools for integrating SIWE into IC canisters.
+2. **Use the [ic_siwe](https://crates.io/crates/ic_siwe) library**: This allows developers full control over the SIWE integration. The `ic_siwe` Rust library provides all the necessary tools for integrating SIWE into ICP canisters.
 
 ### SIWE login flow
 
@@ -45,35 +46,35 @@ The below diagram illustrates the high-level login flow when using the `ic_siwe_
 
 ## Resources
 
-`ic-siwe` consists of two main packages: the Rust support library and the prebuilt identity provider canister. The project also includes React demo applications and React hooks for easy frontend integration with SIWE enabled Internet Computer canisters.
+`ic-siwe` consists of two main packages: the Rust support library and the prebuilt identity provider canister. The project also includes demo applications and a JS/TS/React support library for easy frontend integration.
 
 ### [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe)
 
-Rust library that provides the necessary tools for integrating Sign-In with Ethereum (SIWE) into IC canisters, allowing users to sign in using their Ethereum wallets.
+Rust library that provides the necessary tools for integrating Sign-In with Ethereum (SIWE) into ICP canisters, allowing users to sign in using their Ethereum wallets.
 
 ### [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider)
 
 Prebuilt canister serving as a SIWE identity provider for Internet Computer canisters. `ic_siwe-provider` packages the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and makes it available as a canister that can easily be integrated into any Internet Computer application, independent of the application's programming language.
 
-### [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
+### [ic-siwe-vanilla-ts-demo](https://github.com/kristoferlund/ic-siwe-vanilla-ts-demo)
 
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+Vanilla TypeScript demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) support library and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+
+Try the deployed demo here: https://lglxt-uyaaa-aaaal-qsgbq-cai.icp0.io
+
+### [ic-siwe-react-demo](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
+
+React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
 
-### [ic-siwe-react-demo-ts](https://github.com/kristoferlund/ic-siwe-react-demo-ts)
+### [ic-siwe-js](https://www.npmjs.com/package/ic-siwe-js)
 
-Same demo as above but this time the backend canister is written in TypeScript using [Azle](https://github.com/demergent-labs/azle).
-
-Try the deployed demo here: https://zwsg3-myaaa-aaaal-qdf7q-cai.icp0.io/
-
-### [ic-use-siwe-identity](https://github.com/kristoferlund/ic-use-siwe-identity)
-
-React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+JS/TS support library. Includes a React hook and context provider for easy frontend integration.
 
 ### [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
 
-React hook and context provider for managing Internet Computer (IC) actors with features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
+React hook and context provider for managing Internet Computer (ICP) actors with features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
 
 ## Updates
 
