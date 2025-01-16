@@ -56,6 +56,10 @@ Rust library that provides the necessary tools for integrating Sign-In with Ethe
 
 Prebuilt canister serving as a SIWE identity provider for Internet Computer canisters. `ic_siwe-provider` packages the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and makes it available as a canister that can easily be integrated into any Internet Computer application, independent of the application's programming language.
 
+### [ic-siwe-js](https://www.npmjs.com/package/ic-siwe-js)
+
+JS/TS support library. Includes a React hook and context provider for easy frontend integration.
+
 ### [ic-siwe-vanilla-ts-demo](https://github.com/kristoferlund/ic-siwe-vanilla-ts-demo)
 
 Vanilla TypeScript demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) support library and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
@@ -67,10 +71,6 @@ Try the deployed demo here: https://lglxt-uyaaa-aaaal-qsgbq-cai.icp0.io
 React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
 
 Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
-
-### [ic-siwe-js](https://www.npmjs.com/package/ic-siwe-js)
-
-JS/TS support library. Includes a React hook and context provider for easy frontend integration.
 
 ### [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
 

@@ -20,10 +20,8 @@ See this video from the ICP Chain Fusion Hackathon for an overview as well as a 
 
 ## Table of Contents
 
-- [Key Features](#key-features)
-- [Table of Contents](#table-of-contents)
 - [Prebuilt `ic_siwe_provider` canister](#prebuilt-ic_siwe_provider-canister)
-- [React demo application](#react-demo-application)
+- [Demo applications](#demo-applications)
 - [The SIWE Standard](#the-siwe-standard)
 - [Login flow](#login-flow)
   - [SIWE canister interface](#siwe-canister-interface)
@@ -42,9 +40,10 @@ While the `ic_siwe` library can be integrated with any Rust based ICP project, u
 
 The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
 
-## React demo application
+## Demo applications
 
-A demo application that uses the `ic_siwe_provider` canister to demonstrate the full login flow is available at [ic-siwe-react-demo-rust](https://github.com/kristoferlund/ic-siwe-react-demo-rust). The demo uses another package from the `ic-siwe` project, [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_js), a React hook and context provider for easy frontend integration with SIWE enabled Internet Computer canisters.
+  - [ic-siwe-react-demo](https://github.com/kristoferlund/ic-siwe-react-demo-rust): React demo with Rust backend.
+  - [ic-siwe-vanilla-ts-demo](https://github.com/kristoferlund/ic-siwe-vanilla-ts-demo): Vanilla JS/TS demo Rust backend.
 
 ## The SIWE Standard
 
