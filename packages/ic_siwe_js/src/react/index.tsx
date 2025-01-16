@@ -20,7 +20,9 @@ export function SiweIdentityProvider({
   children: React.ReactNode;
 }) {
   const { address } = useAccount();
+
   const { data: walletClient } = useWalletClient({ account: address });
+
   const siweManager = useMemo(
     () => new SiweManager(canisterId, httpAgentOptions, actorOptions),
     [canisterId, httpAgentOptions, actorOptions],
