@@ -93,11 +93,7 @@ siweStateStore.subscribe((snapshot) => {
 
 The React submodule comes with `SiweIdentityProvider` that makes the `SiweManager` available to all components in the app. It also provides a `useSiwe` hook that can be used to interact with the `SiweManager` instance.
 
-### 1. Add an Ethereum library for React
-
-Before interacting with the useSiwe hook, you need to add an Ethereum library to let the user connect their wallet. We recommend using [wagmi](https://wagmi.sh) together with [RainbowKit](https://www.rainbowkit.com/) that provides nice UI components for connecting wallets.
-
-### 2. Setup the `SiweIdentityProvider` component
+### 1. Setup the `SiweIdentityProvider` component
 
 Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the canister id of the SIWE provider canister.
 
@@ -116,7 +112,7 @@ function App() {
 }
 ```
 
-### 3. Initiate the login process
+### 2. Initiate the login process
 
 The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
 
@@ -138,6 +134,62 @@ return (
     {text}
   </Button>
 );
+```
+
+## Usage with Vue
+
+> [!TIP]
+> For a complete example, see the [ic-siwe-vue-demo](https://github.com/kristoferlund/ic-siwe-vue-demo) demo project.
+
+The Vue submodule comes with `SiweIdentityProvider` that makes the `SiweManager` available to all components in the app. It also provides a `useSiwe` hook that can be used to interact with the `SiweManager` instance.
+
+### 1. Setup the `SiweIdentityProvider` component
+
+In the `App.vue` component, initiate the `SiweIdentityProvider` with a reference to the SIWE provider canister to make it available to all child components.
+
+```html
+<script setup lang="ts">
+
+import { createSiweIdentityProvider } from "ic-siwe-js/vue";
+import { canisterId } from "../../ic_siwe_provider/declarations/index";
+
+createSiweIdentityProvider({
+  canisterId,
+});
+
+</script>
+
+<template>
+    <!-- Your app components -->
+</template>
+```
+
+### 2. Initiate the login process
+
+The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
+
+The `loginStatus` state variable can be used to indicate the status of the login process. Errors that occur during the login process are stored in the `loginError` state variable.
+
+```html
+
+<script setup lang="ts">
+import { useSiwe } from "ic-siwe-js/vue";
+
+const siwe = useSiwe();
+
+</script>
+
+<template>
+  <div>
+    <button @click="siwe.login">
+      Login
+    </button>
+
+    <button @click="siwe.clear">
+      Logout
+    </button>
+  </div>
+</template>
 ```
 
 ## SiweIdentityProvider props

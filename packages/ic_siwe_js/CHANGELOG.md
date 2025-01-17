@@ -5,15 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.3 - 2025-01-17
+
+### Added
+
+- Support for Vue, see README for details.
+
 ## [0.2.2] - 2025-01-16
 
 ### Added
 
-- Support for vanilla JS/TS projects. 
+- Support for vanilla JS/TS projects.
 
 ### Changed
 
-- Library renamed to `ic-siwe-js`  and moved to the `ic-siwe` monorepo.
+- Library renamed to `ic-siwe-js` and moved to the `ic-siwe` monorepo.
 - SiweIdentityProvider now requires only the canister ID as a parameter.
 - React hook renamed from `useSiweIdentity` to `useSiwe`.
 
