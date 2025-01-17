@@ -33,3 +33,19 @@ esbuild.build({
     "@dfinity/principal",
   ],
 });
+
+esbuild.build({
+  entryPoints: ["./src/vue/index.ts"],
+  bundle: true,
+  outdir: "dist/vue",
+  format: "esm",
+  splitting: true,
+  external: [
+    "viem",
+    "vue",
+    "@dfinity/agent",
+    "@dfinity/candid",
+    "@dfinity/identity",
+    "@dfinity/principal",
+  ],
+});
