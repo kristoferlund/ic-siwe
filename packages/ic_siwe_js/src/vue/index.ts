@@ -67,8 +67,6 @@ export function createSiweIdentityProvider({
       state.delegationChain = delegationChain;
       state.identity = identity;
       state.identityAddress = identityAddress;
-
-      console.log("STATE", state);
     });
 
     onUnmounted(() => {
