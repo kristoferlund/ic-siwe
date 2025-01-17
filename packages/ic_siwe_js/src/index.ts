@@ -197,6 +197,7 @@ export class SiweManager {
       this.updateState({
         loginStatus: "logging-in",
         loginError: undefined,
+        signMessageError: undefined,
       });
 
       // The SIWE message is fetched from the provider canister now if it is not already available.
@@ -311,6 +312,7 @@ export class SiweManager {
       prepareLoginOkResponse: undefined,
       loginStatus: "idle",
       loginError: undefined,
+      signMessageError: undefined,
       identity: undefined,
       identityAddress: undefined,
       delegationChain: undefined,
