@@ -1,16 +1,19 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-`ic-siwe-js` is a JS/TS support library for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters. In addition to the plain JS/TS library, `ic-siwe-js` provides a **React hook and context provider**.
+`ic-siwe-js` is a JS/TS support library for easy frontend integration with SIWE enabled [Internet Computer](https://internetcomputer.org) canisters. In addition to the plain JS/TS library, `ic-siwe-js` supports **Vue and React**.
 
 This library is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
-A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures.
+A SIWE enabled canister is a canister that integrates the [ic_siwe](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe) library and exposes the [SIWE login interface](src/siwe-identity-service.interface.ts). The `ic_siwe` library provides a set of functions for managing Internet Computer delegate identities created using Ethereum signatures. The easiest way to integrate with `ic_siwe` is to use this library together with the [ic_siwe_provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+
 
 [![version][version-image]][npm-link]
 [![downloads][dl-image]][npm-link]
 
 ## Features
 
+- **Supports vanilla JS/TS**: The library can be used with plain JavaScript or TypeScript projects, including **Svelte** and **SolidJS**
+- **Supports React and Vue**: The library provides components and hooks for easy integration with React and Vue.
 - **Cached Identity**: The identity is cached in local storage and restored on page load. This allows the user to stay logged in even if the page is refreshed.
 - **Login progress**: State varibles are provided to indicate whether the user is logged in, logging in, or logged out.
 - **Wagmi Integration**: Uses [wagmi](https://wagmi.sh) for Ethereum wallet integration.
@@ -22,9 +25,7 @@ A SIWE enabled canister is a canister that integrates the [ic_siwe](https://gith
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Usage with React](#usage-with-react)
-  - [1. Add an Ethereum library for React](#1-add-an-ethereum-library-for-react)
-  - [2. Setup the `SiweIdentityProvider` component](#2-setup-the-siweidentityprovider-component)
-  - [3. Initiate the login process](#3-initiate-the-login-process)
+- [Usage with Vue](#usage-with-vue)
 - [SiweIdentityProvider props](#siweidentityprovider-props)
 - [useSiwe interface](#usesiwe-interface)
 - [Contributing](#contributing)
@@ -93,11 +94,7 @@ siweStateStore.subscribe((snapshot) => {
 
 The React submodule comes with `SiweIdentityProvider` that makes the `SiweManager` available to all components in the app. It also provides a `useSiwe` hook that can be used to interact with the `SiweManager` instance.
 
-### 1. Add an Ethereum library for React
-
-Before interacting with the useSiwe hook, you need to add an Ethereum library to let the user connect their wallet. We recommend using [wagmi](https://wagmi.sh) together with [RainbowKit](https://www.rainbowkit.com/) that provides nice UI components for connecting wallets.
-
-### 2. Setup the `SiweIdentityProvider` component
+### 1. Setup the `SiweIdentityProvider` component
 
 Wrap your application's root component with `SiweIdentityProvider` to provide all child components access to the SIWE identity context. Provide the component with the canister id of the SIWE provider canister.
 
@@ -116,7 +113,7 @@ function App() {
 }
 ```
 
-### 3. Initiate the login process
+### 2. Initiate the login process
 
 The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
 
@@ -138,6 +135,62 @@ return (
     {text}
   </Button>
 );
+```
+
+## Usage with Vue
+
+> [!TIP]
+> For a complete example, see the [ic-siwe-vue-demo](https://github.com/kristoferlund/ic-siwe-vue-demo) demo project.
+
+The Vue submodule comes with `SiweIdentityProvider` that makes the `SiweManager` available to all components in the app. It also provides a `useSiwe` hook that can be used to interact with the `SiweManager` instance.
+
+### 1. Setup the `SiweIdentityProvider` component
+
+In the `App.vue` component, initiate the `SiweIdentityProvider` with a reference to the SIWE provider canister to make it available to all child components.
+
+```html
+<script setup lang="ts">
+
+import { createSiweIdentityProvider } from "ic-siwe-js/vue";
+import { canisterId } from "../../ic_siwe_provider/declarations/index";
+
+createSiweIdentityProvider({
+  canisterId,
+});
+
+</script>
+
+<template>
+    <!-- Your app components -->
+</template>
+```
+
+### 2. Initiate the login process
+
+The login process is initiated by calling the `login` function. This function requests a SIWE message from the backend if it has not already been loaded. The user is asked to sign the message using their Ethereum wallet and the signed message is sent to the backend for authentication. Once the authentication is complete, the user's identity is stored in local storage and the `identity` state variable is updated with the new identity.
+
+The `loginStatus` state variable can be used to indicate the status of the login process. Errors that occur during the login process are stored in the `loginError` state variable.
+
+```html
+
+<script setup lang="ts">
+import { useSiwe } from "ic-siwe-js/vue";
+
+const siwe = useSiwe();
+
+</script>
+
+<template>
+  <div>
+    <button @click="siwe.login">
+      Login
+    </button>
+
+    <button @click="siwe.clear">
+      Logout
+    </button>
+  </div>
+</template>
 ```
 
 ## SiweIdentityProvider props

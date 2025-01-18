@@ -60,21 +60,28 @@ Prebuilt canister serving as a SIWE identity provider for Internet Computer cani
 
 JS/TS support library. Includes a React hook and context provider for easy frontend integration.
 
-### [ic-siwe-vanilla-ts-demo](https://github.com/kristoferlund/ic-siwe-vanilla-ts-demo)
-
-Vanilla TypeScript demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) support library and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
-
-Try the deployed demo here: https://lglxt-uyaaa-aaaal-qsgbq-cai.icp0.io
-
-### [ic-siwe-react-demo](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
-
-React demo application that demonstrates how to integrate SIWE into an Internet Computer canister using the [ic-siwe-js](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe-js) hook and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
-
-Try the deployed demo here: https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io
-
 ### [ic-use-actor](https://github.com/kristoferlund/ic-use-actor)
 
 React hook and context provider for managing Internet Computer (ICP) actors with features like type safety and request/response interceptors. `ic-use-actor` makes interacting with Internet Computer canisters more fun!
+
+## Demos
+
+The project includes demo applications that demonstrate how to integrate SIWE into Internet Computer canisters using the [ic-siwe-js](https://www.npmjs.com/package/ic-siwe-js) support library and [ic-siwe-provider](https://github.com/kristoferlund/ic-siwe/tree/main/packages/ic_siwe_provider) canister.
+
+### Vanilla TypeScript Demo
+
+GitHub: [ic-siwe-vanilla-ts-demo](https://github.com/kristoferlund/ic-siwe-vanilla-ts-demo)
+Live demo: [https://lglxt-uyaaa-aaaal-qsgbq-cai.icp0.io](https://lglxt-uyaaa-aaaal-qsgbq-cai.icp0.io)
+
+### React Demo
+
+GitHub: [ic-siwe-react-demo](https://github.com/kristoferlund/ic-siwe-react-demo-rust)
+Live demo: [https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io](https://shtr2-2iaaa-aaaal-qckva-cai.icp0.io)
+
+### Vue Demo
+
+GitHub: [ic-siwe-vue-demo](https://github.com/kristoferlund/ic-siwe-vue-demo)
+Live demo: [https://kmevj-wiaaa-aaaal-qsggq-cai.icp0.io](https://kmevj-wiaaa-aaaal-qsggq-cai.icp0.io)
 
 ## Updates
 

@@ -1,6 +1,6 @@
 {
   "name": "ic-siwe-js",
-  "version": "0.2.2",
+  "version": "0.2.4",
   "description": "JS/TS/React support library for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
@@ -23,6 +23,7 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./vue": "./dist/vue/index.js",
     "./react": "./dist/react/index.js"
   },
   "scripts": {
@@ -42,7 +43,8 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "viem": "^2.19.0",
-    "wagmi": "^2.12.0"
+    "wagmi": "^2.12.0",
+    "vue": "^3.5.13"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -52,6 +54,9 @@
       "optional": true
     },
     "wagmi": {
+      "optional": true
+    },
+    "vue": {
       "optional": true
     }
   },
