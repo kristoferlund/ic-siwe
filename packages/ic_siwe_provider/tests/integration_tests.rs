@@ -10,7 +10,7 @@ use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
 use pocket_ic::PocketIc;
 use serde_bytes::ByteBuf;
 use siwe::Message;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crate::common::{prepare_login_and_sign_message, SettingsInput};
 
@@ -438,6 +438,111 @@ fn test_sign_in_siwe_get_delegation_timeout() {
     );
 
     assert!(siwe_get_delegation_response.is_err());
+}
+
+// Get a delegation, using an expiration value that is not the one returned by siwe_login, should
+// fail
+#[test]
+fn test_sign_in_siwe_get_delegation_invalid_expiration() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
+
+    // Create wallet and session identity
+    let (wallet, address) = create_wallet();
+    let (signature, prepare_login_ok_response) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+
+    // Login
+    let login_args = encode_args((
+        signature,
+        address.clone(),
+        session_pubkey.clone(),
+        prepare_login_ok_response.nonce.clone(),
+    ))
+    .unwrap();
+    let _: LoginDetails = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_login",
+        login_args,
+    )
+    .unwrap();
+
+    let wrong_expiration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    let expiration = wrong_expiration + 1000 * 60 * 60 * 24 * 7; // 1 week
+
+    let siwe_get_delegation_args =
+        encode_args((address.clone(), session_pubkey.clone(), expiration)).unwrap();
+    let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_get_delegation",
+        siwe_get_delegation_args,
+    );
+
+    assert!(siwe_get_delegation_response.is_err());
+    let error_msg = siwe_get_delegation_response.unwrap_err();
+    assert_eq!(error_msg, "Signature not found");
+}
+
+// Get a delegation, using a session key that is not the one returned by siwe_login, should
+// fail
+#[test]
+fn test_sign_in_siwe_get_delegation_invalid_session_pubkey() {
+    let ic = PocketIc::new();
+    let (ic_siwe_provider_canister, _) = init(&ic, None);
+
+    // Create wallet and session identity
+    let (wallet, address) = create_wallet();
+    let (signature, prepare_login_ok_response) =
+        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+
+    // Login
+    let login_args = encode_args((
+        signature,
+        address.clone(),
+        session_pubkey.clone(),
+        prepare_login_ok_response.nonce.clone(),
+    ))
+    .unwrap();
+    let login_details: LoginDetails = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_login",
+        login_args,
+    )
+    .unwrap();
+
+    let wrong_session_identity = create_session_identity();
+    let wrong_session_pubkey = wrong_session_identity.public_key().unwrap();
+
+    let siwe_get_delegation_args = encode_args((
+        address.clone(),
+        wrong_session_pubkey,
+        login_details.expiration,
+    ))
+    .unwrap();
+    let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_get_delegation",
+        siwe_get_delegation_args,
+    );
+
+    assert!(siwe_get_delegation_response.is_err());
+    let error_msg = siwe_get_delegation_response.unwrap_err();
+    assert_eq!(error_msg, "Signature not found");
 }
 
 #[test]
