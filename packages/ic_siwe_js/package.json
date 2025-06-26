@@ -1,6 +1,6 @@
 {
   "name": "ic-siwe-js",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "JS/TS/React support library for easy frontend integration with SIWE enabled Internet Computer canisters.",
   "author": "Kristofer Lund <kristofer@kristoferlund.se>",
   "repository": {
@@ -40,8 +40,8 @@
     "@dfinity/candid": ">=2.1.1",
     "@dfinity/identity": ">=2.1.2",
     "@dfinity/principal": ">=2.1.2",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": ">=18.3.1",
+    "react-dom": ">=18.3.1",
     "viem": "^2.19.0",
     "wagmi": "^2.12.0",
     "vue": "^3.5.13"
