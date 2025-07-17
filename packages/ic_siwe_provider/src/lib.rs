@@ -41,7 +41,7 @@ for the `ic_siwe_provider` canister also provide a good overview of how to integ
 
 See [README.md](../README.md) for more information.
  */
-use ic_cdk::api::set_certified_data;
+use ic_cdk::api::certified_data_set;
 use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash, RbTree};
 use ic_siwe::signature_map::SignatureMap;
 use ic_stable_structures::{
@@ -107,5 +107,5 @@ pub(crate) fn update_root_hash(asset_hashes: &AssetHashes, signature_map: &Signa
         &labeled_hash(LABEL_ASSETS, &asset_hashes.root_hash()),
         &labeled_hash(LABEL_SIG, &signature_map.root_hash()),
     );
-    set_certified_data(&prefixed_root_hash[..]);
+    certified_data_set(&prefixed_root_hash[..]);
 }
