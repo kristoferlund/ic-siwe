@@ -38,11 +38,12 @@ fn init_rng() {
 
     // Initialize the random number generator with a seed from the management canister.
     ic_cdk_timers::set_timer(Duration::ZERO, || {
-        ic_cdk::spawn(async {
-            let (seed,): ([u8; 32],) =
-                ic_cdk::call(Principal::management_canister(), "raw_rand", ())
-                    .await
-                    .unwrap();
+        ic_cdk::futures::spawn(async {
+            let response = ic_cdk::call::Call::unbounded_wait(Principal::management_canister(), "raw_rand")
+                .with_arg(())
+                .await
+                .unwrap();
+            let (seed,): ([u8; 32],) = candid::decode_one(&response.into_bytes()).unwrap();
             RNG.with_borrow_mut(|rng| *rng = Some(ChaCha20Rng::from_seed(seed)));
         })
     });

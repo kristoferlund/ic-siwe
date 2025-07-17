@@ -43,7 +43,7 @@ fn siwe_login(
             &address,
             session_key,
             &mut *signature_map,
-            &ic_cdk::api::id(),
+            &ic_cdk::api::canister_self(),
             &nonce,
         )
         .map_err(|e| e.to_string())?;

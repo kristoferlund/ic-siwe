@@ -91,7 +91,7 @@ fn siwe_init(settings_input: SettingsInput) {
             .map(|t| Principal::from_text(t).unwrap())
             .collect();
         // Make sure the canister id of this canister is in the list of targets
-        let canister_id = ic_cdk::id();
+        let canister_id = ic_cdk::api::canister_self();
         if !targets.contains(&canister_id) {
             panic!(
                 "ic_siwe_provider canister id {} not in the list of targets",
