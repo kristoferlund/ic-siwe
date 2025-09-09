@@ -406,6 +406,7 @@ mod eth_signature {
 #[cfg(test)]
 mod recover_eth_address {
     use ethers::{
+        core::rand::thread_rng,
         signers::{LocalWallet, Signer},
         utils::{hash_message, to_checksum},
     };
@@ -413,7 +414,7 @@ mod recover_eth_address {
     use crate::eth::{recover_eth_address, EthSignature};
 
     pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
-        let wallet = LocalWallet::new(&mut rand::thread_rng());
+        let wallet = LocalWallet::new(&mut thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
         (wallet, address)
