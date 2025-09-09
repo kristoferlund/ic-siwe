@@ -101,11 +101,11 @@ impl From<ASN1EncodeErr> for LoginError {
 impl fmt::Display for LoginError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LoginError::EthError(e) => write!(f, "{}", e),
-            LoginError::SiweMessageError(e) => write!(f, "{}", e),
+            LoginError::EthError(e) => write!(f, "{e}"),
+            LoginError::SiweMessageError(e) => write!(f, "{e}"),
             LoginError::AddressMismatch => write!(f, "Recovered address does not match"),
-            LoginError::DelegationError(e) => write!(f, "{}", e),
-            LoginError::ASN1EncodeErr(e) => write!(f, "{}", e),
+            LoginError::DelegationError(e) => write!(f, "{e}"),
+            LoginError::ASN1EncodeErr(e) => write!(f, "{e}"),
         }
     }
 }

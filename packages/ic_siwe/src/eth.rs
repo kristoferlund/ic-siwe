@@ -22,15 +22,15 @@ impl From<hex::FromHexError> for EthError {
 impl fmt::Display for EthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EthError::AddressFormatError(e) => write!(f, "Address format error: {}", e),
-            EthError::DecodingError(e) => write!(f, "Decoding error: {}", e),
-            EthError::SignatureFormatError(e) => write!(f, "Signature format error: {}", e),
+            EthError::AddressFormatError(e) => write!(f, "Address format error: {e}"),
+            EthError::DecodingError(e) => write!(f, "Decoding error: {e}"),
+            EthError::SignatureFormatError(e) => write!(f, "Signature format error: {e}"),
             EthError::InvalidSignature => write!(f, "Invalid signature"),
             EthError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
             EthError::PublicKeyRecoveryFailure => {
                 write!(f, "Public key recovery failure")
             }
-            EthError::Eip55Error(e) => write!(f, "EIP-55 error: {}", e),
+            EthError::Eip55Error(e) => write!(f, "EIP-55 error: {e}"),
         }
     }
 }
@@ -210,7 +210,7 @@ pub fn bytes_to_eth_address(bytes: &[u8; 20]) -> String {
     let addr = hex::encode(bytes);
 
     // Add the '0x' prefix
-    format!("0x{}", addr)
+    format!("0x{addr}")
 }
 
 /// Derives an Ethereum address from an ECDSA public key.
@@ -280,8 +280,7 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
                 }
                 _ => {
                     return Err(format!(
-                        "Unrecognized hex character '{}' at position {}",
-                        c, i
+                        "Unrecognized hex character '{c}' at position {i}"
                     ));
                 }
             };
@@ -290,7 +289,7 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
         .collect::<Result<String, String>>()
         .map_err(EthError::Eip55Error)?; // Convert to error type
 
-    Ok(format!("0x{}", checksummed_addr))
+    Ok(format!("0x{checksummed_addr}"))
 }
 
 #[cfg(test)]
@@ -441,7 +440,7 @@ mod recover_eth_address {
         // Manipulate the signature, replacing the last character with a '0'
         signature.pop();
         signature.push('0');
-        let signature = format!("0x{}", signature);
+        let signature = format!("0x{signature}");
         let result = recover_eth_address(message, &EthSignature::new(&signature).unwrap());
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Invalid recovery ID");
@@ -454,7 +453,7 @@ mod recover_eth_address {
         let wrong_message = "Message 2";
         let hash = hash_message(message.as_bytes());
         let signature = wallet.sign_hash(hash).unwrap().to_string();
-        let signature = format!("0x{}", signature);
+        let signature = format!("0x{signature}");
         let recovered_address =
             recover_eth_address(wrong_message, &EthSignature::new(&signature).unwrap()).unwrap();
         assert_ne!(address, recovered_address);

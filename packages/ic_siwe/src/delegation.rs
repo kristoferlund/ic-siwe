@@ -36,9 +36,9 @@ impl fmt::Display for DelegationError {
                 hex::encode(witness_hash),
                 hex::encode(root_hash)
             ),
-            DelegationError::SerializationError(e) => write!(f, "Serialization error: {}", e),
-            DelegationError::InvalidSessionKey(e) => write!(f, "Invalid session key: {}", e),
-            DelegationError::InvalidExpiration(e) => write!(f, "Invalid expiration: {}", e),
+            DelegationError::SerializationError(e) => write!(f, "Serialization error: {e}"),
+            DelegationError::InvalidSessionKey(e) => write!(f, "Invalid session key: {e}"),
+            DelegationError::InvalidExpiration(e) => write!(f, "Invalid expiration: {e}"),
             DelegationError::SignatureExpired => write!(f, "Signature expired"),
         }
     }
@@ -120,7 +120,7 @@ pub fn create_delegation(
 
     // Validate the session key is DER-encoded
     from_der(&session_key).map_err(|e| {
-        DelegationError::InvalidSessionKey(format!("Session key should be DER-encoded: {}", e))
+        DelegationError::InvalidSessionKey(format!("Session key should be DER-encoded: {e}"))
     })?;
 
     if expiration == 0 {
