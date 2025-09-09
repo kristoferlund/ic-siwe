@@ -124,7 +124,7 @@ fn test_siwe_prepare_login_invalid_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("invalid address").unwrap();
-    let response: Result<String, String> = update(
+    let response: Result<PrepareLoginOkResponse, String> = update(
         &ic,
         Principal::anonymous(),
         ic_siwe_provider_canister,

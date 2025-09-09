@@ -184,7 +184,7 @@ pub fn login(
 
         // Create the user canister public key from the seed. From this key, the client can derive the
         // user principal.
-        let user_canister_pubkey = create_user_canister_pubkey(canister_id, seed.to_vec())?;
+        let user_canister_pubkey = create_user_canister_pubkey(*canister_id, seed.to_vec());
 
         Ok(LoginDetails {
             expiration,

@@ -279,9 +279,7 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
                     }
                 }
                 _ => {
-                    return Err(format!(
-                        "Unrecognized hex character '{c}' at position {i}"
-                    ));
+                    return Err(format!("Unrecognized hex character '{c}' at position {i}"));
                 }
             };
             Ok(result)

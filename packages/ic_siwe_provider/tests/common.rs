@@ -2,7 +2,10 @@
 
 use candid::{decode_one, encode_args, encode_one, CandidType, Principal};
 use ethers::{
-    core::k256::ecdsa::SigningKey,
+    core::{
+        k256::ecdsa::SigningKey,
+        rand::{thread_rng, RngCore},
+    },
     signers::{LocalWallet, Signer, Wallet},
     utils::{hash_message, to_checksum},
 };
@@ -14,8 +17,7 @@ use ic_agent::{
     Identity,
 };
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
-use pocket_ic::{PocketIc, WasmResult};
-use rand::Rng;
+use pocket_ic::PocketIc;
 use serde::Deserialize;
 use std::time::Duration;
 
@@ -111,8 +113,7 @@ pub fn update<T: CandidType + for<'de> Deserialize<'de>>(
     args: Vec<u8>,
 ) -> Result<T, String> {
     match ic.update_call(canister, sender, method, args) {
-        Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
-        Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
+        Ok(reply) => decode_one(&reply).unwrap(),
         Err(user_error) => Err(user_error.to_string()),
     }
 }
@@ -125,20 +126,19 @@ pub fn query<T: CandidType + for<'de> Deserialize<'de>>(
     args: Vec<u8>,
 ) -> Result<T, String> {
     match ic.query_call(canister, sender, method, args) {
-        Ok(WasmResult::Reply(data)) => decode_one(&data).unwrap(),
-        Ok(WasmResult::Reject(error_message)) => Err(error_message.to_string()),
+        Ok(reply) => decode_one(&reply).unwrap(),
         Err(user_error) => Err(user_error.to_string()),
     }
 }
 
 pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
-    let wallet = LocalWallet::new(&mut rand::thread_rng());
+    let wallet = LocalWallet::new(&mut thread_rng());
     let h160 = wallet.address();
     let address = to_checksum(&h160, None);
     (wallet, address)
 }
 
-#[derive(CandidType, Deserialize)]
+#[derive(CandidType, Deserialize, Debug)]
 pub struct PrepareLoginOkResponse {
     pub siwe_message: String,
     pub nonce: String,
@@ -169,30 +169,28 @@ pub fn prepare_login_and_sign_message(
 
 pub fn create_session_identity() -> BasicIdentity {
     let mut ed25519_seed = [0u8; 32];
-    rand::thread_rng().fill(&mut ed25519_seed);
-    let ed25519_keypair =
-        ring::signature::Ed25519KeyPair::from_seed_unchecked(&ed25519_seed).unwrap();
-    BasicIdentity::from_key_pair(ed25519_keypair)
+    thread_rng().fill_bytes(&mut ed25519_seed);
+    BasicIdentity::from_raw_key(&ed25519_seed)
 }
 
 pub fn create_delegated_identity(
-    identity: BasicIdentity,
+    session_identity: BasicIdentity,
     login_response: &LoginDetails,
-    signature: Vec<u8>,
+    delegation_signature: Vec<u8>,
     targets: Option<Vec<Principal>>,
 ) -> DelegatedIdentity {
     // Create a delegated identity
     let signed_delegation = AgentSignedDelegation {
         delegation: AgentDelegation {
-            pubkey: identity.public_key().unwrap(),
+            pubkey: session_identity.public_key().unwrap(),
             expiration: login_response.expiration,
             targets,
         },
-        signature,
+        signature: delegation_signature,
     };
-    DelegatedIdentity::new(
+    DelegatedIdentity::new_unchecked(
         login_response.user_canister_pubkey.to_vec(),
-        Box::new(identity),
+        Box::new(session_identity),
         vec![signed_delegation],
     )
 }

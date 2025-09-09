@@ -43,7 +43,7 @@ fn siwe_login(
             &address,
             session_key,
             &mut *signature_map,
-            &ic_cdk::api::id(),
+            &ic_cdk::api::canister_self(),
             &nonce,
         )
         .map_err(|e| e.to_string())?;
@@ -55,7 +55,7 @@ fn siwe_login(
         let principal: Blob<29> =
             Principal::self_authenticating(&login_response.user_canister_pubkey).as_slice()[..29]
                 .try_into()
-                .map_err(|_| format!("Invalid principal: {:?}", login_response))?;
+                .map_err(|_| format!("Invalid principal: {login_response:?}"))?;
 
         // Store the mapping of principal to Ethereum address and vice versa if the settings allow it.
         manage_principal_address_mappings(&principal, &address);
