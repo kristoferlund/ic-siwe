@@ -11,9 +11,9 @@ pub(crate) fn generate_nonce() -> String {
 
 #[cfg(test)]
 pub(crate) fn generate_nonce() -> String {
-    use rand::{thread_rng, Rng};
+    use rand::Rng;
 
-    let mut rng = thread_rng();
+    let mut rng = rand::rng();
     let mut nonce = [0u8; 10];
     rng.fill(&mut nonce);
     hex::encode(nonce)
