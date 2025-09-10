@@ -1,9 +1,8 @@
-use std::fmt;
-
 use candid::{CandidType, Principal};
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
 use simple_asn1::ASN1EncodeErr;
+use std::fmt;
 
 use crate::{
     delegation::{
@@ -43,13 +42,16 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
 /// let (message, nonce) = prepare_login(&address).unwrap();
 /// ```
-pub fn prepare_login(address: &EthAddress) -> Result<(SiweMessage, String), EthError> {
+pub fn prepare_login(
+    address: &EthAddress,
+    principal: &Principal,
+) -> Result<(SiweMessage, String), EthError> {
     let nonce = generate_nonce();
     let message = SiweMessage::new(address, &nonce);
 
     // Save the SIWE message for use in the login call
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
-        siwe_messages.insert(message.clone(), address, &nonce);
+        siwe_messages.insert(message.clone(), address, principal);
     });
 
     Ok((message, nonce))
@@ -131,7 +133,7 @@ pub fn login(
     session_key: ByteBuf,
     signature_map: &mut SignatureMap,
     canister_id: &Principal,
-    nonce: &str,
+    principal: &Principal,
 ) -> Result<LoginDetails, LoginError> {
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
@@ -141,7 +143,7 @@ pub fn login(
 
         // Get the previously created SIWE message for current address. If it has expired or does not
         // exist, return an error.
-        let message = siwe_messages.get(address, nonce)?;
+        let message = siwe_messages.get(address, principal)?;
         let message_string: String = message.clone().into();
 
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
@@ -158,7 +160,7 @@ pub fn login(
         };
 
         // Ensure the SIWE message is removed from the state both on success and on failure.
-        siwe_messages.remove(address, nonce);
+        siwe_messages.remove(address, principal);
 
         // Handle the result of the signature verification.
         result?;

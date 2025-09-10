@@ -1,14 +1,9 @@
-use crate::eth::EthAddress;
-use crate::settings::Settings;
-use crate::time::get_current_time;
-use crate::{hash, with_settings};
-use candid::{CandidType, Deserialize};
+use crate::{eth::EthAddress, hash, settings::Settings, time::get_current_time, with_settings};
+use candid::{CandidType, Deserialize, Principal};
 use ic_certified_map::Hash;
 use serde::Serialize;
-use std::collections::HashMap;
-use std::fmt;
-use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use std::{collections::HashMap, fmt};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 #[derive(Debug)]
 pub enum SiweMessageError {
@@ -147,16 +142,15 @@ impl From<SiweMessage> for String {
 
 /// The SiweMessageMap map key is the hash of the caller address and the message nonce.
 /// This ensures every call to `siwe_prepare_login` leads to one new copy of the SIWE message being stored.
-pub fn siwe_message_map_hash(address: &EthAddress, nonce: &str) -> Hash {
+pub fn siwe_message_map_hash(address: &EthAddress, principal: &Principal) -> Hash {
     let mut bytes: Vec<u8> = vec![];
 
     let address_bytes = address.as_bytes();
     bytes.push(address_bytes.len() as u8);
     bytes.extend(address_bytes);
 
-    let nonce_bytes = nonce.as_bytes();
-    bytes.push(nonce_bytes.len() as u8);
-    bytes.extend(nonce_bytes);
+    bytes.push(principal.as_slice().len() as u8);
+    bytes.extend(principal.as_slice());
 
     hash::hash_bytes(bytes)
 }
@@ -183,15 +177,19 @@ impl SiweMessageMap {
     }
 
     /// Adds a SIWE message to the map.
-    pub fn insert(&mut self, message: SiweMessage, address: &EthAddress, nonce: &str) {
-        let hash = siwe_message_map_hash(address, nonce);
+    pub fn insert(&mut self, message: SiweMessage, address: &EthAddress, principal: &Principal) {
+        let hash = siwe_message_map_hash(address, principal);
         self.map.insert(hash, message);
     }
 
     /// Returns a cloned SIWE message associated with the provided address or an error if the message
     /// does not exist.
-    pub fn get(&self, address: &EthAddress, nonce: &str) -> Result<SiweMessage, SiweMessageError> {
-        let hash = siwe_message_map_hash(address, nonce);
+    pub fn get(
+        &self,
+        address: &EthAddress,
+        principal: &Principal,
+    ) -> Result<SiweMessage, SiweMessageError> {
+        let hash = siwe_message_map_hash(address, principal);
         self.map
             .get(&hash)
             .cloned()
@@ -199,8 +197,8 @@ impl SiweMessageMap {
     }
 
     /// Removes the SIWE message associated with the provided address.
-    pub fn remove(&mut self, address: &EthAddress, nonce: &str) {
-        let hash = siwe_message_map_hash(address, nonce);
+    pub fn remove(&mut self, address: &EthAddress, principal: &Principal) {
+        let hash = siwe_message_map_hash(address, principal);
         self.map.remove(&hash);
     }
 }

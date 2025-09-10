@@ -1,5 +1,6 @@
+use crate::ensure_authenticated;
 use candid::Principal;
-use ic_cdk::update;
+use ic_cdk::{api::msg_caller, update};
 use ic_siwe::{
     eth::{EthAddress, EthSignature},
     login::LoginDetails,
@@ -21,12 +22,11 @@ use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, SETTINGS, ST
 /// # Returns
 /// * `Ok(LoginOkResponse)`: Contains the user canister public key and other login response data if the login is successful.
 /// * `Err(String)`: An error message if the login process fails.
-#[update]
+#[update(guard = "ensure_authenticated")]
 fn siwe_login(
     signature: String,
     address: String,
     session_key: ByteBuf,
-    nonce: String,
 ) -> Result<LoginDetails, String> {
     STATE.with(|state| {
         let signature_map = &mut *state.signature_map.borrow_mut();
@@ -44,7 +44,7 @@ fn siwe_login(
             session_key,
             &mut *signature_map,
             &ic_cdk::api::canister_self(),
-            &nonce,
+            &msg_caller(),
         )
         .map_err(|e| e.to_string())?;
 

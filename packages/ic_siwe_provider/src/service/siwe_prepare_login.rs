@@ -1,5 +1,6 @@
+use crate::ensure_authenticated;
 use candid::CandidType;
-use ic_cdk::update;
+use ic_cdk::{api::msg_caller, update};
 use ic_siwe::eth::EthAddress;
 
 #[derive(CandidType)]
@@ -16,12 +17,12 @@ struct PrepareLoginOkResponse {
 /// # Returns
 /// * `Ok(PrepareLoginOkResponse)`: Contains the SIWE message and the nonce used in the login function.
 /// * `Err(String)`: An error message if the address is invalid.
-#[update]
+#[update(guard = "ensure_authenticated")]
 fn siwe_prepare_login(address: String) -> Result<PrepareLoginOkResponse, String> {
     // Create an EthAddress from the string. This validates the address.
     let address = EthAddress::new(&address)?;
 
-    match ic_siwe::login::prepare_login(&address) {
+    match ic_siwe::login::prepare_login(&address, &msg_caller()) {
         Ok(m) => Ok(PrepareLoginOkResponse {
             siwe_message: m.0.into(),
             nonce: m.1,

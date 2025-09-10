@@ -1,3 +1,4 @@
+use crate::ensure_authenticated;
 use ic_cdk::{api::data_certificate, query};
 use ic_certified_map::{fork, labeled_hash, AsHashTree, HashTree};
 use ic_siwe::{
@@ -21,7 +22,7 @@ use crate::{LABEL_ASSETS, LABEL_SIG, STATE};
 /// # Returns
 /// * `Ok(SignedDelegation)`: A signed delegation containing the session key, expiration, and targets if successful.
 /// * `Err(String)`: An error message if there is a failure in creating or certifying the delegation.
-#[query]
+#[query(guard = "ensure_authenticated")]
 fn siwe_get_delegation(
     address: String,
     session_key: ByteBuf,
