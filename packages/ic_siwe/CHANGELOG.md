@@ -7,10 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.2] - 2025-09-10
 
+### Security Enhancements
+
+- Store sign-in messages under hash(address, principal) instead of just address to ensure only the user who initiated the login flow can complete it.
+- Requires authenticated principals (caller) to be passed to `prepare_login` and `login` functions to enhance security.
+
 ### Changed
 
-- Store sign in messages under hash(address, principal) for improved storage efficiency.
-- Require authenticated calls throughout the library to enhance security.
+- `prepare_login` now requires a `Principal` parameter to associate the sign-in message with the calling principal.
+- `prepare_login` returns a `Result` containing the prepared login message or an error. `nonce` is no longer returned as a separate value but is included in the prepared SIWE message.
+- `login` function no longer takes `nonce` as a parameter, as it is now only used as part of the SIWE message.
+- `login` function validates that the caller is the same as the principal associated with the SIWE message.
+
+### Dependencies
+
+- Updated `ic-cdk` to 0.18.7
+- Updated `candid` to 0.10.18
+- Updated `ethers` to 2.0.14
+- Updated various other dependencies to their latest versions for improved performance and security
 
 ## [0.1.1] - 2024-08-28
 

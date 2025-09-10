@@ -16,6 +16,8 @@ developers to build applications that leverage the strengths of both platforms.
 ## Features
 
 - **Prebuilt**: The canister is pre built and ready to use.
+- **Enhanced Security**: All authentication endpoints require authenticated (non-anonymous) calls, ensuring
+  that only the user who initiated the sign-in flow can complete it.
 - **Configurable**: The `ic_siwe_provider` canister allows developers to customize the SIWE authentication
   flow to suit their needs.
 - **Easy Integration**: The canister can be easily integrated into any Internet Computer application, independent

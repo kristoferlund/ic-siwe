@@ -131,7 +131,7 @@ The login flow is illustrated in the following diagram:
 
 ### `siwe_prepare_login`
 
-- The `siwe_prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message together with a nonce. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
+- The `siwe_prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
 - See: [`login::prepare_login`](src/login.rs)
 
 ### `siwe_login`

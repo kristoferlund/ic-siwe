@@ -12,7 +12,6 @@ use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, SETTINGS, ST
 
 /// Authenticates the user by verifying the signature of the SIWE message. This function also
 /// prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
-/// This function requires an authenticated caller (not anonymous).
 ///
 /// # Arguments
 /// * `signature` (String): The signature of the SIWE message.

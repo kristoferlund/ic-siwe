@@ -36,11 +36,14 @@ The [integration tests](https://github.com/kristoferlund/ic-siwe/blob/main/packa
 
 The high-level integration flow for the `ic_siwe_provider` canister is as follows:
 
-1. An ICP application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user.
+1. An ICP application requests a SIWE message from the `ic_siwe_provider` canister on behalf of the user (requires authenticated call).
 2. The application displays the SIWE message to the user who signs it with their Ethereum wallet.
-3. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user. The canister verifies the signature and creates an identity for the user.
-4. The application retrieves the identity from the `ic_siwe_provider` canister.
+3. The application sends the signed SIWE message to the `ic_siwe_provider` canister to login the user. The canister verifies the signature and creates an identity for the user (requires authenticated call).
+4. The application retrieves the identity/delegation from the `ic_siwe_provider` canister (requires authenticated call).
 5. The application can now use the identity to make authenticated calls to canisters.
+
+> [!IMPORTANT]
+> As of version 0.1.2, all SIWE authentication endpoints require authenticated (non-anonymous) calls. This security enhancement ensures that only the user who initiated the sign-in flow can complete it.
 
 ![Sign in with Ethereum - Login flow](/media/flow.png)
 
@@ -185,9 +188,10 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
   - `Ok(String)`: The EIP-55-compliant Ethereum address, if found.
   - `Err(String)`: An error message if the principal cannot be converted or no address is found.
 
-### [get_caller_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_calle_address.rs)
+### [get_caller_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_caller_address.rs)
 
 - **Purpose**: Retrieves the Ethereum address associated with the caller. This is a convenience function that internally calls `get_address`.
+- **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
 - **Output**: Same as `get_address`.
 
 ### [get_principal](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_principal.rs)
@@ -200,23 +204,26 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
 
 ### [siwe_prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_prepare_login.rs)
 
-- **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process. Requires authenticated caller.
+- **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process.
+- **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
 - **Input**: Ethereum address (`String`).
 - **Output**:
-  - `Ok(String)`: The SIWE message as a string.
+  - `Ok(String)`: The SIWE message as a string (as of v0.1.2, returns only the message, not an object with message and nonce).
   - `Err(String)`: An error message if the address is invalid or caller is anonymous.
 
 ### [siwe_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_login.rs)
 
-- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication. Requires authenticated caller.
-- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
+- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
+- **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
+- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`). (Note: as of v0.1.2, no longer accepts `nonce` parameter - nonce is handled internally)
 - **Output**:
   - `Ok(LoginDetails)`: The public key and other login response data if the login is successful.
   - `Err(String)`: An error message if the login process fails or caller is anonymous.
 
 ### [siwe_get_delegation](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_get_delegation.rs)
 
-- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in. Requires authenticated caller.
+- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in.
+- **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
 - **Input**: Ethereum address (`String`), session key (`ByteBuf`), and expiration timestamp (`u64`).
 - **Output**:
   - `Ok(SignedDelegation)`: The delegation if the process is successful.
@@ -296,6 +303,8 @@ pub struct SettingsInput {
 ```
 
 ## Updates
+
+See [CHANGELOG.md](./CHANGELOG.md) for a detailed list of changes between versions.
 
 ## Contributing
 

@@ -46,11 +46,6 @@ pub struct SettingsInput {
 }
 
 pub const VALID_ADDRESS: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-// pub const SESSION_KEY: &[u8] = &[
-//     48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 220, 227, 2, 129, 72, 36, 43, 220, 96, 102, 225,
-//     92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35, 181, 171,
-//     196,
-// ]; // DER encoded session key
 pub const NONCE: &str = "nonce123";
 
 pub fn valid_settings(canister_id: Principal, targets: Option<Vec<Principal>>) -> SettingsInput {

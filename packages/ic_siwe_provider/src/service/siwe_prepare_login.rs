@@ -3,7 +3,6 @@ use ic_cdk::{api::msg_caller, update};
 use ic_siwe::eth::EthAddress;
 
 /// Prepare the login by generating a challenge (the SIWE message) and returning it to the caller.
-/// This function requires an authenticated caller (not anonymous).
 ///
 /// # Arguments
 /// * `address` (String): The Ethereum address of the user to prepare the login for.

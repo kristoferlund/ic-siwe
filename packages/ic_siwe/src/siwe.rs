@@ -67,7 +67,7 @@ impl SiweMessage {
     /// # Arguments
     ///
     /// * `address`: The Ethereum address of the user.
-    /// * `nonce`: The nonce generated during the [`crate::login::prepare_login`] call.
+    /// * `nonce`: The nonce for the SIWE message (handled internally by the library).
     pub fn new(address: &EthAddress, nonce: &str) -> SiweMessage {
         let current_time = get_current_time();
         with_settings!(|settings: &Settings| {
@@ -140,7 +140,8 @@ impl From<SiweMessage> for String {
     }
 }
 
-/// The SiweMessageMap map key is the hash of the Ethereum address and a principal.
+/// The SiweMessageMap map key is the hash of the Ethereum address and a principal. Since a new
+/// principal is generated for each login attempt, the map key is unique for each login attempt.
 pub fn siwe_message_map_hash(address: &EthAddress, principal: &Principal) -> Hash {
     let mut bytes: Vec<u8> = vec![];
 

@@ -18,7 +18,6 @@ use serde_bytes::ByteBuf;
 use crate::{LABEL_ASSETS, LABEL_SIG, STATE};
 
 /// Retrieves a signed delegation for a user to authenticate further actions.
-/// This function requires an authenticated caller (not anonymous).
 ///
 /// # Arguments
 /// * `address` (String): The Ethereum address of the user.
