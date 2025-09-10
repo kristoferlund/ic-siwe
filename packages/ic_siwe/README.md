@@ -16,7 +16,7 @@ See this video from the ICP Chain Fusion Hackathon for an overview as well as a 
 - **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
 - **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal, irrespective of the client used.
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
-- **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
+- **Time-bound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
 ## Table of Contents
 
@@ -93,11 +93,11 @@ The login flow is illustrated in the following diagram:
     │                              │ │ <─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
     │                              │ │                                                │                                        │
     │                              │ │────┐                                           │                                        │
-    │                              │ │    │ Generate random session_identity          │                                        │
+     │                              │ │    │ Generate random session_key                │                                        │
     │                              │ │<───┘                                           │                                        │
     │                              │ │                                                │                                        │
     │                              │ │             siwe_login(eth_address,            │                                        │
-    │                              │ │          signature, session_identity)         ┌┴┐                                       │
+     │                              │ │          signature, session_key)               ┌┴┐                                       │
     │                              │ │ ─────────────────────────────────────────────>│ │                                       │
     │                              │ │                                               │ │                                       │
     │                              │ │                                               │ │────┐                                  │
@@ -136,7 +136,7 @@ The login flow is illustrated in the following diagram:
 
 ### `siwe_login`
 
-- The `siwe_login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, session identity and nonce as parameters. The method verifies the signature and Ethereum address and prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
+- The `siwe_login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, and session key as parameters. The method verifies the signature and Ethereum address and prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
 - See: [`login::login`](src/login.rs)
 
 ### `siwe_get_delegation`

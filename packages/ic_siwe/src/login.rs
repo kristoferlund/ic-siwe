@@ -1,5 +1,4 @@
 use candid::{CandidType, Principal};
-use ic_cdk::api::msg_caller;
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
 use simple_asn1::ASN1EncodeErr;
@@ -28,10 +27,10 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// # Parameters
 /// * `address`: A [`crate::eth::EthAddress`] representing the user's Ethereum address. This address is
 ///   validated and used to create the SIWE message.
+/// * `principal`: The [`Principal`] of the caller, used to uniquely store the SIWE message.
 ///
 /// # Returns
-/// A `Result` that, on success, contains a [`crate::siwe::SiweMessage`] and its `nonce`. The `nonce` is used in
-/// the login function to prevent replay and ddos attacks.
+/// A `Result` that, on success, contains a [`crate::siwe::SiweMessage`].
 ///
 /// # Example
 /// ```ignore
@@ -39,9 +38,11 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 ///   login::prepare_login,
 ///   eth::EthAddress
 /// };
+/// use candid::Principal;
 ///
 /// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
-/// let (message, nonce) = prepare_login(&address).unwrap();
+/// let principal = Principal::from_text("aaaaa-aa").unwrap(); // Example principal
+/// let message = prepare_login(&address, &principal).unwrap();
 /// ```
 pub fn prepare_login(address: &EthAddress, principal: &Principal) -> Result<SiweMessage, EthError> {
     let nonce = generate_nonce();
@@ -124,7 +125,6 @@ impl fmt::Display for LoginError {
 /// * `signature_map`: A mutable reference to `SignatureMap` to which the delegation hash will be added
 ///   after successful validation.
 /// * `canister_id`: The principal of the canister performing the login.
-/// * `nonce`: The nonce generated during the `prepare_login` call.
 ///
 /// # Returns
 /// A `Result` that, on success, contains the [LoginDetails] with session expiration and user canister
@@ -135,24 +135,17 @@ pub fn login(
     session_key: ByteBuf,
     signature_map: &mut SignatureMap,
     canister_id: &Principal,
-    principal: &Principal,
 ) -> Result<LoginDetails, LoginError> {
-    //
-    let session_principal = Principal::self_authenticating(session_key.clone());
-    let calling_principal = msg_caller();
-    if session_principal != calling_principal {
-        return Err(LoginError::SessionKeyMismatch);
-    }
-
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
         // Prune any expired SIWE messages from the state.
         siwe_messages.prune_expired();
 
-        // Get the previously created SIWE message for current address. If it has expired or does not
-        // exist, return an error.
-        let message = siwe_messages.get(address, principal)?;
+        // Get the previously created SIWE message for current address / principal combination. If it has
+        // expired or does not exist, return an error.
+        let session_principal = Principal::self_authenticating(session_key.clone());
+        let message = siwe_messages.get(address, &session_principal)?;
         let message_string: String = message.clone().into();
 
         // Verify the supplied signature against the SIWE message and recover the Ethereum address
@@ -169,7 +162,7 @@ pub fn login(
         };
 
         // Ensure the SIWE message is removed from the state both on success and on failure.
-        siwe_messages.remove(address, principal);
+        siwe_messages.remove(address, &session_principal);
 
         // Handle the result of the signature verification.
         result?;

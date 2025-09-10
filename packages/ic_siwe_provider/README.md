@@ -1,8 +1,8 @@
 ![Sign in with Ethereum for the Internet Computer](/media/header.png)
 
-Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into an [Internet Computer](https://internetcomputer.org) (ICP) application.
+Using the prebuilt `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication into an [Internet Computer](https://internetcomputer.org) (ICP) application.
 
-The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the `dfx.json` of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
+The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing ICP applications with minimal coding requirements. By adding the prebuilt `ic_siwe_provider` canister to the `dfx.json` of an ICP project, developers can quickly enable Ethereum wallet-based authentication for their applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE messages and handling user session management.
 
 `ic_siwe_provider` is part of the [ic-siwe](https://github.com/kristoferlund/ic-siwe) project that enables Ethereum wallet-based authentication for applications on the Internet Computer (ICP) platform. The goal of the project is to enhance the interoperability between Ethereum and the Internet Computer platform, enabling developers to build applications that leverage the strengths of both platforms.
 
@@ -15,7 +15,7 @@ The canister is designed as a plug-and-play solution for developers, enabling ea
 - **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
 - **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal, irrespective of the client used.
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
-- **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
+- **Time-bound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
 ## Table of Contents
 
@@ -55,8 +55,8 @@ The canister is pre built and ready to use. To add it to your project, simply ad
   "canisters": {
     "ic_siwe_provider": {
       "type": "custom",
-      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.did",
-      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.1/ic_siwe_provider.wasm.gz"
+      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.2/ic_siwe_provider.did",
+      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.2/ic_siwe_provider.wasm.gz"
     }
   }
 }
@@ -200,27 +200,27 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
 
 ### [siwe_prepare_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_prepare_login.rs)
 
-- **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process.
+- **Purpose**: Generates a SIWE message challenge and returns it to the caller, initiating the login process. Requires authenticated caller.
 - **Input**: Ethereum address (`String`).
 - **Output**:
-  - `Ok(PrepareLoginOkResponse)`: The prepared SIWE message and nonce.
-  - `Err(String)`: An error message if there is an error in preparing the login.
+  - `Ok(String)`: The SIWE message as a string.
+  - `Err(String)`: An error message if the address is invalid or caller is anonymous.
 
 ### [siwe_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_login.rs)
 
-- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
-- **Input**: Signature (`String`), Ethereum address (`String`), session key (`ByteBuf`), and nonce (`String`).
+- **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication. Requires authenticated caller.
+- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`).
 - **Output**:
   - `Ok(LoginDetails)`: The public key and other login response data if the login is successful.
-  - `Err(String)`: An error message if the login process fails.
+  - `Err(String)`: An error message if the login process fails or caller is anonymous.
 
 ### [siwe_get_delegation](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_get_delegation.rs)
 
-- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in.
+- **Purpose**: Fetches the delegation to be used for authentication once the user is logged in. Requires authenticated caller.
 - **Input**: Ethereum address (`String`), session key (`ByteBuf`), and expiration timestamp (`u64`).
 - **Output**:
   - `Ok(SignedDelegation)`: The delegation if the process is successful.
-  - `Err(String)`: An error message if there is a failure in fetching the delegation.
+  - `Err(String)`: An error message if there is a failure in fetching the delegation or caller is anonymous.
 
 In addition to the key functionalities for Ethereum wallet authentication, the `ic_siwe_provider` canister includes initialization and upgrade endpoints essential for setting up and maintaining the canister.
 

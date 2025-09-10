@@ -1,9 +1,9 @@
 /*!
-Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication
+Using the prebuilt `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication
 into your [Internet Computer](https://internetcomputer.org) application.
 
 The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing
-IC applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the
+IC applications with minimal coding requirements. By adding the prebuilt `ic_siwe_provider` canister to the
 `dfx.json` of an IC project, developers can quickly enable Ethereum wallet-based authentication for their
 applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE
 messages and handling user session management.
@@ -111,6 +111,7 @@ pub(crate) fn update_root_hash(asset_hashes: &AssetHashes, signature_map: &Signa
     certified_data_set(&prefixed_root_hash[..]);
 }
 
+/// Ensures that the caller is authenticated (not anonymous).
 pub fn ensure_authenticated() -> Result<(), String> {
     if msg_caller() == Principal::anonymous() {
         Err("Anonymous principal not allowed to make calls.".into())

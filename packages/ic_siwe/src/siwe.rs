@@ -140,8 +140,7 @@ impl From<SiweMessage> for String {
     }
 }
 
-/// The SiweMessageMap map key is the hash of the caller address and the message nonce.
-/// This ensures every call to `siwe_prepare_login` leads to one new copy of the SIWE message being stored.
+/// The SiweMessageMap map key is the hash of the Ethereum address and a principal.
 pub fn siwe_message_map_hash(address: &EthAddress, principal: &Principal) -> Hash {
     let mut bytes: Vec<u8> = vec![];
 
