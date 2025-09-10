@@ -1,4 +1,5 @@
 use candid::{CandidType, Principal};
+use ic_cdk::api::msg_caller;
 use serde::Deserialize;
 use serde_bytes::ByteBuf;
 use simple_asn1::ASN1EncodeErr;
@@ -42,10 +43,7 @@ const MAX_SIGS_TO_PRUNE: usize = 10;
 /// let address = EthAddress::new("0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed").unwrap();
 /// let (message, nonce) = prepare_login(&address).unwrap();
 /// ```
-pub fn prepare_login(
-    address: &EthAddress,
-    principal: &Principal,
-) -> Result<(SiweMessage, String), EthError> {
+pub fn prepare_login(address: &EthAddress, principal: &Principal) -> Result<SiweMessage, EthError> {
     let nonce = generate_nonce();
     let message = SiweMessage::new(address, &nonce);
 
@@ -54,7 +52,7 @@ pub fn prepare_login(
         siwe_messages.insert(message.clone(), address, principal);
     });
 
-    Ok((message, nonce))
+    Ok(message)
 }
 /// Login details are returned after a successful login. They contain the expiration time of the
 /// delegation and the user canister public key.
@@ -72,6 +70,7 @@ pub enum LoginError {
     EthError(EthError),
     SiweMessageError(SiweMessageError),
     AddressMismatch,
+    SessionKeyMismatch,
     DelegationError(DelegationError),
     ASN1EncodeErr(ASN1EncodeErr),
 }
@@ -106,6 +105,9 @@ impl fmt::Display for LoginError {
             LoginError::EthError(e) => write!(f, "{e}"),
             LoginError::SiweMessageError(e) => write!(f, "{e}"),
             LoginError::AddressMismatch => write!(f, "Recovered address does not match"),
+            LoginError::SessionKeyMismatch => {
+                write!(f, "Session key does not match calling principal")
+            }
             LoginError::DelegationError(e) => write!(f, "{e}"),
             LoginError::ASN1EncodeErr(e) => write!(f, "{e}"),
         }
@@ -135,6 +137,13 @@ pub fn login(
     canister_id: &Principal,
     principal: &Principal,
 ) -> Result<LoginDetails, LoginError> {
+    //
+    let session_principal = Principal::self_authenticating(session_key.clone());
+    let calling_principal = msg_caller();
+    if session_principal != calling_principal {
+        return Err(LoginError::SessionKeyMismatch);
+    }
+
     // Remove expired SIWE messages from the state before proceeding. The init settings determines
     // the time to live for SIWE messages.
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {

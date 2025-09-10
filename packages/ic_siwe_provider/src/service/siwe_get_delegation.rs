@@ -1,5 +1,9 @@
 use crate::ensure_authenticated;
-use ic_cdk::{api::data_certificate, query};
+use candid::Principal;
+use ic_cdk::{
+    api::{data_certificate, msg_caller},
+    query,
+};
 use ic_certified_map::{fork, labeled_hash, AsHashTree, HashTree};
 use ic_siwe::{
     delegation::{
@@ -7,6 +11,7 @@ use ic_siwe::{
         witness, SignedDelegation,
     },
     eth::EthAddress,
+    login::LoginError,
 };
 use serde_bytes::ByteBuf;
 
@@ -34,6 +39,13 @@ fn siwe_get_delegation(
 
     // Create an EthAddress from the string. This validates the address.
     let address = EthAddress::new(&address)?;
+
+    //
+    let session_principal = Principal::self_authenticating(session_key.clone());
+    let calling_principal = msg_caller();
+    if session_principal != calling_principal {
+        return Err(LoginError::SessionKeyMismatch.to_string());
+    }
 
     STATE.with(|s| {
         let signature_map = s.signature_map.borrow_mut();

@@ -46,11 +46,11 @@ pub struct SettingsInput {
 }
 
 pub const VALID_ADDRESS: &str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed";
-pub const SESSION_KEY: &[u8] = &[
-    48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 220, 227, 2, 129, 72, 36, 43, 220, 96, 102, 225,
-    92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35, 181, 171,
-    196,
-]; // DER encoded session key
+// pub const SESSION_KEY: &[u8] = &[
+//     48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 220, 227, 2, 129, 72, 36, 43, 220, 96, 102, 225,
+//     92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35, 181, 171,
+//     196,
+// ]; // DER encoded session key
 pub const NONCE: &str = "nonce123";
 
 pub fn valid_settings(canister_id: Principal, targets: Option<Vec<Principal>>) -> SettingsInput {
@@ -149,22 +149,21 @@ pub fn prepare_login_and_sign_message(
     ic_siwe_provider_canister: Principal,
     wallet: Wallet<SigningKey>,
     address: &str,
-) -> (String, PrepareLoginOkResponse) {
+    identity: &BasicIdentity,
+) -> String {
     let args = encode_one(address).unwrap();
-    let prepare_login_ok_response: PrepareLoginOkResponse = update(
+    let caller = identity.sender().unwrap();
+    let siwe_message: String = update(
         ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_prepare_login",
         args,
     )
     .unwrap();
-    let hash = hash_message(prepare_login_ok_response.siwe_message.as_bytes());
+    let hash = hash_message(siwe_message.as_bytes());
     let signature = wallet.sign_hash(hash).unwrap().to_string();
-    (
-        format!("0x{}", signature.as_str()),
-        prepare_login_ok_response,
-    )
+    format!("0x{}", signature.as_str())
 }
 
 pub fn create_session_identity() -> BasicIdentity {
@@ -200,25 +199,25 @@ pub fn full_login(
     ic_siwe_provider_canister: Principal,
     targets: Option<Vec<Principal>>,
 ) -> (String, DelegatedIdentity) {
-    let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(ic, ic_siwe_provider_canister, wallet, &address);
-
     // Create a session identity
     let session_identity = create_session_identity();
     let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+
+    let (wallet, address) = create_wallet();
+    let signature = prepare_login_and_sign_message(
+        ic,
+        ic_siwe_provider_canister,
+        wallet,
+        &address,
+        &session_identity,
+    );
 
     // Login
-    let login_args = encode_args((
-        signature,
-        address.clone(),
-        session_pubkey.clone(),
-        prepare_login_ok_response.nonce.clone(),
-    ))
-    .unwrap();
+    let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
     let login_response: LoginDetails = update(
         ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_login",
         login_args,
@@ -234,7 +233,7 @@ pub fn full_login(
     .unwrap();
     let get_delegation_response: SignedDelegation = query(
         ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_get_delegation",
         get_delegation_args,

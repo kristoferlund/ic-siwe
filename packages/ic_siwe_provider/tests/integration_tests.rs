@@ -3,7 +3,7 @@ mod common;
 use candid::{encode_args, encode_one, Principal};
 use common::{
     create_canister, create_session_identity, create_wallet, full_login, init, query, update,
-    valid_settings, PrepareLoginOkResponse, RuntimeFeature, NONCE, SESSION_KEY, VALID_ADDRESS,
+    valid_settings, PrepareLoginOkResponse, RuntimeFeature, NONCE, VALID_ADDRESS,
 };
 use ic_agent::Identity;
 use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
@@ -83,16 +83,17 @@ fn test_upgrade_with_changed_arguments() {
 
     // Call siwe_prepare_login, check that new settings are reflected in returned siwe_message
     let address = encode_one(VALID_ADDRESS).unwrap();
-    let response: Result<PrepareLoginOkResponse, String> = update(
+    let session_identity = create_session_identity();
+    let caller = session_identity.sender().unwrap();
+    let response: Result<String, String> = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_prepare_login",
         address,
     );
     assert!(response.is_ok());
-    let prepare_login_ok_response: PrepareLoginOkResponse = response.unwrap();
-    let siwe_message: Message = prepare_login_ok_response.siwe_message.parse().unwrap();
+    let siwe_message: Message = response.unwrap().parse().unwrap();
     assert_eq!(siwe_message.domain, "192.168.0.1");
     assert_eq!(siwe_message.uri, "http://192.168.0.1:666");
     assert_eq!(siwe_message.chain_id, 666);
@@ -124,9 +125,11 @@ fn test_siwe_prepare_login_invalid_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("invalid address").unwrap();
+    let session_identity = create_session_identity();
+    let caller = session_identity.sender().unwrap();
     let response: Result<PrepareLoginOkResponse, String> = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_prepare_login",
         address,
@@ -142,9 +145,11 @@ fn test_siwe_prepare_login_not_eip55_address() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one("0x5aaeb6053f3e94c9b9a09f33669435e7ef1beaed").unwrap();
+    let session_identity = create_session_identity();
+    let caller = session_identity.sender().unwrap();
     let response: Result<String, String> = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_prepare_login",
         address,
@@ -157,36 +162,34 @@ fn test_siwe_prepare_login_ok() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let address = encode_one(VALID_ADDRESS).unwrap();
-    let response: Result<PrepareLoginOkResponse, String> = update(
+    let session_identity = create_session_identity();
+    let caller = session_identity.sender().unwrap();
+    let response: Result<String, String> = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_prepare_login",
         address,
     );
     assert!(response.is_ok());
-    let prepare_login_ok_response: PrepareLoginOkResponse = response.unwrap();
-    let siwe_message: Message = prepare_login_ok_response.siwe_message.parse().unwrap();
+    let siwe_message: Message = response.unwrap().parse().unwrap();
     assert_eq!(
         siwe_message.address,
         hex::decode(&VALID_ADDRESS[2..]).unwrap().as_slice()
     );
-    assert!(!prepare_login_ok_response.nonce.is_empty());
 }
 
 #[test]
 fn test_login_signature_too_short() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
     let signature = "0xTOO-SHORT";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
-    let response: Result<LoginDetails, String> = update(
-        &ic,
-        Principal::anonymous(),
-        ic_siwe_provider_canister,
-        "siwe_login",
-        args,
-    );
+    let args = encode_args((signature, VALID_ADDRESS, session_pubkey, NONCE)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(
         response.unwrap_err(),
         "Signature format error: Must start with '0x' and be 132 characters long"
@@ -197,15 +200,13 @@ fn test_login_signature_too_short() {
 fn test_login_signature_too_long() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000-TOO-LONG";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
-    let response: Result<LoginDetails, String> = update(
-        &ic,
-        Principal::anonymous(),
-        ic_siwe_provider_canister,
-        "siwe_login",
-        args,
-    );
+    let args = encode_args((signature, VALID_ADDRESS, session_pubkey, NONCE)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(
         response.unwrap_err(),
         "Signature format error: Must start with '0x' and be 132 characters long"
@@ -216,15 +217,13 @@ fn test_login_signature_too_long() {
 fn test_incorrect_signature_format() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
     let signature = "0xÖÖ809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809809800000";
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap();
-    let response: Result<LoginDetails, String> = update(
-        &ic,
-        Principal::anonymous(),
-        ic_siwe_provider_canister,
-        "siwe_login",
-        args,
-    );
+    let args = encode_args((signature, VALID_ADDRESS, session_pubkey, NONCE)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(
         response.unwrap_err(),
         "Decoding error: Invalid character 'Ã' at position 0"
@@ -237,19 +236,22 @@ fn test_sign_in_message_expired() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, _) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet,
+        &address,
+        &session_identity,
+    );
 
     ic.advance_time(Duration::from_secs(10));
 
-    let args = encode_args((signature, address, SESSION_KEY, NONCE)).unwrap();
-    let response: Result<LoginDetails, String> = update(
-        &ic,
-        Principal::anonymous(),
-        ic_siwe_provider_canister,
-        "siwe_login",
-        args,
-    );
+    let args = encode_args((signature, address, session_pubkey, NONCE)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(response.unwrap_err(), "Message not found");
 }
 
@@ -259,16 +261,19 @@ fn test_sign_in_address_mismatch() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, _) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((signature, VALID_ADDRESS, SESSION_KEY, NONCE)).unwrap(); // Wrong address
-    let response: Result<LoginDetails, String> = update(
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
         &ic,
-        Principal::anonymous(),
         ic_siwe_provider_canister,
-        "siwe_login",
-        args,
+        wallet,
+        &address,
+        &session_identity,
     );
+    let args = encode_args((signature, VALID_ADDRESS, session_pubkey, NONCE)).unwrap(); // Wrong address
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(response.unwrap_err(), "Message not found");
 }
 
@@ -278,23 +283,20 @@ fn test_sign_in_signature_manipulated() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
-    let args = encode_args((
-        manipulated_signature,
-        address,
-        SESSION_KEY,
-        prepare_login_ok_response.nonce,
-    ))
-    .unwrap();
-    let response: Result<LoginDetails, String> = update(
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
         &ic,
-        Principal::anonymous(),
         ic_siwe_provider_canister,
-        "siwe_login",
-        args,
+        wallet,
+        &address,
+        &session_identity,
     );
+    let manipulated_signature = format!("{}0000000000", &signature[..signature.len() - 10]);
+    let args = encode_args((manipulated_signature, address, session_pubkey)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(response.unwrap_err(), "Recovered address does not match");
 }
 
@@ -303,22 +305,19 @@ fn test_sign_in_ok() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((
-        signature,
-        address,
-        SESSION_KEY,
-        prepare_login_ok_response.nonce,
-    ))
-    .unwrap();
-    let response: Result<LoginDetails, String> = update(
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
         &ic,
-        Principal::anonymous(),
         ic_siwe_provider_canister,
-        "siwe_login",
-        args,
+        wallet,
+        &address,
+        &session_identity,
     );
+    let args = encode_args((signature, address, session_pubkey)).unwrap();
+    let response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert!(response.is_ok());
     assert!(response.unwrap().user_canister_pubkey.len() == 62);
 }
@@ -329,30 +328,27 @@ fn test_sign_in_replay_attack() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, _) = init(&ic, None);
     let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
-    let args = encode_args((
-        signature,
-        address,
-        SESSION_KEY,
-        prepare_login_ok_response.nonce,
-    ))
-    .unwrap();
+    let session_identity = create_session_identity();
+    let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet,
+        &address,
+        &session_identity,
+    );
+    let args = encode_args((signature, address, session_pubkey)).unwrap();
     let response: Result<LoginDetails, String> = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_login",
         args.clone(),
     );
     assert!(response.is_ok());
-    let second_response: Result<LoginDetails, String> = update(
-        &ic,
-        Principal::anonymous(),
-        ic_siwe_provider_canister,
-        "siwe_login",
-        args,
-    );
+    let second_response: Result<LoginDetails, String> =
+        update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(second_response.unwrap_err(), "Message not found");
 }
 
@@ -372,22 +368,22 @@ fn test_sign_in_siwe_get_delegation_timeout() {
 
     // Create wallet and session identity
     let (wallet1, address1) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet1, &address1);
     let session_identity = create_session_identity();
     let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet1,
+        &address1,
+        &session_identity,
+    );
 
     // Login
-    let login_args = encode_args((
-        signature,
-        address1.clone(),
-        session_pubkey.clone(),
-        prepare_login_ok_response.nonce.clone(),
-    ))
-    .unwrap();
+    let login_args = encode_args((signature, address1.clone(), session_pubkey.clone())).unwrap();
     let login_response: LoginDetails = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_login",
         login_args,
@@ -399,23 +395,23 @@ fn test_sign_in_siwe_get_delegation_timeout() {
     ic.advance_time(Duration::from_secs(100));
 
     // Create another wallet and session identity
-    let (wallet2, address2) = create_wallet();
-    let (signature2, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet2, &address2);
     let session_identity2 = create_session_identity();
     let session_pubkey2 = session_identity2.public_key().unwrap();
+    let caller2 = session_identity2.sender().unwrap();
+    let (wallet2, address2) = create_wallet();
+    let signature2 = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet2,
+        &address2,
+        &session_identity2,
+    );
 
     // Login address 2, this should cause the delegation signature for address 1 to be pruned
-    let login_args2 = encode_args((
-        signature2,
-        address2.clone(),
-        session_pubkey2.clone(),
-        prepare_login_ok_response.nonce.clone(),
-    ))
-    .unwrap();
+    let login_args2 = encode_args((signature2, address2.clone(), session_pubkey2.clone())).unwrap();
     let _: LoginDetails = update(
         &ic,
-        Principal::anonymous(),
+        caller2,
         ic_siwe_provider_canister,
         "siwe_login",
         login_args2,
@@ -431,7 +427,7 @@ fn test_sign_in_siwe_get_delegation_timeout() {
     .unwrap();
     let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_get_delegation",
         siwe_get_delegation_args,
@@ -449,22 +445,22 @@ fn test_sign_in_siwe_get_delegation_invalid_expiration() {
 
     // Create wallet and session identity
     let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let session_identity = create_session_identity();
     let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet,
+        &address,
+        &session_identity,
+    );
 
     // Login
-    let login_args = encode_args((
-        signature,
-        address.clone(),
-        session_pubkey.clone(),
-        prepare_login_ok_response.nonce.clone(),
-    ))
-    .unwrap();
+    let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
     let _: LoginDetails = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_login",
         login_args,
@@ -481,7 +477,7 @@ fn test_sign_in_siwe_get_delegation_invalid_expiration() {
         encode_args((address.clone(), session_pubkey.clone(), expiration)).unwrap();
     let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_get_delegation",
         siwe_get_delegation_args,
@@ -501,22 +497,22 @@ fn test_sign_in_siwe_get_delegation_invalid_session_pubkey() {
 
     // Create wallet and session identity
     let (wallet, address) = create_wallet();
-    let (signature, prepare_login_ok_response) =
-        prepare_login_and_sign_message(&ic, ic_siwe_provider_canister, wallet, &address);
     let session_identity = create_session_identity();
     let session_pubkey = session_identity.public_key().unwrap();
+    let caller = session_identity.sender().unwrap();
+    let signature = prepare_login_and_sign_message(
+        &ic,
+        ic_siwe_provider_canister,
+        wallet,
+        &address,
+        &session_identity,
+    );
 
     // Login
-    let login_args = encode_args((
-        signature,
-        address.clone(),
-        session_pubkey.clone(),
-        prepare_login_ok_response.nonce.clone(),
-    ))
-    .unwrap();
+    let login_args = encode_args((signature, address.clone(), session_pubkey.clone())).unwrap();
     let login_details: LoginDetails = update(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_login",
         login_args,
@@ -534,7 +530,7 @@ fn test_sign_in_siwe_get_delegation_invalid_session_pubkey() {
     .unwrap();
     let siwe_get_delegation_response: Result<SignedDelegation, String> = query(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "siwe_get_delegation",
         siwe_get_delegation_args,
@@ -542,7 +538,7 @@ fn test_sign_in_siwe_get_delegation_invalid_session_pubkey() {
 
     assert!(siwe_get_delegation_response.is_err());
     let error_msg = siwe_get_delegation_response.unwrap_err();
-    assert_eq!(error_msg, "Signature not found");
+    assert_eq!(error_msg, "Session key does not match calling principal");
 }
 
 #[test]
@@ -574,10 +570,8 @@ fn test_get_caller_address_principal_not_logged_in() {
         encode_one(()).unwrap(),
     );
     assert!(response.is_err());
-    assert_eq!(
-        response.unwrap_err(),
-        "No address found for the given principal"
-    );
+    let err = response.unwrap_err();
+    assert!(err.contains("Anonymous principal not allowed to make calls."));
 }
 
 #[test]
@@ -620,9 +614,10 @@ fn test_get_principal() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, targets) = init(&ic, None);
     let (address, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
+    let caller = delegated_identity.sender().unwrap();
     let response: Result<ByteBuf, String> = query(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "get_principal",
         encode_one(address).unwrap(),
@@ -638,10 +633,11 @@ fn test_get_principal() {
 fn test_get_principal_not_found() {
     let ic = PocketIc::new();
     let (ic_siwe_provider_canister, targets) = init(&ic, None);
-    let (_, _) = full_login(&ic, ic_siwe_provider_canister, targets);
+    let (_, delegated_identity) = full_login(&ic, ic_siwe_provider_canister, targets);
+    let caller = delegated_identity.sender().unwrap();
     let response: Result<ByteBuf, String> = query(
         &ic,
-        Principal::anonymous(),
+        caller,
         ic_siwe_provider_canister,
         "get_principal",
         encode_one(VALID_ADDRESS).unwrap(),

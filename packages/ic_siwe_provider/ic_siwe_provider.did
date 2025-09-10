@@ -62,13 +62,8 @@ type LoginDetails = record {
   user_canister_pubkey : CanisterPublicKey;
 };
 
-type PrepareLoginOkResponse = record {
-  siwe_message: SiweMessage;
-  nonce : text;
-};
-
 type PrepareLoginResponse = variant {
-  Ok : PrepareLoginOkResponse;
+  Ok : text;
   Err : text;
 };
 
