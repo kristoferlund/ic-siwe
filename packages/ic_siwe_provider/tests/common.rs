@@ -10,13 +10,10 @@ use ethers::{
     utils::{hash_message, to_checksum},
 };
 use ic_agent::{
-    identity::{
-        BasicIdentity, DelegatedIdentity, Delegation as AgentDelegation,
-        SignedDelegation as AgentSignedDelegation,
-    },
+    identity::{BasicIdentity, DelegatedIdentity, Delegation, SignedDelegation},
     Identity,
 };
-use ic_siwe::{delegation::SignedDelegation, login::LoginDetails};
+use ic_siwe::{delegation::SignedDelegation as SiweGetDelegationResponse, login::LoginDetails};
 use pocket_ic::PocketIc;
 use serde::Deserialize;
 use std::time::Duration;
@@ -84,7 +81,7 @@ pub fn create_canister(ic: &PocketIc) -> (Principal, Vec<u8>) {
     (canister_id, wasm_module)
 }
 
-pub fn init(ic: &PocketIc, targets: Option<Vec<Principal>>) -> (Principal, Option<Vec<Principal>>) {
+pub fn init(ic: &PocketIc, targets: Option<Vec<Principal>>) -> Principal {
     let (canister_id, wasm_module) = create_canister(ic);
     let settings = valid_settings(canister_id, targets.clone());
     let arg = encode_one(settings).unwrap();
@@ -97,7 +94,7 @@ pub fn init(ic: &PocketIc, targets: Option<Vec<Principal>>) -> (Principal, Optio
         ic.tick();
     }
 
-    (canister_id, targets)
+    canister_id
 }
 
 pub fn update<T: CandidType + for<'de> Deserialize<'de>>(
@@ -167,32 +164,9 @@ pub fn create_session_identity() -> BasicIdentity {
     BasicIdentity::from_raw_key(&ed25519_seed)
 }
 
-pub fn create_delegated_identity(
-    session_identity: BasicIdentity,
-    login_response: &LoginDetails,
-    delegation_signature: Vec<u8>,
-    targets: Option<Vec<Principal>>,
-) -> DelegatedIdentity {
-    // Create a delegated identity
-    let signed_delegation = AgentSignedDelegation {
-        delegation: AgentDelegation {
-            pubkey: session_identity.public_key().unwrap(),
-            expiration: login_response.expiration,
-            targets,
-        },
-        signature: delegation_signature,
-    };
-    DelegatedIdentity::new_unchecked(
-        login_response.user_canister_pubkey.to_vec(),
-        Box::new(session_identity),
-        vec![signed_delegation],
-    )
-}
-
 pub fn full_login(
     ic: &PocketIc,
     ic_siwe_provider_canister: Principal,
-    targets: Option<Vec<Principal>>,
 ) -> (String, DelegatedIdentity) {
     // Create a session identity
     let session_identity = create_session_identity();
@@ -226,7 +200,7 @@ pub fn full_login(
         login_response.expiration,
     ))
     .unwrap();
-    let get_delegation_response: SignedDelegation = query(
+    let get_delegation_response: SiweGetDelegationResponse = query(
         ic,
         caller,
         ic_siwe_provider_canister,
@@ -235,12 +209,21 @@ pub fn full_login(
     )
     .unwrap();
 
-    // Create a delegated identity
-    let delegated_identity = create_delegated_identity(
-        session_identity,
-        &login_response,
-        get_delegation_response.signature.as_ref().to_vec(),
-        targets,
+    let signed_delegation = SignedDelegation {
+        delegation: {
+            Delegation {
+                pubkey: get_delegation_response.delegation.pubkey.into_vec(),
+                expiration: get_delegation_response.delegation.expiration,
+                targets: get_delegation_response.delegation.targets,
+            }
+        },
+        signature: get_delegation_response.signature.into_vec(),
+    };
+
+    let delegated_identity = DelegatedIdentity::new_unchecked(
+        login_response.user_canister_pubkey.to_vec(),
+        Box::new(session_identity),
+        vec![signed_delegation],
     );
 
     (address, delegated_identity)
