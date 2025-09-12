@@ -43,7 +43,7 @@ The high-level integration flow for the `ic_siwe_provider` canister is as follow
 5. The application can now use the identity to make authenticated calls to canisters.
 
 > [!IMPORTANT]
-> As of version 0.1.2, all SIWE authentication endpoints require authenticated (non-anonymous) calls. This security enhancement ensures that only the user who initiated the sign-in flow can complete it.
+> As of version 0.2.0, all SIWE authentication endpoints require authenticated (non-anonymous) calls. This security enhancement ensures that only the user who initiated the sign-in flow can complete it.
 
 ![Sign in with Ethereum - Login flow](/media/flow.png)
 
@@ -58,8 +58,8 @@ The canister is pre built and ready to use. To add it to your project, simply ad
   "canisters": {
     "ic_siwe_provider": {
       "type": "custom",
-      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.2/ic_siwe_provider.did",
-      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.1.2/ic_siwe_provider.wasm.gz"
+      "candid": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.2.0/ic_siwe_provider.did",
+      "wasm": "https://github.com/kristoferlund/ic-siwe/releases/download/v0.2.0/ic_siwe_provider.wasm.gz"
     }
   }
 }
@@ -208,14 +208,14 @@ In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this 
 - **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
 - **Input**: Ethereum address (`String`).
 - **Output**:
-  - `Ok(String)`: The SIWE message as a string (as of v0.1.2, returns only the message, not an object with message and nonce).
+  - `Ok(String)`: The SIWE message as a string (as of v0.2.0, returns only the message, not an object with message and nonce).
   - `Err(String)`: An error message if the address is invalid or caller is anonymous.
 
 ### [siwe_login](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/siwe_login.rs)
 
 - **Purpose**: Verifies the signature of the SIWE message and prepares the delegation for authentication.
 - **Authentication**: **Required** - Anonymous principals are not allowed to call this endpoint.
-- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`). (Note: as of v0.1.2, no longer accepts `nonce` parameter - nonce is handled internally)
+- **Input**: Signature (`String`), Ethereum address (`String`), and session key (`ByteBuf`). (Note: as of v0.2.0, no longer accepts `nonce` parameter - nonce is handled internally)
 - **Output**:
   - `Ok(LoginDetails)`: The public key and other login response data if the login is successful.
   - `Err(String)`: An error message if the login process fails or caller is anonymous.

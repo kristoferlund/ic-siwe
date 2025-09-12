@@ -2274,7 +2274,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "candid",
  "ethers",
@@ -2303,7 +2303,7 @@ dependencies = [
 
 [[package]]
 name = "ic_siwe_provider"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "candid",
  "ed25519-consensus",
