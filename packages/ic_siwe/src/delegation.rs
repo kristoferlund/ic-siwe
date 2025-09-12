@@ -272,6 +272,48 @@ mod tests {
     }
 
     #[test]
+    fn test_generate_seed_include_uri_feature_affects_seed() {
+        // Same address, different URIs with IncludeUriInSeed enabled should produce different seeds
+        let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
+
+        // Settings A with URI A and IncludeUriInSeed
+        let settings_a = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .runtime_features(vec![RuntimeFeature::IncludeUriInSeed])
+            .build()
+            .unwrap();
+        SETTINGS.set(Some(settings_a));
+        let seed_a = generate_seed(&address);
+
+        // Settings B with URI B and IncludeUriInSeed
+        let settings_b = SettingsBuilder::new("example.com", "http://other.com", "some_salt")
+            .runtime_features(vec![RuntimeFeature::IncludeUriInSeed])
+            .build()
+            .unwrap();
+        SETTINGS.set(Some(settings_b));
+        let seed_b = generate_seed(&address);
+
+        assert_ne!(seed_a, seed_b, "Seeds should differ when URIs differ and feature is enabled");
+    }
+
+    #[test]
+    fn test_generate_seed_without_feature_ignores_uri() {
+        // Same address, different URIs without IncludeUriInSeed should produce the same seed
+        let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
+
+        let settings_a =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").build().unwrap();
+        SETTINGS.set(Some(settings_a));
+        let seed_a = generate_seed(&address);
+
+        let settings_b =
+            SettingsBuilder::new("example.com", "http://other.com", "some_salt").build().unwrap();
+        SETTINGS.set(Some(settings_b));
+        let seed_b = generate_seed(&address);
+
+        assert_eq!(seed_a, seed_b, "Seeds should be equal when feature is disabled");
+    }
+
+    #[test]
     fn test_create_delegation() {
         init();
         let session_key = ByteBuf::from(SESSION_KEY);

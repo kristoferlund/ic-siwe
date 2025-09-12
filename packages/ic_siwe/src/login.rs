@@ -196,3 +196,98 @@ pub fn login(
         })
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{settings::SettingsBuilder, SETTINGS};
+    use ethers::{
+        core::rand::thread_rng,
+        signers::{LocalWallet, Signer},
+        utils::{hash_message, to_checksum},
+    };
+
+    // DER-encoded session key (valid)
+    const SESSION_KEY: &[u8] = &[
+        48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0, 220, 227, 2, 129, 72, 36, 43, 220, 96, 102,
+        225, 92, 98, 163, 114, 182, 117, 181, 51, 15, 219, 197, 104, 55, 123, 245, 74, 181, 35,
+        181, 171, 196,
+    ];
+
+    fn init_settings() {
+        let settings = SettingsBuilder::new("example.com", "http://example.com", "salt")
+            .statement("Login to the app")
+            .sign_in_expires_in(60_000_000_000) // 60s
+            .session_expires_in(600_000_000_000) // 10m
+            .build()
+            .unwrap();
+        SETTINGS.set(Some(settings));
+    }
+
+    #[test]
+    fn login_happy_path() {
+        init_settings();
+        let mut sig_map = SignatureMap::default();
+        let canister_id = Principal::from_text("aaaaa-aa").unwrap();
+
+        // create an eth wallet and address
+        let wallet = LocalWallet::new(&mut thread_rng());
+        let addr_eip55 = to_checksum(&wallet.address(), None);
+        let address = EthAddress::new(&addr_eip55).unwrap();
+
+        // session principal derived from key used for prepare_login
+        let session_key = ByteBuf::from(SESSION_KEY);
+        let session_principal = Principal::self_authenticating(session_key.clone());
+
+        // prepare login to store SIWE message for (address, session_principal)
+        let siwe_message = prepare_login(&address, &session_principal).unwrap();
+        // sign the EIP-4361 string using EIP-191
+        let siwe_string: String = siwe_message.clone().into();
+        let sig = wallet.sign_hash(hash_message(siwe_string.as_bytes())).unwrap();
+        let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
+
+        // perform login
+        let details = match login(&signature, &address, session_key.clone(), &mut sig_map, &canister_id) {
+            Ok(d) => d,
+            Err(e) => panic!("login should succeed: {e}"),
+        };
+
+        // expiration = issued_at + session_expires_in
+        let expected_exp = with_settings!(|s: &Settings| siwe_message.issued_at + s.session_expires_in);
+        assert_eq!(details.expiration, expected_exp);
+        assert!(!details.user_canister_pubkey.is_empty());
+    }
+
+    #[test]
+    fn login_address_mismatch() {
+        init_settings();
+        let mut sig_map = SignatureMap::default();
+        let canister_id = Principal::from_text("aaaaa-aa").unwrap();
+
+        // correct wallet/address
+        let wallet = LocalWallet::new(&mut thread_rng());
+        let addr_eip55 = to_checksum(&wallet.address(), None);
+        let address = EthAddress::new(&addr_eip55).unwrap();
+
+        // different address used at login (fresh wallet)
+        let other = {
+            let w = LocalWallet::new(&mut thread_rng());
+            let a = to_checksum(&w.address(), None);
+            EthAddress::new(&a).unwrap()
+        };
+
+        let session_key = ByteBuf::from(SESSION_KEY);
+        let p = Principal::self_authenticating(session_key.clone());
+
+        let siwe_message = prepare_login(&address, &p).unwrap();
+        let siwe_string: String = siwe_message.into();
+        let sig = wallet.sign_hash(hash_message(siwe_string.as_bytes())).unwrap();
+        let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
+
+        let err = login(&signature, &other, session_key, &mut sig_map, &canister_id)
+            .unwrap_err();
+        // The message is stored for the original address + session principal; looking up with a different
+        // address yields 'Message not found' (never reaching signature check).
+        assert_eq!(err.to_string(), "Message not found");
+    }
+}

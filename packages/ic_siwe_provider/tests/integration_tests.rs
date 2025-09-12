@@ -1,6 +1,6 @@
 mod common;
 
-use candid::{encode_args, encode_one, Principal};
+use candid::{encode_args, encode_one, CandidType, Principal};
 use common::{
     create_canister, create_session_identity, create_wallet, full_login, init, query, update,
     valid_settings, PrepareLoginOkResponse, RuntimeFeature, NONCE, VALID_ADDRESS,
@@ -180,6 +180,52 @@ fn test_siwe_prepare_login_ok() {
 }
 
 #[test]
+fn test_siwe_prepare_login_anonymous_forbidden() {
+    let ic = PocketIc::new();
+    let ic_siwe_provider_canister = init(&ic, None);
+    let address = encode_one(VALID_ADDRESS).unwrap();
+    let response: Result<String, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_prepare_login",
+        address,
+    );
+    assert!(response.is_err());
+    assert!(
+        response
+            .unwrap_err()
+            .contains("Anonymous principal not allowed to make calls.")
+    );
+}
+
+#[test]
+fn test_siwe_get_delegation_anonymous_forbidden() {
+    let ic = PocketIc::new();
+    let ic_siwe_provider_canister = init(&ic, None);
+    // Provide dummy values; guard should reject anonymous before input validation
+    let args = encode_args((
+        String::from("0x0000000000000000000000000000000000000000"),
+        ByteBuf::from(vec![0u8; 1]),
+        0u64,
+    ))
+    .unwrap();
+    let response: Result<SignedDelegation, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_get_delegation",
+        args,
+    );
+    assert!(response.is_err());
+    assert!(
+        response
+            .unwrap_err()
+            .contains("Anonymous principal not allowed to make calls.")
+    );
+}
+
+#[test]
 fn test_login_signature_too_short() {
     let ic = PocketIc::new();
     let ic_siwe_provider_canister = init(&ic, None);
@@ -298,6 +344,32 @@ fn test_sign_in_signature_manipulated() {
     let response: Result<LoginDetails, String> =
         update(&ic, caller, ic_siwe_provider_canister, "siwe_login", args);
     assert_eq!(response.unwrap_err(), "Recovered address does not match");
+}
+
+#[test]
+fn test_siwe_login_anonymous_forbidden() {
+    let ic = PocketIc::new();
+    let ic_siwe_provider_canister = init(&ic, None);
+    // Provide dummy values; guard should reject anonymous before input validation
+    let args = encode_args((
+        String::from("0x"),
+        String::from("0x0000000000000000000000000000000000000000"),
+        ByteBuf::from(vec![0u8; 1]),
+    ))
+    .unwrap();
+    let response: Result<LoginDetails, String> = update(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "siwe_login",
+        args,
+    );
+    assert!(response.is_err());
+    assert!(
+        response
+            .unwrap_err()
+            .contains("Anonymous principal not allowed to make calls.")
+    );
 }
 
 #[test]
@@ -610,6 +682,41 @@ fn test_get_address_not_found() {
 }
 
 #[test]
+fn test_get_address_invalid_principal_bytes() {
+    let ic = PocketIc::new();
+    let ic_siwe_provider_canister = init(&ic, None);
+    let (_, _) = full_login(&ic, ic_siwe_provider_canister);
+    // principal bytes not 29 in length
+    let response: Result<String, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "get_address",
+        encode_one(vec![1u8, 2, 3]).unwrap(),
+    );
+    assert!(response.is_err());
+    assert_eq!(response.unwrap_err(), "No address found for the given principal");
+}
+
+#[test]
+fn test_get_principal_invalid_address_format() {
+    let ic = PocketIc::new();
+    let ic_siwe_provider_canister = init(&ic, None);
+    let response: Result<ByteBuf, String> = query(
+        &ic,
+        Principal::anonymous(),
+        ic_siwe_provider_canister,
+        "get_principal",
+        encode_one("invalid address").unwrap(),
+    );
+    assert!(response.is_err());
+    assert_eq!(
+        response.unwrap_err(),
+        "Address format error: Must start with '0x' and be 42 characters long"
+    );
+}
+
+#[test]
 fn test_get_principal() {
     let ic = PocketIc::new();
     let ic_siwe_provider_canister = init(&ic, None);
@@ -647,6 +754,47 @@ fn test_get_principal_not_found() {
         response.unwrap_err(),
         "No principal found for the given address"
     );
+}
+
+#[test]
+#[should_panic]
+fn test_init_with_targets_missing_self() {
+    let ic = PocketIc::new();
+    // Create canister and wasm
+    let (canister_id, wasm_module) = create_canister(&ic);
+    // Intentionally pass a targets list that does NOT include this canister id
+    let other = Principal::from_text("aaaaa-aa").unwrap();
+    // Define a local struct that mirrors the canister's SettingsInput (targets: Vec<String>)
+    #[derive(CandidType)]
+    struct ProviderSettingsInput {
+        domain: String,
+        uri: String,
+        salt: String,
+        chain_id: Option<u32>,
+        scheme: Option<String>,
+        statement: Option<String>,
+        sign_in_expires_in: Option<u64>,
+        session_expires_in: Option<u64>,
+        targets: Option<Vec<String>>,
+        runtime_features: Option<Vec<RuntimeFeature>>,
+    }
+
+    let settings = ProviderSettingsInput {
+        domain: "127.0.0.1".to_string(),
+        uri: "http://127.0.0.1:5173".to_string(),
+        salt: "dummy-salt".to_string(),
+        chain_id: Some(10),
+        scheme: Some("http".to_string()),
+        statement: Some("Login to the app".to_string()),
+        sign_in_expires_in: Some(Duration::from_secs(3).as_nanos() as u64),
+        session_expires_in: Some(Duration::from_secs(60 * 60 * 24 * 7).as_nanos() as u64),
+        targets: Some(vec![other.to_text()]),
+        runtime_features: None,
+    };
+    let arg = encode_one(settings).unwrap();
+    let sender = None;
+    // Expect panic from init when canister id is not in targets list
+    ic.install_canister(canister_id, wasm_module, arg, sender);
 }
 
 pub fn settings_disable_eth_and_principal_mapping(

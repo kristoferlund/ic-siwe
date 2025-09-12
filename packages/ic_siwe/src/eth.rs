@@ -479,3 +479,43 @@ mod convert_to_eip55 {
         assert_eq!(result.unwrap(), valid_address_eip55);
     }
 }
+
+#[cfg(test)]
+mod eip191_helpers {
+    use super::{eip191_bytes, eip191_hash};
+    use ethers::utils::hash_message;
+
+    #[test]
+    fn test_eip191_bytes_format() {
+        let msg = "abc";
+        let bytes = eip191_bytes(msg);
+        assert_eq!(bytes, b"\x19Ethereum Signed Message:\n3abc".to_vec());
+    }
+
+    #[test]
+    fn test_eip191_hash_matches_ethers() {
+        let messages = vec!["", "hello", "It's me, Marlene!", "😀 unicode \n newlines? no\n"];
+        for m in messages {
+            let ours = eip191_hash(m);
+            let theirs = hash_message(m.as_bytes());
+            assert_eq!(hex::encode(ours), hex::encode(theirs));
+        }
+    }
+}
+
+#[cfg(test)]
+mod eth_address_happy_path {
+    use super::EthAddress;
+
+    #[test]
+    fn test_valid_address_conversions() {
+        let addr_str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"; // EIP-55 valid
+        let addr = EthAddress::new(addr_str).unwrap();
+        assert_eq!(addr.as_str(), addr_str);
+        let bytes = addr.as_bytes();
+        assert_eq!(bytes.len(), 20);
+        let arr = addr.as_byte_array();
+        assert_eq!(arr.len(), 20);
+        assert_eq!(bytes, arr.to_vec());
+    }
+}

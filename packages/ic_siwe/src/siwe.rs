@@ -93,7 +93,7 @@ impl SiweMessage {
     /// `true` if the message is within its valid time period, `false` otherwise.
     pub fn is_expired(&self) -> bool {
         let current_time = get_current_time();
-        self.issued_at < current_time || current_time > self.expiration_time
+        current_time < self.issued_at || current_time > self.expiration_time
     }
 }
 
@@ -206,5 +206,82 @@ impl SiweMessageMap {
 impl Default for SiweMessageMap {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::eth::EthAddress;
+    use ethers::{core::rand::thread_rng, signers::{LocalWallet, Signer}, utils::to_checksum};
+    use candid::Principal;
+
+    fn make_message(issued_at: u64, expiration_time: u64) -> SiweMessage {
+        SiweMessage {
+            scheme: "https".to_string(),
+            domain: "example.com".to_string(),
+            address: "0x5aAeb6053F3E94C9b9a09f33669435E7Ef1BeAed".to_string(),
+            statement: "Test".to_string(),
+            uri: "https://example.com".to_string(),
+            version: 1,
+            chain_id: 1,
+            nonce: "abcd".to_string(),
+            issued_at,
+            expiration_time,
+        }
+    }
+
+    #[test]
+    fn siwe_message_is_expired_logic() {
+        let now = get_current_time();
+        let msg = make_message(now, now + 1_000_000);
+        assert!(!msg.is_expired(), "fresh message should not be expired");
+
+        let past = now.saturating_sub(1_000_000);
+        let msg = make_message(past, past + 10);
+        // give it time to certainly be past expiration
+        assert!(msg.is_expired(), "past-expired message should be expired");
+
+        // message issued in the future should be considered not yet valid (expired=true)
+        let future = now.saturating_add(10_000_000);
+        let msg = make_message(future, future + 20_000_000);
+        assert!(msg.is_expired(), "future-issued message should be expired/not yet valid");
+    }
+
+    #[test]
+    fn siwe_message_map_insert_get_remove_and_prune() {
+        let addr = {
+            let w = LocalWallet::new(&mut thread_rng());
+            to_checksum(&w.address(), None)
+        };
+        let address = EthAddress::new(&addr).unwrap();
+        let p1 = Principal::from_slice(&[1; 29]);
+        let p2 = Principal::from_slice(&[2; 29]);
+
+        let now = get_current_time();
+        let valid = make_message(now, now + 1_000_000_000);
+        let expired = make_message(now.saturating_sub(2_000_000_000), now.saturating_sub(1_000_000_000));
+
+        let mut map = SiweMessageMap::new();
+        map.insert(valid.clone(), &address, &p1);
+        map.insert(expired, &address, &p2);
+
+        // get works for matching principal/address
+        let fetched = map.get(&address, &p1).unwrap();
+        assert_eq!(fetched.nonce, valid.nonce);
+
+        // get fails for different principal
+        assert!(map.get(&address, &p2).is_ok());
+        let p3 = Principal::from_slice(&[3; 29]);
+        assert!(matches!(map.get(&address, &p3), Err(SiweMessageError::MessageNotFound)));
+
+        // prune should remove the expired entry (for p2) but keep the valid one
+        map.prune_expired();
+        assert!(map.get(&address, &p1).is_ok());
+        assert!(matches!(map.get(&address, &p2), Err(SiweMessageError::MessageNotFound)));
+
+        // remove should delete the remaining entry
+        map.remove(&address, &p1);
+        assert!(matches!(map.get(&address, &p1), Err(SiweMessageError::MessageNotFound)));
     }
 }
