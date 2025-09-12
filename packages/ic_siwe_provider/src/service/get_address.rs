@@ -27,8 +27,8 @@ pub(crate) fn get_address(principal: ByteBuf) -> Result<String, String> {
         .try_into()
         .map_err(|_| "Failed to convert ByteBuf to Blob<29>")?;
 
-    let address = PRINCIPAL_ADDRESS.with(|pa| {
-        pa.borrow().get(&principal).map_or(
+    let address = PRINCIPAL_ADDRESS.with_borrow(|pa| {
+        pa.get(&principal).map_or(
             Err("No address found for the given principal".to_string()),
             |a| Ok(bytes_to_eth_address(&a)),
         )
