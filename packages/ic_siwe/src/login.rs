@@ -18,8 +18,10 @@ use crate::{
     time::get_current_time,
     with_settings, SIWE_MESSAGES,
 };
+use simple_asn1::from_der;
 
-const MAX_SIGS_TO_PRUNE: usize = 10;
+// Increased from 10 to prevent state exhaustion. Pruning is relatively cheap, so we can afford to prune more.
+const MAX_SIGS_TO_PRUNE: usize = 1000;
 
 /// This function is the first step of the user login process. It validates the provided Ethereum address,
 /// creates a SIWE message, saves it for future use, and returns it.
@@ -141,6 +143,20 @@ pub fn login(
     SIWE_MESSAGES.with_borrow_mut(|siwe_messages| {
         // Prune any expired SIWE messages from the state.
         siwe_messages.prune_expired();
+
+        // Validate the session key before use
+        if session_key.is_empty() {
+            return Err(LoginError::DelegationError(
+                DelegationError::InvalidSessionKey("Session key is empty".to_string()),
+            ));
+        }
+
+        // Verify the session key is properly DER-encoded
+        from_der(&session_key).map_err(|e| {
+            LoginError::DelegationError(DelegationError::InvalidSessionKey(format!(
+                "Session key should be DER-encoded: {e}"
+            )))
+        })?;
 
         // Get the previously created SIWE message for current address / principal combination. If it has
         // expired or does not exist, return an error.
@@ -302,5 +318,77 @@ mod tests {
         // The message is stored for the original address + session principal; looking up with a different
         // address yields 'Message not found' (never reaching signature check).
         assert_eq!(err.to_string(), "Message not found");
+    }
+
+    #[test]
+    fn login_empty_session_key() {
+        init_settings();
+
+        let wallet = LocalWallet::new(&mut thread_rng());
+        let address = EthAddress::new(&to_checksum(&wallet.address(), None)).unwrap();
+        let principal = Principal::from_slice(&[1; 29]);
+
+        // Prepare login first
+        let message = prepare_login(&address, &principal).unwrap();
+        let message_string: String = message.into();
+        let hash = hash_message(message_string.as_bytes());
+        let signature = wallet.sign_hash(hash).unwrap();
+        let signature_hex = format!("0x{}", hex::encode(signature.to_vec()));
+
+        // Create an empty session key
+        let empty_session_key = ByteBuf::new();
+        let eth_signature = EthSignature::new(&signature_hex).unwrap();
+        let mut signature_map = SignatureMap::default();
+        let canister_id = Principal::from_text("aaaaa-aa").unwrap();
+
+        let result = login(
+            &eth_signature,
+            &address,
+            empty_session_key,
+            &mut signature_map,
+            &canister_id,
+        );
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Invalid session key: Session key is empty"
+        );
+    }
+
+    #[test]
+    fn login_invalid_der_session_key() {
+        init_settings();
+
+        let wallet = LocalWallet::new(&mut thread_rng());
+        let address = EthAddress::new(&to_checksum(&wallet.address(), None)).unwrap();
+        let principal = Principal::from_slice(&[1; 29]);
+
+        // Prepare login first
+        let message = prepare_login(&address, &principal).unwrap();
+        let message_string: String = message.into();
+        let hash = hash_message(message_string.as_bytes());
+        let signature = wallet.sign_hash(hash).unwrap();
+        let signature_hex = format!("0x{}", hex::encode(signature.to_vec()));
+
+        // Create an invalid DER-encoded session key
+        let invalid_session_key = ByteBuf::from(vec![0xFF, 0xFF, 0xFF, 0xFF]);
+        let eth_signature = EthSignature::new(&signature_hex).unwrap();
+        let mut signature_map = SignatureMap::default();
+        let canister_id = Principal::from_text("aaaaa-aa").unwrap();
+
+        let result = login(
+            &eth_signature,
+            &address,
+            invalid_session_key,
+            &mut signature_map,
+            &canister_id,
+        );
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Session key should be DER-encoded"));
     }
 }
