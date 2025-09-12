@@ -167,11 +167,10 @@ pub fn login(
         // Handle the result of the signature verification.
         result?;
 
-        // The delegation is valid for the duration of the session as defined in the settings.
+        // The delegation is valid for the duration of the session as defined in the settings,
+        // measured from the login time (now)
         let expiration = with_settings!(|settings: &Settings| {
-            message
-                .issued_at
-                .saturating_add(settings.session_expires_in)
+            get_current_time().saturating_add(settings.session_expires_in)
         });
 
         // The seed is what uniquely identifies the delegation. It is derived from the salt, the
@@ -243,18 +242,31 @@ mod tests {
         let siwe_message = prepare_login(&address, &session_principal).unwrap();
         // sign the EIP-4361 string using EIP-191
         let siwe_string: String = siwe_message.clone().into();
-        let sig = wallet.sign_hash(hash_message(siwe_string.as_bytes())).unwrap();
+        let sig = wallet
+            .sign_hash(hash_message(siwe_string.as_bytes()))
+            .unwrap();
         let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
 
         // perform login
-        let details = match login(&signature, &address, session_key.clone(), &mut sig_map, &canister_id) {
+        let start = get_current_time();
+        let details = match login(
+            &signature,
+            &address,
+            session_key.clone(),
+            &mut sig_map,
+            &canister_id,
+        ) {
             Ok(d) => d,
             Err(e) => panic!("login should succeed: {e}"),
         };
+        let end = get_current_time();
 
-        // expiration = issued_at + session_expires_in
-        let expected_exp = with_settings!(|s: &Settings| siwe_message.issued_at + s.session_expires_in);
-        assert_eq!(details.expiration, expected_exp);
+        // expiration is based on login time: in [start + TTL, end + TTL]
+        let ttl = with_settings!(|s: &Settings| s.session_expires_in);
+        assert!(
+            details.expiration >= start + ttl && details.expiration <= end + ttl,
+            "expiration not within expected login-time window"
+        );
         assert!(!details.user_canister_pubkey.is_empty());
     }
 
@@ -281,11 +293,12 @@ mod tests {
 
         let siwe_message = prepare_login(&address, &p).unwrap();
         let siwe_string: String = siwe_message.into();
-        let sig = wallet.sign_hash(hash_message(siwe_string.as_bytes())).unwrap();
+        let sig = wallet
+            .sign_hash(hash_message(siwe_string.as_bytes()))
+            .unwrap();
         let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
 
-        let err = login(&signature, &other, session_key, &mut sig_map, &canister_id)
-            .unwrap_err();
+        let err = login(&signature, &other, session_key, &mut sig_map, &canister_id).unwrap_err();
         // The message is stored for the original address + session principal; looking up with a different
         // address yields 'Message not found' (never reaching signature check).
         assert_eq!(err.to_string(), "Message not found");
