@@ -153,7 +153,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 ## Author
 
-- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- [kristofer@kristoferlund.se](mailto:kristofer@kristoferlund.se)
 - Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
 - Discord: kristoferkristofer
 - Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)

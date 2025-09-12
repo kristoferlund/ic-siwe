@@ -131,7 +131,7 @@ Use the `useSiwe` hook to initiate the login process:
 import { useSiwe } from "ic-siwe-js/react";
 
 function MyComponent() {
-  const { login, clear, identity, ... } = useSiweIdentity();
+  const { login, clear, identity, ... } = useSiwe();
   // ...
 }
 ```
@@ -144,7 +144,7 @@ The runtime behaviour of the `ic_siwe_provider` canister and the `ic_siwe` libra
 
 Default: URI is not included in the seed
 
-When set, the URI is included in the seed used to generate the principal. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if the `ic_siwe` library is used in a custom canister, that delagetes identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
+When set, the URI is included in the seed used to generate the principal. Including the URI in the seed does not add any additional security in a scenario where `ic_siwe_provider` is deployed and configured to serve only one domain. However, if the `ic_siwe` library is used in a custom canister, that delegates identities for more than one domain, it is recommended to enable this feature to ensure that the principal is unique for each domain.
 
 ```bash
   runtime_features = opt vec { \
@@ -178,7 +178,7 @@ When set, the mapping of Principals to Ethereum addresses is disabled. This also
 
 ## Service Interface
 
-In addition to the SIWE endpoints, required by the `useSiweIdentity` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.
+In addition to the SIWE endpoints, required by the `useSiwe` hook, this canister also exposes endpoints to retrieve the Ethereum address associated with a given ICP principal and vice versa. These endpoints are useful for applications that need to map ICP Principals to Ethereum addresses.
 
 ### [get_address](https://github.com/kristoferlund/ic-siwe/blob/main/packages/ic_siwe_provider/src/service/get_address.rs)
 
@@ -312,7 +312,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 ## Author
 
-- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- [kristofer@kristoferlund.se](mailto:kristofer@kristoferlund.se)
 - Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
 - Discord: kristoferkristofer
 - Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
