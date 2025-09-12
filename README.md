@@ -12,7 +12,7 @@
 
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
 
-- **Timebound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
+- **Time-bound Sessions**: Allows developers to set expiration times for sessions, enhancing security and control.
 
 - **Prebuilt Identity Provider**: Provides a prebuilt canister that can be integrated into any Internet Computer application, independent of the application's programming language.
 

@@ -1,22 +1,21 @@
 import { createStore } from "@xstate/store";
-import type { PrepareLoginOkResponse } from "./service.interface";
 import {
   Ed25519KeyIdentity,
   type DelegationChain,
   DelegationIdentity,
 } from "@dfinity/identity";
-import type { ActorConfig, HttpAgentOptions } from "@dfinity/agent";
+import { type ActorConfig, type HttpAgentOptions } from "@dfinity/agent";
 import { createWalletClient, custom, type WalletClient } from "viem";
 import { mainnet } from "viem/chains";
 import {
   callGetDelegation,
   callLogin,
   callPrepareLogin,
-  createAnonymousActor,
+  createActor,
 } from "./siwe-provider";
 import { normalizeError } from "./error";
 import { createDelegationChain } from "./delegation";
-import { clearIdentity, loadIdentity, saveIdentity } from "./local-storage";
+import { clearIdentityFromLocalStorage, loadIdentityFromLocalStorage, saveIdentityToLocalStorage } from "./local-storage";
 import type {
   LoginStatus,
   PrepareLoginStatus,
@@ -32,7 +31,6 @@ interface Context {
   isInitializing: boolean;
   prepareLoginStatus: PrepareLoginStatus;
   prepareLoginError?: Error;
-  prepareLoginOkResponse?: PrepareLoginOkResponse;
   loginStatus: LoginStatus;
   loginError?: Error;
   signMessageStatus: SignMessageStatus;
@@ -62,8 +60,11 @@ export const siweStateStore = createStore({
 
 export class SiweManager {
   walletClient?: WalletClient;
+  sessionIdentity?: Ed25519KeyIdentity;
+  siweMessage?: string;
+
   /**
-   * The IdentityManager is the starting point for using the SIWE identity service. It manages the identity state and provides authentication-related functionalities.
+   * The SiweManager is the starting point for using the SIWE identity service. It manages the identity state and provides authentication-related functionalities.
    *
    * @param {string} canisterId - The unique identifier of the canister on the Internet Computer network. This ID is used to establish a connection to the canister.
    * @param {HttpAgentOptions} httpAgentOptions - Optional. Configuration options for the HTTP agent used to communicate with the Internet Computer network.
@@ -76,7 +77,7 @@ export class SiweManager {
   ) {
     try {
       // Attempt to load a stored identity from local storage.
-      const [identityAddress, identity, delegationChain] = loadIdentity();
+      const [identityAddress, identity, delegationChain] = loadIdentityFromLocalStorage();
       this.updateState({
         identityAddress,
         identity,
@@ -84,7 +85,7 @@ export class SiweManager {
       });
     } catch (e) {
       const error = normalizeError(e);
-      console.log(`IdentityManager: ${error.message}`);
+      console.error(error.message);
     }
     this.updateState({ isInitializing: false });
   }
@@ -114,6 +115,15 @@ export class SiweManager {
     siweStateStore.send({ type: "updateState", ...updates });
   }
 
+  getSessionIdentity() {
+    if (!this.sessionIdentity) {
+      // A random session identity is created on each login.
+      this.sessionIdentity = Ed25519KeyIdentity.generate();
+    }
+    return this.sessionIdentity;
+  }
+
+
   /**
    * Provide a `WalletClient` instance to the `SiweManager` if you want to
    * override the default wallet client (`window.ethereum`). Must be
@@ -128,7 +138,7 @@ export class SiweManager {
    * Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
    * is optional, as it will be called automatically on login if not called manually.
    */
-  public async prepareLogin(): Promise<PrepareLoginOkResponse | undefined> {
+  public async prepareLogin(): Promise<string> {
     try {
       await this.setupWalletClient();
 
@@ -144,16 +154,18 @@ export class SiweManager {
         prepareLoginError: undefined,
       });
 
-      const actor = await createAnonymousActor({
+      const actor = await createActor({
         idlFactory,
         canisterId: this.canisterId,
         httpAgentOptions: this.httpAgentOptions,
+        identity: this.getSessionIdentity(),
         actorOptions: this.actorOptions,
       });
 
       const response = await callPrepareLogin(actor, account);
+      // Store SIWE message for later use during sign-in.
+      this.siweMessage = response;
       this.updateState({
-        prepareLoginOkResponse: response,
         prepareLoginStatus: "success",
       });
 
@@ -187,6 +199,9 @@ export class SiweManager {
 
       await this.setupWalletClient();
 
+      // Get the session identity or create a new if no one exists
+      const sessionIdentity = this.getSessionIdentity();
+
       const [account] = await this.walletClient!.getAddresses();
       if (!account) {
         throw new Error(
@@ -200,16 +215,10 @@ export class SiweManager {
         signMessageError: undefined,
       });
 
-      // The SIWE message is fetched from the provider canister now if it is not already available.
-      let prepareLoginOkResponse =
-        siweStateStore.getSnapshot().context.prepareLoginOkResponse;
-      if (!prepareLoginOkResponse) {
-        prepareLoginOkResponse = await this.prepareLogin();
-        if (!prepareLoginOkResponse) {
-          throw new Error(
-            "Prepare login failed did not return a SIWE message.",
-          );
-        }
+      // Ensure we have a SIWE message, fetching if necessary.
+      const siweMessage = this.siweMessage ?? (this.siweMessage = await this.prepareLogin());
+      if (!siweMessage) {
+        throw new Error("Prepare login failed did not return a SIWE message.");
       }
 
       this.updateState({
@@ -220,7 +229,7 @@ export class SiweManager {
       try {
         signature = await this.walletClient?.signMessage({
           account,
-          message: prepareLoginOkResponse.siwe_message,
+          message: siweMessage,
         });
         if (!signature) {
           throw new Error("signMessage returned no data.");
@@ -239,27 +248,25 @@ export class SiweManager {
         signMessageStatus: "success",
       });
 
-      // Important for security! A random session identity is created on each login.
-      const sessionIdentity = Ed25519KeyIdentity.generate();
-      const sessionPublicKey = sessionIdentity.getPublicKey().toDer();
 
-      const actor = await createAnonymousActor({
+      const actor = await createActor({
         idlFactory,
         canisterId: this.canisterId,
         httpAgentOptions: this.httpAgentOptions,
+        identity: sessionIdentity,
         actorOptions: this.actorOptions,
       });
 
+      const sessionPublicKey = sessionIdentity.getPublicKey().toDer();
       const loginOkResponse = await callLogin(
         actor,
         signature,
         account,
         sessionPublicKey,
-        prepareLoginOkResponse.nonce,
       );
 
       // Call the backend's siwe_get_delegation method to get the delegation.
-      const signedDelegation = await callGetDelegation(
+      const getDelegationResponse = await callGetDelegation(
         actor,
         account,
         sessionPublicKey,
@@ -268,7 +275,7 @@ export class SiweManager {
 
       // Create a new delegation chain from the delegation.
       const delegationChain = createDelegationChain(
-        signedDelegation,
+        getDelegationResponse,
         loginOkResponse.user_canister_pubkey,
       );
 
@@ -280,7 +287,7 @@ export class SiweManager {
       );
 
       // Save the identity for future use.
-      saveIdentity(account, sessionIdentity, delegationChain);
+      saveIdentityToLocalStorage(account, sessionIdentity, delegationChain);
 
       this.updateState({
         loginStatus: "success",
@@ -294,7 +301,6 @@ export class SiweManager {
       const error = normalizeError(e);
       console.error(error);
       this.updateState({
-        prepareLoginOkResponse: undefined,
         loginStatus: "error",
         loginError: error,
       });
@@ -309,14 +315,16 @@ export class SiweManager {
     this.updateState({
       prepareLoginStatus: "idle",
       prepareLoginError: undefined,
-      prepareLoginOkResponse: undefined,
       loginStatus: "idle",
       loginError: undefined,
+      signMessageStatus: "idle",
       signMessageError: undefined,
       identity: undefined,
       identityAddress: undefined,
       delegationChain: undefined,
     });
-    clearIdentity();
+    this.sessionIdentity = undefined;
+    this.siweMessage = undefined;
+    clearIdentityFromLocalStorage();
   }
 }

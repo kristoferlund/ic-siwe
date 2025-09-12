@@ -1,8 +1,9 @@
+use crate::ensure_authenticated;
 use candid::Principal;
-use ic_cdk::update;
+use ic_cdk::{api::msg_caller, update};
 use ic_siwe::{
     eth::{EthAddress, EthSignature},
-    login::LoginDetails,
+    login::{LoginDetails, LoginError},
 };
 use ic_stable_structures::storable::Blob;
 use serde_bytes::ByteBuf;
@@ -16,18 +17,23 @@ use crate::{update_root_hash, ADDRESS_PRINCIPAL, PRINCIPAL_ADDRESS, SETTINGS, ST
 /// * `signature` (String): The signature of the SIWE message.
 /// * `address` (String): The Ethereum address of the user.
 /// * `session_key` (ByteBuf): A unique key that identifies the session.
-/// * `nonce` (String): The nonce generated during the `prepare_login` call.
 ///
 /// # Returns
-/// * `Ok(LoginOkResponse)`: Contains the user canister public key and other login response data if the login is successful.
-/// * `Err(String)`: An error message if the login process fails.
-#[update]
+/// * `Ok(LoginDetails)`: Contains the user canister public key and other login response data if the login is successful.
+/// * `Err(String)`: An error message if the login process fails or caller is anonymous.
+#[update(guard = "ensure_authenticated")]
 fn siwe_login(
     signature: String,
     address: String,
     session_key: ByteBuf,
-    nonce: String,
 ) -> Result<LoginDetails, String> {
+    //
+    let session_principal = Principal::self_authenticating(session_key.clone());
+    let calling_principal = msg_caller();
+    if session_principal != calling_principal {
+        return Err(LoginError::SessionKeyMismatch.to_string());
+    }
+
     STATE.with(|state| {
         let signature_map = &mut *state.signature_map.borrow_mut();
 
@@ -43,8 +49,7 @@ fn siwe_login(
             &address,
             session_key,
             &mut *signature_map,
-            &ic_cdk::api::id(),
-            &nonce,
+            &ic_cdk::api::canister_self(),
         )
         .map_err(|e| e.to_string())?;
 
@@ -55,7 +60,7 @@ fn siwe_login(
         let principal: Blob<29> =
             Principal::self_authenticating(&login_response.user_canister_pubkey).as_slice()[..29]
                 .try_into()
-                .map_err(|_| format!("Invalid principal: {:?}", login_response))?;
+                .map_err(|_| format!("Invalid principal: {login_response:?}"))?;
 
         // Store the mapping of principal to Ethereum address and vice versa if the settings allow it.
         manage_principal_address_mappings(&principal, &address);

@@ -22,15 +22,15 @@ impl From<hex::FromHexError> for EthError {
 impl fmt::Display for EthError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            EthError::AddressFormatError(e) => write!(f, "Address format error: {}", e),
-            EthError::DecodingError(e) => write!(f, "Decoding error: {}", e),
-            EthError::SignatureFormatError(e) => write!(f, "Signature format error: {}", e),
+            EthError::AddressFormatError(e) => write!(f, "Address format error: {e}"),
+            EthError::DecodingError(e) => write!(f, "Decoding error: {e}"),
+            EthError::SignatureFormatError(e) => write!(f, "Signature format error: {e}"),
             EthError::InvalidSignature => write!(f, "Invalid signature"),
             EthError::InvalidRecoveryId => write!(f, "Invalid recovery ID"),
             EthError::PublicKeyRecoveryFailure => {
                 write!(f, "Public key recovery failure")
             }
-            EthError::Eip55Error(e) => write!(f, "EIP-55 error: {}", e),
+            EthError::Eip55Error(e) => write!(f, "EIP-55 error: {e}"),
         }
     }
 }
@@ -210,7 +210,7 @@ pub fn bytes_to_eth_address(bytes: &[u8; 20]) -> String {
     let addr = hex::encode(bytes);
 
     // Add the '0x' prefix
-    format!("0x{}", addr)
+    format!("0x{addr}")
 }
 
 /// Derives an Ethereum address from an ECDSA public key.
@@ -279,10 +279,7 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
                     }
                 }
                 _ => {
-                    return Err(format!(
-                        "Unrecognized hex character '{}' at position {}",
-                        c, i
-                    ));
+                    return Err(format!("Unrecognized hex character '{c}' at position {i}"));
                 }
             };
             Ok(result)
@@ -290,7 +287,7 @@ pub fn convert_to_eip55(address: &str) -> Result<String, EthError> {
         .collect::<Result<String, String>>()
         .map_err(EthError::Eip55Error)?; // Convert to error type
 
-    Ok(format!("0x{}", checksummed_addr))
+    Ok(format!("0x{checksummed_addr}"))
 }
 
 #[cfg(test)]
@@ -406,6 +403,7 @@ mod eth_signature {
 #[cfg(test)]
 mod recover_eth_address {
     use ethers::{
+        core::rand::thread_rng,
         signers::{LocalWallet, Signer},
         utils::{hash_message, to_checksum},
     };
@@ -413,7 +411,7 @@ mod recover_eth_address {
     use crate::eth::{recover_eth_address, EthSignature};
 
     pub fn create_wallet() -> (ethers::signers::LocalWallet, String) {
-        let wallet = LocalWallet::new(&mut rand::thread_rng());
+        let wallet = LocalWallet::new(&mut thread_rng());
         let h160 = wallet.address();
         let address = to_checksum(&h160, None);
         (wallet, address)
@@ -440,7 +438,7 @@ mod recover_eth_address {
         // Manipulate the signature, replacing the last character with a '0'
         signature.pop();
         signature.push('0');
-        let signature = format!("0x{}", signature);
+        let signature = format!("0x{signature}");
         let result = recover_eth_address(message, &EthSignature::new(&signature).unwrap());
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Invalid recovery ID");
@@ -453,7 +451,7 @@ mod recover_eth_address {
         let wrong_message = "Message 2";
         let hash = hash_message(message.as_bytes());
         let signature = wallet.sign_hash(hash).unwrap().to_string();
-        let signature = format!("0x{}", signature);
+        let signature = format!("0x{signature}");
         let recovered_address =
             recover_eth_address(wrong_message, &EthSignature::new(&signature).unwrap()).unwrap();
         assert_ne!(address, recovered_address);
@@ -479,5 +477,45 @@ mod convert_to_eip55 {
         let result = convert_to_eip55(valid_address_eip55);
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), valid_address_eip55);
+    }
+}
+
+#[cfg(test)]
+mod eip191_helpers {
+    use super::{eip191_bytes, eip191_hash};
+    use ethers::utils::hash_message;
+
+    #[test]
+    fn test_eip191_bytes_format() {
+        let msg = "abc";
+        let bytes = eip191_bytes(msg);
+        assert_eq!(bytes, b"\x19Ethereum Signed Message:\n3abc".to_vec());
+    }
+
+    #[test]
+    fn test_eip191_hash_matches_ethers() {
+        let messages = vec!["", "hello", "It's me, Marlene!", "😀 unicode \n newlines? no\n"];
+        for m in messages {
+            let ours = eip191_hash(m);
+            let theirs = hash_message(m.as_bytes());
+            assert_eq!(hex::encode(ours), hex::encode(theirs));
+        }
+    }
+}
+
+#[cfg(test)]
+mod eth_address_happy_path {
+    use super::EthAddress;
+
+    #[test]
+    fn test_valid_address_conversions() {
+        let addr_str = "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed"; // EIP-55 valid
+        let addr = EthAddress::new(addr_str).unwrap();
+        assert_eq!(addr.as_str(), addr_str);
+        let bytes = addr.as_bytes();
+        assert_eq!(bytes.len(), 20);
+        let arr = addr.as_byte_array();
+        assert_eq!(arr.len(), 20);
+        assert_eq!(bytes, arr.to_vec());
     }
 }

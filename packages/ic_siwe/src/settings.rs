@@ -178,7 +178,7 @@ impl SettingsBuilder {
 }
 
 fn validate_domain(scheme: &str, domain: &str) -> Result<String, String> {
-    let url_str = format!("{}://{}", scheme, domain);
+    let url_str = format!("{scheme}://{domain}");
     let parsed_url = Url::parse(&url_str).map_err(|_| String::from("Invalid domain"))?;
     if !parsed_url.has_authority() {
         Err(String::from("Invalid domain"))
@@ -386,7 +386,7 @@ mod tests {
         let domains = vec!["example.com", "sub.domain.com", "example.co.uk"];
         for domain in domains {
             let builder = SettingsBuilder::new(domain, "http://example.com", "some_salt");
-            assert!(builder.build().is_ok(), "Failed with domain: {}", domain);
+            assert!(builder.build().is_ok(), "Failed with domain: {domain}");
         }
     }
 
@@ -398,8 +398,7 @@ mod tests {
             let builder = SettingsBuilder::new(domain, "http://example.com", "some_salt");
             assert!(
                 builder.build().is_err(),
-                "Should fail with domain: {}",
-                domain
+                "Should fail with domain: {domain}"
             );
         }
     }
@@ -410,7 +409,7 @@ mod tests {
         let uris = vec!["http://example.com", "https://example.com:8080/path"];
         for uri in uris {
             let builder = SettingsBuilder::new("example.com", uri, "some_salt");
-            assert!(builder.build().is_ok(), "Failed with URI: {}", uri);
+            assert!(builder.build().is_ok(), "Failed with URI: {uri}");
         }
     }
 
@@ -420,7 +419,7 @@ mod tests {
         let uris = vec!["", "just_string"];
         for uri in uris {
             let builder = SettingsBuilder::new("example.com", uri, "some_salt");
-            assert!(builder.build().is_err(), "Should fail with URI: {}", uri);
+            assert!(builder.build().is_err(), "Should fail with URI: {uri}");
         }
     }
 
@@ -444,7 +443,7 @@ mod tests {
         for len in [1, 10, 100].iter() {
             let salt = "a".repeat(*len);
             let builder = SettingsBuilder::new("example.com", "http://example.com", &salt);
-            assert!(builder.build().is_ok(), "Failed with salt length: {}", len);
+            assert!(builder.build().is_ok(), "Failed with salt length: {len}");
         }
     }
 

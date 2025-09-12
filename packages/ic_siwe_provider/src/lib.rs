@@ -1,9 +1,9 @@
 /*!
-Using the pre built `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication
+Using the prebuilt `ic_siwe_provider` canister is the easiest way to integrate Ethereum wallet authentication
 into your [Internet Computer](https://internetcomputer.org) application.
 
 The canister is designed as a plug-and-play solution for developers, enabling easy integration into existing
-IC applications with minimal coding requirements. By adding the pre built `ic_siwe_provider` canister to the
+IC applications with minimal coding requirements. By adding the prebuilt `ic_siwe_provider` canister to the
 `dfx.json` of an IC project, developers can quickly enable Ethereum wallet-based authentication for their
 applications. The canister simplifies the authentication flow by managing the creation and verification of SIWE
 messages and handling user session management.
@@ -16,6 +16,8 @@ developers to build applications that leverage the strengths of both platforms.
 ## Features
 
 - **Prebuilt**: The canister is pre built and ready to use.
+- **Enhanced Security**: All authentication endpoints require authenticated (non-anonymous) calls, ensuring
+  that only the user who initiated the sign-in flow can complete it.
 - **Configurable**: The `ic_siwe_provider` canister allows developers to customize the SIWE authentication
   flow to suit their needs.
 - **Easy Integration**: The canister can be easily integrated into any Internet Computer application, independent
@@ -41,7 +43,8 @@ for the `ic_siwe_provider` canister also provide a good overview of how to integ
 
 See [README.md](../README.md) for more information.
  */
-use ic_cdk::api::set_certified_data;
+use candid::Principal;
+use ic_cdk::api::{certified_data_set, msg_caller};
 use ic_certified_map::{fork_hash, labeled_hash, AsHashTree, Hash, RbTree};
 use ic_siwe::signature_map::SignatureMap;
 use ic_stable_structures::{
@@ -107,5 +110,14 @@ pub(crate) fn update_root_hash(asset_hashes: &AssetHashes, signature_map: &Signa
         &labeled_hash(LABEL_ASSETS, &asset_hashes.root_hash()),
         &labeled_hash(LABEL_SIG, &signature_map.root_hash()),
     );
-    set_certified_data(&prefixed_root_hash[..]);
+    certified_data_set(&prefixed_root_hash[..]);
+}
+
+/// Ensures that the caller is authenticated (not anonymous).
+pub fn ensure_authenticated() -> Result<(), String> {
+    if msg_caller() == Principal::anonymous() {
+        Err("Anonymous principal not allowed to make calls.".into())
+    } else {
+        Ok(())
+    }
 }

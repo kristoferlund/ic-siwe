@@ -11,12 +11,12 @@ export type SiweIdentityContextType = {
 
   /** Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
    * is optional, as it will be called automatically on login if not called manually. */
-  prepareLogin: () => void;
+  prepareLogin: () => Promise<string>;
 
   /** Reflects the current status of the prepareLogin process. */
   prepareLoginStatus: PrepareLoginStatus;
 
-  /** `prepareLoginStatus === "loading"` */
+  /** `prepareLoginStatus === "preparing"` */
   isPreparingLogin: boolean;
 
   /** `prepareLoginStatus === "error"` */

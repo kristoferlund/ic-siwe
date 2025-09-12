@@ -10,7 +10,6 @@ build:
 test:
 	@{ \
 	  make -f ../test_canister/Makefile build; \
-		export POCKET_IC_BIN=../../pocket-ic; \
 		export IC_SIWE_PROVIDER_PATH=../../target/wasm32-unknown-unknown/release/ic_siwe_provider.wasm.gz; \
 		export TEST_CANISTER_PATH=../../target/wasm32-unknown-unknown/release/test_canister.wasm.gz; \
 		$(MAKE) build; \

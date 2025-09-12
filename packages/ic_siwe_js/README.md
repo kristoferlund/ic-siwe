@@ -45,6 +45,9 @@ In addition to `ic-siwe-js`, these peer dependencies are required:
 npm install ic-siwe-js viem @dfinity/agent @dfinity/candid @dfinity/identity 
 ```
 
+> [!IMPORTANT]
+> As of `ic-siwe-js` v0.3.0, you must use the `ic_siwe_provider` canister v0.2.0 or later.
+
 ## Quick start
 
 > [!TIP]
@@ -225,12 +228,12 @@ export type SiweIdentityContextType = {
 
   /** Load a SIWE message from the provider canister, to be used for login. Calling prepareLogin
    * is optional, as it will be called automatically on login if not called manually. */
-  prepareLogin: () => void;
+  prepareLogin: () => Promise<string>;
 
   /** Reflects the current status of the prepareLogin process. */
   prepareLoginStatus: PrepareLoginStatus;
 
-  /** `prepareLoginStatus === "loading"` */
+  /** `prepareLoginStatus === "preparing"` */
   isPreparingLogin: boolean;
 
   /** `prepareLoginStatus === "error"` */
@@ -296,7 +299,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 ## Author
 
-- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- [kristofer@kristoferlund.se](mailto:kristofer@kristoferlund.se)
 - Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
 - Discord: kristoferkristofer
 - Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)

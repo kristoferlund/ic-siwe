@@ -1,5 +1,3 @@
-use std::{collections::HashMap, fmt};
-
 use super::hash::{self, Value};
 use crate::{
     eth::EthAddress,
@@ -8,13 +6,13 @@ use crate::{
     time::get_current_time,
     with_settings,
 };
-
-use ic_certified_map::{Hash, HashTree};
-use serde_bytes::ByteBuf;
-
 use candid::{CandidType, Principal};
+use ic_canister_sig_creation::CanisterSigPublicKey;
+use ic_certified_map::{Hash, HashTree};
 use serde::{Deserialize, Serialize};
-use simple_asn1::{from_der, oid, ASN1Block, ASN1EncodeErr};
+use serde_bytes::ByteBuf;
+use simple_asn1::from_der;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug)]
 pub enum DelegationError {
@@ -36,9 +34,9 @@ impl fmt::Display for DelegationError {
                 hex::encode(witness_hash),
                 hex::encode(root_hash)
             ),
-            DelegationError::SerializationError(e) => write!(f, "Serialization error: {}", e),
-            DelegationError::InvalidSessionKey(e) => write!(f, "Invalid session key: {}", e),
-            DelegationError::InvalidExpiration(e) => write!(f, "Invalid expiration: {}", e),
+            DelegationError::SerializationError(e) => write!(f, "Serialization error: {e}"),
+            DelegationError::InvalidSessionKey(e) => write!(f, "Invalid session key: {e}"),
+            DelegationError::InvalidExpiration(e) => write!(f, "Invalid expiration: {e}"),
             DelegationError::SignatureExpired => write!(f, "Signature expired"),
         }
     }
@@ -120,7 +118,7 @@ pub fn create_delegation(
 
     // Validate the session key is DER-encoded
     from_der(&session_key).map_err(|e| {
-        DelegationError::InvalidSessionKey(format!("Session key should be DER-encoded: {}", e))
+        DelegationError::InvalidSessionKey(format!("Session key should be DER-encoded: {e}"))
     })?;
 
     if expiration == 0 {
@@ -217,22 +215,8 @@ pub fn create_delegation_hash(delegation: &Delegation) -> Hash {
 ///
 /// # Returns
 /// Bytes of the DER-encoded public key.
-pub(crate) fn create_user_canister_pubkey(
-    canister_id: &Principal,
-    seed: Vec<u8>,
-) -> Result<Vec<u8>, ASN1EncodeErr> {
-    let canister_id: Vec<u8> = canister_id.as_slice().to_vec();
-
-    let mut key: Vec<u8> = vec![];
-    key.push(canister_id.len() as u8);
-    key.extend(canister_id);
-    key.extend(seed);
-
-    let algorithm = oid!(1, 3, 6, 1, 4, 1, 56387, 1, 2);
-    let algorithm = ASN1Block::Sequence(0, vec![ASN1Block::ObjectIdentifier(0, algorithm)]);
-    let subject_public_key = ASN1Block::BitString(0, key.len() * 8, key.to_vec());
-    let subject_public_key_info = ASN1Block::Sequence(0, vec![algorithm, subject_public_key]);
-    simple_asn1::to_der(&subject_public_key_info)
+pub(crate) fn create_user_canister_pubkey(canister_id: Principal, seed: Vec<u8>) -> Vec<u8> {
+    CanisterSigPublicKey::new(canister_id, seed).to_der()
 }
 
 /// Serializes data into CBOR format.
@@ -285,6 +269,48 @@ mod tests {
         let seed = generate_seed(&address);
         assert!(!seed.is_empty(), "Seed should not be empty");
         // Additional assertions can be added here
+    }
+
+    #[test]
+    fn test_generate_seed_include_uri_feature_affects_seed() {
+        // Same address, different URIs with IncludeUriInSeed enabled should produce different seeds
+        let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
+
+        // Settings A with URI A and IncludeUriInSeed
+        let settings_a = SettingsBuilder::new("example.com", "http://example.com", "some_salt")
+            .runtime_features(vec![RuntimeFeature::IncludeUriInSeed])
+            .build()
+            .unwrap();
+        SETTINGS.set(Some(settings_a));
+        let seed_a = generate_seed(&address);
+
+        // Settings B with URI B and IncludeUriInSeed
+        let settings_b = SettingsBuilder::new("example.com", "http://other.com", "some_salt")
+            .runtime_features(vec![RuntimeFeature::IncludeUriInSeed])
+            .build()
+            .unwrap();
+        SETTINGS.set(Some(settings_b));
+        let seed_b = generate_seed(&address);
+
+        assert_ne!(seed_a, seed_b, "Seeds should differ when URIs differ and feature is enabled");
+    }
+
+    #[test]
+    fn test_generate_seed_without_feature_ignores_uri() {
+        // Same address, different URIs without IncludeUriInSeed should produce the same seed
+        let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
+
+        let settings_a =
+            SettingsBuilder::new("example.com", "http://example.com", "some_salt").build().unwrap();
+        SETTINGS.set(Some(settings_a));
+        let seed_a = generate_seed(&address);
+
+        let settings_b =
+            SettingsBuilder::new("example.com", "http://other.com", "some_salt").build().unwrap();
+        SETTINGS.set(Some(settings_b));
+        let seed_b = generate_seed(&address);
+
+        assert_eq!(seed_a, seed_b, "Seeds should be equal when feature is disabled");
     }
 
     #[test]
@@ -435,10 +461,8 @@ mod tests {
     fn test_create_user_canister_pubkey() {
         let address = init();
         let seed = generate_seed(&address);
-        let result =
-            create_user_canister_pubkey(&Principal::from_text("aaaaa-aa").unwrap(), seed.to_vec());
-        assert!(result.is_ok());
-        let pubkey = result.unwrap();
+        let pubkey =
+            create_user_canister_pubkey(Principal::from_text("aaaaa-aa").unwrap(), seed.to_vec());
         let result = from_der(&pubkey);
         assert!(
             result.is_ok(),

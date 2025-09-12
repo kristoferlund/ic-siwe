@@ -11,7 +11,7 @@ const STORAGE_KEY = "siweIdentity";
 /**
  * Loads the SIWE identity from local storage.
  */
-export function loadIdentity() {
+export function loadIdentityFromLocalStorage() {
   const storedState = localStorage.getItem(STORAGE_KEY);
 
   if (!storedState) {
@@ -35,7 +35,7 @@ export function loadIdentity() {
 /**
  * Saves the SIWE identity to local storage.
  */
-export function saveIdentity(
+export function saveIdentityToLocalStorage(
   address: string,
   sessionIdentity: Ed25519KeyIdentity,
   delegationChain: DelegationChain
@@ -53,6 +53,6 @@ export function saveIdentity(
 /**
  * Clears the SIWE identity from local storage.
  */
-export function clearIdentity() {
+export function clearIdentityFromLocalStorage() {
   localStorage.removeItem(STORAGE_KEY);
 }

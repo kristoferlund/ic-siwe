@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-09-12
+
+### Changed
+
+- BREAKING: Requires `ic_siwe_provider` canister v0.2.0 or later.
+  - The provider canister’s SIWE endpoints were hardened (authenticated-only) and adjusted in v0.2.0; this library now targets that interface.
+  - No app-facing API changes have been made in this version.
+- Upgraded dependencies. Library now uses 3.2.x versions of the `@dfinity` libraries 
+
+### Notes
+
+- If you reference prebuilt provider release assets in `dfx.json`, update to the `v0.2.0` `.did` and `.wasm.gz` URLs shown in the provider README.
+
 ## 0.2.5 - 2025-06-26
 
 ### Changed

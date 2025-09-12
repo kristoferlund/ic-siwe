@@ -10,6 +10,7 @@
 ## Key Features
 
 - **Ethereum Wallet Sign-In**: Enables Ethereum wallet sign-in for ICP applications. Sign in with any eth wallet to generate an ICP identity and session.
+- **Enhanced Security**: Ensures that only the user who initiated the sign-in flow can complete it by binding sign-in messages to the calling principal.
 - **Session Identity Uniqueness**: Ensures that session identities are specific to each application's context, preventing cross-app identity misuse.
 - **Consistent Principal Generation**: Guarantees that logging in with an Ethereum wallet consistently produces the same Principal, irrespective of the client used.
 - **Direct Ethereum Address to Principal Mapping**: Creates a one-to-one correlation between Ethereum addresses and Principals within the scope of the current application.
@@ -129,12 +130,12 @@ The login flow is illustrated in the following diagram:
 
 ### `siwe_prepare_login`
 
-- The `siwe_prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message together with a nonce. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
+- The `siwe_prepare_login` method is called by the frontend application to initiate the login flow. The method takes the user's Ethereum address as a parameter and returns a SIWE message. The frontend application uses the SIWE message to prompt the user to sign the message with their Ethereum wallet.
 - See: [`login::prepare_login`]
 
 ### `siwe_login`
 
-- The `siwe_login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, session identity and nonce as parameters. The method verifies the signature and Ethereum address and prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
+- The `siwe_login` method is called by the frontend application after the user has signed the SIWE message. The method takes the user's Ethereum address, signature, and session identity as parameters. The method verifies the signature and Ethereum address and prepares the delegation to be fetched in the next step, the `siwe_get_delegation` function.
 - See: [`login::login`]
 
 ### `siwe_get_delegation`
@@ -152,7 +153,7 @@ Contributions are welcome. Please submit your pull requests or open issues to pr
 
 ## Author
 
-- [kristofer@fmckl.se](mailto:kristofer@fmckl.se)
+- [kristofer@kristoferlund.se](mailto:kristofer@kristoferlund.se)
 - Twitter: [@kristoferlund](https://twitter.com/kristoferlund)
 - Discord: kristoferkristofer
 - Telegram: [@kristoferkristofer](https://t.me/kristoferkristofer)
