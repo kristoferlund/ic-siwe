@@ -45,6 +45,9 @@ In addition to `ic-siwe-js`, these peer dependencies are required:
 npm install ic-siwe-js viem @dfinity/agent @dfinity/candid @dfinity/identity 
 ```
 
+> [!IMPORTANT]
+> As of `ic-siwe-js` v0.3.0, you must use the `ic_siwe_provider` canister v0.2.0 or later.
+
 ## Quick start
 
 > [!TIP]
