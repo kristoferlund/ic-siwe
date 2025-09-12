@@ -310,9 +310,9 @@ mod tests {
         let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
 
         // Create principals with different lengths (Principal max size is 29 bytes)
-        let principal_28 = Principal::from_slice(&vec![1u8; 28]);
-        let principal_29 = Principal::from_slice(&vec![1u8; 29]);
-        let principal_10 = Principal::from_slice(&vec![1u8; 10]);
+        let principal_28 = Principal::from_slice(&[1u8; 28]);
+        let principal_29 = Principal::from_slice(&[1u8; 29]);
+        let principal_10 = Principal::from_slice(&[1u8; 10]);
         let principal_0 = Principal::from_slice(&[]);
 
         // Calculate hashes

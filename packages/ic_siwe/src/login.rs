@@ -261,7 +261,7 @@ mod tests {
         let sig = wallet
             .sign_hash(hash_message(siwe_string.as_bytes()))
             .unwrap();
-        let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
+        let signature = EthSignature::new(&format!("0x{sig}")).unwrap();
 
         // perform login
         let start = get_current_time();
@@ -312,7 +312,7 @@ mod tests {
         let sig = wallet
             .sign_hash(hash_message(siwe_string.as_bytes()))
             .unwrap();
-        let signature = EthSignature::new(&format!("0x{}", sig)).unwrap();
+        let signature = EthSignature::new(&format!("0x{sig}")).unwrap();
 
         let err = login(&signature, &other, session_key, &mut sig_map, &canister_id).unwrap_err();
         // The message is stored for the original address + session principal; looking up with a different
