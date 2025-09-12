@@ -5,28 +5,32 @@ import {
   Actor,
   type DerEncodedPublicKey,
   type ActorSubclass,
+  type Identity,
 } from "@dfinity/agent";
 import type { IDL } from "@dfinity/candid";
 import type { SIWE_IDENTITY_SERVICE } from "./service.interface";
 
 /**
- * Creates an anonymous actor for interactions with the Internet Computer.
+ * Creates an actor for interactions with the Internet Computer.
  * This is used primarily for the initial authentication process.
  */
-export async function createAnonymousActor({
+export async function createActor({
   idlFactory,
   canisterId,
   httpAgentOptions,
+  identity,
   actorOptions,
 }: {
   idlFactory: IDL.InterfaceFactory;
   canisterId: string;
   httpAgentOptions?: HttpAgentOptions;
+  identity?: Identity;
   actorOptions?: ActorConfig;
 }) {
   const shouldFetchRootKey = process.env.DFX_NETWORK !== "ic";
   const agent = await HttpAgent.create({
     ...httpAgentOptions,
+    identity,
     shouldFetchRootKey,
   });
   return Actor.createActor<SIWE_IDENTITY_SERVICE>(idlFactory, {
@@ -37,14 +41,14 @@ export async function createAnonymousActor({
 }
 
 export async function callPrepareLogin(
-  anonymousActor: ActorSubclass<SIWE_IDENTITY_SERVICE>,
+  actor: ActorSubclass<SIWE_IDENTITY_SERVICE>,
   address: `0x${string}` | undefined,
 ) {
-  if (!anonymousActor || !address) {
+  if (!actor || !address) {
     throw new Error("Invalid actor or address");
   }
 
-  const response = await anonymousActor.siwe_prepare_login(address);
+  const response = await actor.siwe_prepare_login(address);
 
   if ("Err" in response) {
     throw new Error(response.Err);
@@ -61,7 +65,6 @@ export async function callLogin(
   signature: `0x${string}` | undefined,
   address: `0x${string}` | undefined,
   sessionPublicKey: DerEncodedPublicKey,
-  nonce: string,
 ) {
 
   if (!anonymousActor || !signature || !address) {
@@ -72,7 +75,6 @@ export async function callLogin(
     signature,
     address,
     new Uint8Array(sessionPublicKey),
-    nonce,
   );
 
   if ("Err" in loginReponse) {
