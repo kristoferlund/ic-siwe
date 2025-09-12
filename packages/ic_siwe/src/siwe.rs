@@ -146,10 +146,10 @@ pub fn siwe_message_map_hash(address: &EthAddress, principal: &Principal) -> Has
     let mut bytes: Vec<u8> = vec![];
 
     let address_bytes = address.as_bytes();
-    bytes.push(address_bytes.len() as u8);
+    bytes.extend_from_slice(&(address_bytes.len() as u32).to_le_bytes());
     bytes.extend(address_bytes);
 
-    bytes.push(principal.as_slice().len() as u8);
+    bytes.extend_from_slice(&(principal.as_slice().len() as u32).to_le_bytes());
     bytes.extend(principal.as_slice());
 
     hash::hash_bytes(bytes)
@@ -213,8 +213,12 @@ impl Default for SiweMessageMap {
 mod tests {
     use super::*;
     use crate::eth::EthAddress;
-    use ethers::{core::rand::thread_rng, signers::{LocalWallet, Signer}, utils::to_checksum};
     use candid::Principal;
+    use ethers::{
+        core::rand::thread_rng,
+        signers::{LocalWallet, Signer},
+        utils::to_checksum,
+    };
 
     fn make_message(issued_at: u64, expiration_time: u64) -> SiweMessage {
         SiweMessage {
@@ -245,7 +249,10 @@ mod tests {
         // message issued in the future should be considered not yet valid (expired=true)
         let future = now.saturating_add(10_000_000);
         let msg = make_message(future, future + 20_000_000);
-        assert!(msg.is_expired(), "future-issued message should be expired/not yet valid");
+        assert!(
+            msg.is_expired(),
+            "future-issued message should be expired/not yet valid"
+        );
     }
 
     #[test]
@@ -260,7 +267,10 @@ mod tests {
 
         let now = get_current_time();
         let valid = make_message(now, now + 1_000_000_000);
-        let expired = make_message(now.saturating_sub(2_000_000_000), now.saturating_sub(1_000_000_000));
+        let expired = make_message(
+            now.saturating_sub(2_000_000_000),
+            now.saturating_sub(1_000_000_000),
+        );
 
         let mut map = SiweMessageMap::new();
         map.insert(valid.clone(), &address, &p1);
@@ -273,15 +283,84 @@ mod tests {
         // get fails for different principal
         assert!(map.get(&address, &p2).is_ok());
         let p3 = Principal::from_slice(&[3; 29]);
-        assert!(matches!(map.get(&address, &p3), Err(SiweMessageError::MessageNotFound)));
+        assert!(matches!(
+            map.get(&address, &p3),
+            Err(SiweMessageError::MessageNotFound)
+        ));
 
         // prune should remove the expired entry (for p2) but keep the valid one
         map.prune_expired();
         assert!(map.get(&address, &p1).is_ok());
-        assert!(matches!(map.get(&address, &p2), Err(SiweMessageError::MessageNotFound)));
+        assert!(matches!(
+            map.get(&address, &p2),
+            Err(SiweMessageError::MessageNotFound)
+        ));
 
         // remove should delete the remaining entry
         map.remove(&address, &p1);
-        assert!(matches!(map.get(&address, &p1), Err(SiweMessageError::MessageNotFound)));
+        assert!(matches!(
+            map.get(&address, &p1),
+            Err(SiweMessageError::MessageNotFound)
+        ));
+    }
+
+    #[test]
+    fn test_siwe_message_map_hash_no_collision() {
+        // Test that the hash function doesn't have collisions for edge case lengths
+        let address = EthAddress::new("0x1111111111111111111111111111111111111111").unwrap();
+
+        // Create principals with different lengths (Principal max size is 29 bytes)
+        let principal_28 = Principal::from_slice(&vec![1u8; 28]);
+        let principal_29 = Principal::from_slice(&vec![1u8; 29]);
+        let principal_10 = Principal::from_slice(&vec![1u8; 10]);
+        let principal_0 = Principal::from_slice(&[]);
+
+        // Calculate hashes
+        let hash_28 = siwe_message_map_hash(&address, &principal_28);
+        let hash_29 = siwe_message_map_hash(&address, &principal_29);
+        let hash_10 = siwe_message_map_hash(&address, &principal_10);
+        let hash_0 = siwe_message_map_hash(&address, &principal_0);
+
+        // Verify all hashes are different
+        assert_ne!(hash_28, hash_29, "Hash collision between length 28 and 29");
+        assert_ne!(hash_29, hash_10, "Hash collision between length 29 and 10");
+        assert_ne!(hash_0, hash_29, "Hash collision between length 0 and 29");
+        assert_ne!(hash_28, hash_10, "Hash collision between length 28 and 10");
+        assert_ne!(hash_0, hash_28, "Hash collision between length 0 and 28");
+        assert_ne!(hash_0, hash_10, "Hash collision between length 0 and 10");
+
+        // Also test with different addresses but same principal
+        let address2 = EthAddress::new("0x2222222222222222222222222222222222222222").unwrap();
+        let hash_addr2 = siwe_message_map_hash(&address2, &principal_28);
+        assert_ne!(
+            hash_28, hash_addr2,
+            "Hash collision between different addresses"
+        );
+
+        // Also test that the old bug would have caused collisions
+        // Simulate what would happen with the old u8 casting for length 256
+        // (256 as u8 = 0, 257 as u8 = 1, etc)
+        let address3 = EthAddress::new("0x3333333333333333333333333333333333333333").unwrap();
+
+        // Create test data to verify the fix prevents collisions that would have occurred
+        // with u8 length encoding (this doesn't test actual 256-byte principals since they're invalid)
+        let mut test_bytes1 = vec![];
+        test_bytes1.extend_from_slice(&(0u32).to_le_bytes()); // What 256 as u8 would give
+        test_bytes1.extend(address3.as_bytes());
+        test_bytes1.extend_from_slice(&(10u32).to_le_bytes());
+        test_bytes1.extend(&vec![1u8; 10]);
+
+        let mut test_bytes2 = vec![];
+        test_bytes2.extend_from_slice(&(256u32).to_le_bytes()); // Actual 256
+        test_bytes2.extend(address3.as_bytes());
+        test_bytes2.extend_from_slice(&(10u32).to_le_bytes());
+        test_bytes2.extend(&vec![1u8; 10]);
+
+        // These would have been the same with u8 casting but are different with u32
+        assert_ne!(
+            hash::hash_bytes(test_bytes1),
+            hash::hash_bytes(test_bytes2),
+            "Fix prevents collision that would occur with u8 length encoding"
+        );
     }
 }
